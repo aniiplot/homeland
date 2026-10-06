@@ -1839,7 +1839,7 @@ function clusterSvg(u, colorOf, style){
   for (let i=0;i<=x1-x0;i++) s+=`<line x1="${X(x0+i)}" y1="${P}" x2="${X(x0+i)}" y2="${P+Hh}" stroke="var(--line)" stroke-width="0.5"/>`;
   for (let i=0;i<=y1-y0;i++) s+=`<line x1="${P}" y1="${Y(y0+i)}" x2="${P+W}" y2="${Y(y0+i)}" stroke="var(--line)" stroke-width="0.5"/>`;
   for (const r of G.ranges) s+=`<rect x="${X(r.x)}" y="${Y(r.y)}" width="${r.w*T}" height="${r.h*T}" fill="var(--area-${r.unit})" stroke="var(--unit-${r.unit})" stroke-dasharray="4 3"/>`;
-  for (const q of G.plots) s+=`<rect x="${X(q.x)+1}" y="${Y(q.y)+1}" width="${q.s*T-2}" height="${q.s*T-2}" rx="${q.s>2?3:2}" fill="var(${colorOf(q.p)})" fill-opacity="0.85"><title>${q.p.crop.name}</title></rect>`+(q.s>2?`<text x="${X(q.x)+q.s*T/2}" y="${Y(q.y)+q.s*T/2+4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--panel)">W</text>`:'');
+  for (const q of G.plots) s+=`<rect x="${X(q.x)+1}" y="${Y(q.y)+1}" width="${q.s*T-2}" height="${q.s*T-2}" rx="${q.s>2?3:2}" fill="var(${colorOf(q.p)})" fill-opacity="0.85"><title>${q.p.crop.name}</title></rect>`;
   for (const q of G.cores) s+=`<rect x="${X(q.x)}" y="${Y(q.y)}" width="${q.s*T}" height="${q.s*T}" fill="var(--unit-${q.unit})"/>`;
   return s+'</svg>';
 }
@@ -2107,16 +2107,16 @@ function renderLayout(){
       const ice=u.pt.c==='freeze';
       cards.push(`<div class="ucard pair"><div class="top"><b><span class="dot" style="background:var(--unit-heat)"></span><span class="dot" style="background:var(--unit-cool)"></span>Overlap pair ${pn}</b><span>${jobChip('Fire')}${jobChip('Ice', ice?' Lv 2':'')}</span></div>
         <div class="zones"><span class="pill">Furnace · ${SETTING[u.pt.h]}</span><span class="pill">Cooling · ${SETTING[u.pt.c]}</span><span class="pill hot">Overlap · ${TEMP_NAME[Math.max(-2,Math.min(2,u.pt.ht+u.pt.ct))]}</span></div>
-        ${clusterSvg(u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}${x.p.crop.kind==='wood'?' (W)':''}</span>`).join('')}</div></div>`);
+        ${clusterSvg(u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
       continue; }
     cnt[u.zone.unit]++;
-    cards.push(`<div class="ucard"><div class="top"><b><span class="dot" style="background:var(--unit-${u.zone.unit})"></span>${UNITNAME[u.zone.unit]} ${cnt[u.zone.unit]}</b><span><span class="pill">${SETTING[u.zone.key]}</span>${jobChip(WORKER[u.zone.key].replace(' Lv 2',''), WORKER[u.zone.key].includes('Lv 2')?' Lv 2':'')}</span></div>${fieldSvg(u.zone,u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}${x.p.crop.kind==='wood'?' (W)':''}</span>`).join('')}</div></div>`);
+    cards.push(`<div class="ucard"><div class="top"><b><span class="dot" style="background:var(--unit-${u.zone.unit})"></span>${UNITNAME[u.zone.unit]} ${cnt[u.zone.unit]}</b><span><span class="pill">${SETTING[u.zone.key]}</span>${jobChip(WORKER[u.zone.key].replace(' Lv 2',''), WORKER[u.zone.key].includes('Lv 2')?' Lv 2':'')}</span></div>${fieldSvg(u.zone,u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
   }
   const open=lastPlan.openPlots||[];
   if (open.length){
     const t={}; for (const p of open){ t[p.crop.id]=t[p.crop.id]||{p,n:0}; t[p.crop.id].n+=p.plots; }
     const sens=open.some(p=>p.crop.temp!==0);
-    cards.push(`<div class="ucard"><div class="top"><b>Open ground</b><i class="tip" tabindex="0" data-tip="${sens?'Keep these outside every dashed range. Crops that want heat or cold grow slower here, already counted in their speed.':'These crops ignore heat, cold and light, so they can go anywhere.'}">?</i></div><div class="legend" style="display:grid;gap:4px">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}${x.p.crop.kind==='wood'?' (Woodland)':''}</span>`).join('')}</div></div>`);
+    cards.push(`<div class="ucard"><div class="top"><b>Open ground</b><i class="tip" tabindex="0" data-tip="${sens?'Keep these outside every dashed range. Crops that want heat or cold grow slower here, already counted in their speed.':'These crops ignore heat, cold and light, so they can go anywhere.'}">?</i></div><div class="legend" style="display:grid;gap:4px">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
   }
   const view=state.layoutView==='map'?'map':'units';
   // Clean vs Packed only differs for full units; part-filled units always use their tightest layout
@@ -2199,7 +2199,7 @@ function fieldSvg(zone, un, colorOf, style){
   for (let i=0;i<=maxX-minX;i++) s+=`<line x1="${X(minX+i)}" y1="${P}" x2="${X(minX+i)}" y2="${P+W}" stroke="var(--line)" stroke-width="0.5"/><line x1="${P}" y1="${X(minX+i)}" x2="${P+W}" y2="${X(minX+i)}" stroke="var(--line)" stroke-width="0.5"/>`;
   s+=`<rect x="${X(g.lo)}" y="${X(g.lo)}" width="${(g.hi-g.lo)*T}" height="${(g.hi-g.lo)*T}" fill="${ac}" stroke="${uc}" stroke-dasharray="4 3"/>`;
   woodPts.forEach(([x,y],i)=>{ const p=un.wood[i];
-    s+=`<rect x="${X(x)+1}" y="${X(y)+1}" width="${4*T-2}" height="${4*T-2}" rx="3" fill="var(${colorOf(p)})" fill-opacity="0.85"/><text x="${X(x)+2*T}" y="${X(y)+2*T+4}" text-anchor="middle" font-size="11" font-weight="700" fill="var(--panel)">W</text>`; });
+    s+=`<rect x="${X(x)+1}" y="${X(y)+1}" width="${4*T-2}" height="${4*T-2}" rx="3" fill="var(${colorOf(p)})" fill-opacity="0.85"/>`; });
   farmPts.forEach(([x,y],i)=>{ const p=un.farm[i];
     s+=`<rect x="${X(x)+1}" y="${X(y)+1}" width="${2*T-2}" height="${2*T-2}" rx="2" fill="var(${colorOf(p)})" fill-opacity="0.85"/>`; });
   if (L.guest && un.guest){ const [x,y]=L.guest, M=MACH[un.guest.key];
