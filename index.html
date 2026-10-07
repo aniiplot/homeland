@@ -2094,7 +2094,7 @@ function planHomelandClean(real, openPlots, land, edge, things){
 // (so its worker isn't standing inside something else), and on ties toward the middle of your land (shorter walks).
 function addFacing(H){
   for (const u of H.placed) for (const g of (u.guests||[])){ const M=MACH[g.g.key];
-    H.builds.push({key:g.g.key, name:M.name, short:SHORT[g.g.key]||M.name, job:M.job, w:5, h:5, x:g.x, y:g.y, inClimate:true, hosted:true}); }
+    H.builds.push({key:g.g.key, name:M.name, short:SHORT[g.g.key]||M.name, job:M.job, w:5, h:5, x:g.x, y:g.y, inClimate:true, hosted:true, face:g.face}); }
   const rects=[]; for (const u of H.placed) for (const q of [...u.cores,...u.plots]) rects.push({x:q.x,y:q.y,w:q.s,h:q.s});
   for (const p of H.open) rects.push({x:p.x,y:p.y,w:p.s,h:p.s});
   for (const b of H.builds) rects.push({x:b.x,y:b.y,w:b.w,h:b.h,b});
@@ -2102,9 +2102,10 @@ function addFacing(H){
   for (const b of H.builds){
     const cx=b.x+b.w/2, cy=b.y+b.h/2, D=1;
     const front=d=> d==='up'?{x:b.x,y:b.y-D,w:b.w,h:D} : d==='down'?{x:b.x,y:b.y+b.h,w:b.w,h:D} : d==='left'?{x:b.x-D,y:b.y,w:D,h:b.h} : {x:b.x+b.w,y:b.y,w:D,h:b.h};
-    if (!b.face){                       // face the middle of your land: shortest walk (a blocked front still works)
+    if (!b.face){                       // a clear front first, then the middle of your land (shortest walk)
       const dirs = b.w===b.h ? ['up','down','left','right'] : b.w>b.h ? ['up','down'] : ['left','right'];
-      let best=null; for (const d of dirs){ const f=front(d), dist=Math.hypot(f.x+f.w/2-H.ax, f.y+f.h/2-H.ay); if (!best || dist<best.dist) best={d,dist}; }
+      let best=null; for (const d of dirs){ const f=front(d), bl=rects.reduce((t,q)=>q.b===b?t:t+over(f,q),0)>0.01, dist=Math.hypot(f.x+f.w/2-H.ax, f.y+f.h/2-H.ay)+(bl?1e6:0);
+        if (!best || dist<best.dist) best={d,dist}; }
       b.face=best.d; }
     b.faceBlocked = rects.reduce((t,q)=>q.b===b?t:t+over(front(b.face),q),0) > 0.01;
   }
@@ -2144,7 +2145,7 @@ function planHomelandSquare(real, openPlots, land, edge, things){
   for (const p of openPlots.slice().sort((a,b)=>a.crop.id.localeCompare(b.crop.id))) for (let i=0;i<p.plots;i++) (p.crop.kind==='wood'?woods:farms).push(p);
   const climB=things.filter(t=>t.clim), plainB=things.filter(t=>!t.clim).sort((a,b)=>b.w*b.h-a.w*a.h || a.key.localeCompare(b.key));
   const LANE=Math.max(4, ...things.filter(t=>!t.clim).map(t=>Math.min(t.w,t.h)));   // lane depth for straight rows
-  const total=[...units.map(e=>e.area), ...things.map(t=>t.w*t.h), woods.length*16, farms.length*4].reduce((a,b)=>a+b,0);
+  const total=[...units.map(e=>e.area), ...things.map(t=>t.w*t.h+Math.max(t.w,t.h)), woods.length*16, farms.length*4].reduce((a,b)=>a+b,0);
   const sens=p=>p.crop.temp!==0 || p.crop.light;        // open-ground crops that must stay out of every range
 
   const attempt=(W,H,strict)=>{
@@ -2157,7 +2158,20 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     const X1=X0+W, Y1=Y0+H;
     const Q=4, MQ=N*Q, cell=new Uint8Array(MQ*MQ);
     const span=r=>[Math.round(r.x*Q), Math.round(r.y*Q), Math.round((r.x+r.w)*Q), Math.round((r.y+r.h)*Q)];
-    const occ=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (cell[y*MQ+x]) return true; return false; };
+    // cell: solid pieces. fr: the 1-tile walkway in front of each machine, where its worker stands. Nothing solid
+    // goes on a walkway, and a machine only faces open ground (walkways may be shared, like an aisle).
+    const fr=new Uint8Array(MQ*MQ);
+    const occ=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (cell[y*MQ+x]||fr[y*MQ+x]) return true; return false; };
+    const solidAt=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (cell[y*MQ+x]) return true; return false; };
+    const shared=r=>{ const [x0,y0,x1,y1]=span(r); let n=0; for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) n+=fr[y*MQ+x]; return n; };
+    const fronts=[], reserve=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) fr.fill(1, y*MQ+x0, y*MQ+x1); fronts.push(r); };
+    const frontOf=(r,d)=> d==='up'?{x:r.x,y:r.y-1,w:r.w,h:1} : d==='down'?{x:r.x,y:r.y+r.h,w:r.w,h:1} : d==='left'?{x:r.x-1,y:r.y,w:1,h:r.h} : {x:r.x+r.w,y:r.y,w:1,h:r.h};
+    // the way a machine at r can face: open ground inside the block, sharing an existing walkway if it can, else toward the middle
+    const pickFace=r=>{ let best=null;
+      for (const d of r.w===r.h?['up','down','left','right']:r.w>r.h?['up','down']:['left','right']){ const f=frontOf(r,d);
+        if (!inside(f) || solidAt(f)) continue;
+        const sc=-shared(f)*100+Math.hypot(f.x+f.w/2-X0-W/2, f.y+f.h/2-Y0-H/2); if (!best || sc<best.sc) best={d,sc,f}; }
+      return best; };
     const all=[], kin={};                                // every solid piece; pieces of each kind
     const fill=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) cell.fill(1, y*MQ+x0, y*MQ+x1); all.push(r); };
     // Straight rows: each side is split into lanes as deep as the deepest machine. A piece's outer edge sits on a lane
@@ -2167,10 +2181,14 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     const flush=(r,g)=>{ const cx=r.x+r.w/2-X0, cy=r.y+r.h/2-Y0, d=[cy, W-cx, H-cy, cx], s=d.indexOf(Math.min(...d));
       const near=(f)=>all.some(f);
       const off = s===0 ? r.y-Y0 : s===1 ? X1-(r.x+r.w) : s===2 ? Y1-(r.y+r.h) : r.x-X0;
-      const onLane = Math.abs(off-Math.round(off/LANE)*LANE)<E && (r.w<=LANE+E || r.h<=LANE+E);
+      const k1=Math.round(off/(LANE+0.5)), onLine=k=>k>=0 && Math.abs(off-(k*LANE+Math.ceil(k/2)))<E;
+      const onLane = (onLine(k1)||onLine(k1-1)||onLine(k1+1) || Math.abs(off-Math.round(off/(LANE+1))*(LANE+1))<E) && (r.w<=LANE+E || r.h<=LANE+E);
       const stack = g && g[0]==='p' && (kin[g]||[]).some(q=> s===0 ? Math.abs(q.y+q.h-r.y)<E && ovx(q,r) : s===1 ? Math.abs(q.x-(r.x+r.w))<E && ovy(q,r)
                                                     : s===2 ? Math.abs(q.y-(r.y+r.h))<E && ovx(q,r) : Math.abs(q.x+q.w-r.x)<E && ovy(q,r));
-      if (!onLane && !stack) return false;
+      // or right behind a walkway (the row on the far side of an aisle)
+      const aisle = !onLane && !stack && (r.w<=LANE+E || r.h<=LANE+E) && fronts.some(q=> s===0 ? Math.abs(q.y+q.h-r.y)<E && ovx(q,r) : s===1 ? Math.abs(q.x-(r.x+r.w))<E && ovy(q,r)
+                                                    : s===2 ? Math.abs(q.y-(r.y+r.h))<E && ovx(q,r) : Math.abs(q.x+q.w-r.x)<E && ovy(q,r));
+      if (!onLane && !stack && !aisle) return false;
       return s===0 ? (Math.abs(r.x-X0)<E || near(q=>Math.abs(q.x+q.w-r.x)<E && ovy(q,r)))
            : s===1 ? (Math.abs(r.y-Y0)<E || near(q=>Math.abs(q.y+q.h-r.y)<E && ovx(q,r)))
            : s===2 ? (Math.abs(r.x+r.w-X1)<E || near(q=>Math.abs(q.x-(r.x+r.w))<E && ovy(q,r)))
@@ -2183,6 +2201,7 @@ function planHomelandSquare(real, openPlots, land, edge, things){
       for (const q of [...cores,...plots,...guests]) fill(sq(q));
       for (const q of plots) plotsK.push({...sq(q), u});
       for (const r of rr) ranges.push({...r, u});
+      for (const g of guests){ const pf=pickFace(sq(g)); if (pf){ g.face=pf.d; reserve(pf.f); } }
       placed.push({u, cores, ranges:rr, plots, guests}); };
     const unitOK=(u,R,ox,oy)=>{
       const parts=[...R.cores,...R.plots,...(R.guests||[])].map(q=>({x:q.x+ox,y:q.y+oy,w:q.s,h:q.s})), rr=R.ranges.map(q=>({x:q.x+ox,y:q.y+oy,w:q.w,h:q.h}));
@@ -2211,11 +2230,11 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     for (const t of climB){ const want=CLIM_ZONE[t.clim], okR=ranges.filter(r=>r.zk===want); let got=null, bo=0;
       for (const [w,h] of t.w===t.h?[[t.w,t.h]]:[[t.w,t.h],[t.h,t.w]]) for (const [x,y] of spots(w,h)){ const r={x,y,w,h};
         if (occ(r)) continue; const inR=ranges.filter(q=>hit(r,q)); if (inR.length!==1 || !okR.includes(inR[0])) continue;
-        const ov=ovArea(r,inR[0]); if (ov>bo+1e-9){ bo=ov; got=r; } }
+        const ov=ovArea(r,inR[0]); if (ov>bo+1e-9 && pickFace(r)){ bo=ov; got=r; } }
       let inClimate=!!got;
-      if (!got && want!=='lamp'){ for (const [x,y] of spots(t.w,t.h)){ const r={x,y,w:t.w,h:t.h}; if (!occ(r)){ got=r; break; } } inClimate=false; }
+      if (!got && want!=='lamp'){ for (const [x,y] of spots(t.w,t.h)){ const r={x,y,w:t.w,h:t.h}; if (!occ(r) && pickFace(r)){ got=r; break; } } inClimate=false; }
       if (!got){ missed.push(t); continue; }
-      fill(got); builds.push({...t, x:got.x, y:got.y, w:got.w, h:got.h, inClimate}); }
+      const pf=pickFace(got); fill(got); reserve(pf.f); builds.push({...t, x:got.x, y:got.y, w:got.w, h:got.h, inClimate, face:pf.d}); }
     // everything else: first free spot nearest the border, either way round for buildings
     // Within the nearest band to the border that has room, a spot next to the same kind of thing wins (rows of
     // Mines, blocks of one crop), so the outside fills in tidy runs.
@@ -2225,11 +2244,13 @@ function planHomelandSquare(real, openPlots, land, edge, things){
         for (const s of spots(ww,hh)){ const band=Math.floor(s[2]/2);
           if (first && band>first.band) break;
           const r={x:s[0],y:s[1],w:ww,h:hh}; if (occ(r) || !ok(r) || (strict && !flush(r,g))) continue;
+          if (g[0]==='b' && !(r.pf=pickFace(r))) continue;
           const t=touches(r,g);
           if (!first || band<first.band || (band===first.band && !first.t && t)) first={r,band,t};
           if (first.t || ++looked>400) break; } }
       return first ? first.r : null; };
-    for (const t of plainB){ const g='b:'+t.key, r=putFirst(t.w,t.h,()=>true,g); if (!r) return null; fill(r); (kin[g]||(kin[g]=[])).push(r); builds.push({...t, x:r.x, y:r.y, w:r.w, h:r.h, inClimate:null}); }
+    for (const t of plainB){ const g='b:'+t.key, r=putFirst(t.w,t.h,()=>true,g); if (!r) return null;
+      fill(r); (kin[g]||(kin[g]=[])).push(r); const pf=pickFace(r)||r.pf; reserve(pf.f); builds.push({...t, x:r.x, y:r.y, w:r.w, h:r.h, inClimate:null, face:pf.d}); }
     for (const [list,s] of [[woods,4],[farms,2]]) for (const p of list){ const g='p:'+p.crop.id;
       const r=putFirst(s,s, q=>!(sens(p) && ranges.some(R=>hit(q,R))), g); if (!r)return null;
       fill(r); (kin[g]||(kin[g]=[])).push(r); open.push({x:r.x, y:r.y, s, p}); if (sens(p)) plotsK.push(r); }
@@ -2322,7 +2343,7 @@ function renderHomeMap(seg, style){
   if (H.squareFallback) warn.push('Everything won\'t fit in one block on the land you ticked, so this shows Clean grid. Tick more land for Square.');
   if (H.unplaced) warn.push(`${H.unplaced} climate unit${H.unplaced>1?'s':''} didn't fit on the land you ticked.`); if (H.openLeft) warn.push(`${H.openLeft} open-ground plot${H.openLeft>1?'s':''} didn't fit.`);
   const legend={}; for (const u of H.placed) for (const p of u.plots) legend[p.p.crop.id]=p.p; for (const p of H.open) legend[p.p.crop.id]=p.p;
-  $('pane-layout').innerHTML=`<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Packed: tightest, shortest walks. Clean grid: tidy blocks with a walkway between them. Square: one compact block, climate units on the corners with their plots round the outside, everything else pulled toward the edges.">?</i></div>
+  $('pane-layout').innerHTML=`<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Packed: tightest, shortest walks. Clean grid: tidy blocks with a walkway between them. Square: one compact block, climate units on the corners with their plots round the outside, everything else pulled toward the edges, with a clear walkway in front of every machine.">?</i></div>
     <div class="mapwrap"><div class="mapside">
       <div><h3>Land you own</h3>${picker}</div>
       <div><h3>Buildings</h3><label class="inline" style="margin:4px 0 6px"><input type="checkbox" id="allMach"${state.allMach?' checked':''}>Place every one my RV allows <i class="tip" tabindex="0" data-tip="Adds every machine, Mine, Well and leisure spot your RV lets you place, even ones the plan doesn't use, so the map keeps room for them. Unused ones are drawn dashed and need no worker.">?</i></label>
