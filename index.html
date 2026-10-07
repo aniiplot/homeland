@@ -76,6 +76,9 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-siz
 .seg button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:.85rem;padding:6px 12px;border-radius:7px}
 .seg button:disabled{opacity:.5;cursor:default}
 button:disabled{opacity:.5;cursor:not-allowed}
+.reqhead{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;font-size:.8rem;color:var(--muted);border-bottom:1px solid var(--line);padding-bottom:4px;margin-top:4px}
+.reqhead b{color:var(--ink);font-size:.86rem}
+.reqhead .mini{margin-left:auto;font-size:.76rem;padding:2px 8px}
 .seg button[aria-pressed="true"]{background:var(--leaf);color:var(--leaf-ink)}
 #summary{display:grid;gap:12px}
 .stepper{display:flex;gap:4px;align-items:center}
@@ -355,7 +358,7 @@ button.an.on::before{content:"✓ "}
       <section class="step" aria-labelledby="h-crops">
         <header>
           <h2 id="h-crops"><span class="num">2</span>Crops you want</h2>
-          <span class="btnrow"><button type="button" id="addAll">+ One of each to mutate</button><i class="tip" tabindex="0" data-tip="Adds one plot of every Farmland crop that can mutate, plus the Harvest Moon crops when they're switched on. Quick and Premium versions give the same mutated items as the plain crop (or none, sources disagree), so the plain crop covers each one. Trees have no mutated forms.">?</i><button type="button" id="addReq">+ Add crop</button></span>
+          <span class="btnrow"><button type="button" id="addAll">+ One of each to mutate</button><i class="tip" tabindex="0" data-tip="Adds one plot of every Farmland crop that can mutate, plus the Harvest Moon crops when they're switched on. Quick and Premium versions give the same mutated items as the plain crop (or none, sources disagree), so the plain crop covers each one. Trees have no mutated forms.">?</i></span>
         </header>
         <div class="rows" id="reqRows"></div>
         <div class="toggles"><label class="inline"><input type="checkbox" id="fill" checked>Fill leftover ground</label><label class="inline"><input type="checkbox" id="events">Harvest Moon crops <i class="tip" tabindex="0" data-tip="Event crops and recipes. Their seeds cost Moonray Wheat, so they count as free. Switch on while the event runs.">?</i></label></div>
@@ -1476,7 +1479,17 @@ function fitRequests(){ const o=opts(), cap={farm:o.farmPlots, wood:o.woodPlots}
   return trimmed; }
 function renderRequests(){
   const box=$('reqRows'); box.innerHTML='';
-  const o=opts(), trimmed=fitRequests();
+  const o=opts(), trimmed=fitRequests(), R=plotRoom(-1), sect={};
+  // Farmland and Woodland are counted separately, so each gets its own list and count
+  for (const [kind,label] of [['farm','Farmland'],['wood','Woodland']]){
+    const has=state.requests.some(r=>kindOf(r.id)===kind); if (!has && !R.cap[kind]) continue;
+    const head=document.createElement('div'); head.className='reqhead';
+    const t=document.createElement('b'); t.textContent=label;
+    const n=document.createElement('span'); n.textContent=R.cap[kind] ? (R.left[kind]<1 ? `all ${R.cap[kind]} plots picked` : `${R.left[kind]} of ${R.cap[kind]} plots left`) : 'none owned';
+    const add=document.createElement('button'); add.type='button'; add.className='mini'; add.id='add-'+kind; add.textContent='+ '+label+' crop'; add.disabled=R.left[kind]<1;
+    add.onclick=()=>{ const c=allCrops().find(c=>c.kind===kind && available(c).ok && !state.requests.some(r=>r.id===c.id)) || allCrops().find(c=>c.kind===kind && !state.requests.some(r=>r.id===c.id)); if (!c) return;
+      state.requests.push({id:c.id,plots:1}); renderRequests(); markDirty(); };
+    head.append(t,n,add); box.appendChild(head); sect[kind]=document.createElement('div'); sect[kind].className='rows'; box.appendChild(sect[kind]); }
   state.requests.forEach((r,i)=>{
     const row=document.createElement('div'); row.className='row';
     const sel=document.createElement('select'); sel.id='req-crop-'+i; sel.setAttribute('aria-label','Crop');
@@ -1491,7 +1504,7 @@ function renderRequests(){
     sel.value=r.id;
     const c=cropById(r.id), max=Math.max(1, plotRoom(i).left[kindOf(r.id)]);
     const n=document.createElement('select'); n.id='req-plots-'+i; n.setAttribute('aria-label','Plots');
-    for (const v of range(1,max)){ const op=document.createElement('option'); op.value=v; op.textContent=v+(v===1?' plot':' plots'); n.appendChild(op); }
+    for (const v of range(1,max)){ const op=document.createElement('option'); op.value=v; op.textContent=v+(v===1?' plot':' plots')+(v>r.plots?` (+${v-r.plots})`:''); n.appendChild(op); }
     n.value=Math.min(r.plots,max);
     const del=document.createElement('button'); del.type='button'; del.className='icon'; del.textContent='✕'; del.setAttribute('aria-label','Remove '+(c?c.name:'crop'));
     sel.onchange=()=>{ r.id=sel.value; r.plots=Math.max(1,Math.min(r.plots, plotRoom(i).left[kindOf(r.id)])); renderRequests(); markDirty(); };
@@ -1502,16 +1515,13 @@ function renderRequests(){
       if (!a.ok){ meta.classList.add('bad'); meta.textContent='Locked: needs '+a.why; }
       else { const zone = c.light ? ZONES[4] : ZONES.find(z=>z.temp===c.temp && z.key!=='lamp') || ZONES[5];
         const pv=plotValue(c, zone, o), coin=pv.rate*(c.yield*c.price-c.seed);
-        meta.textContent=[c.kind==='wood'?'Woodland':'Farmland', NEED(c)&&('needs '+NEED(c)), fmt(coin)+' coin/h per plot', c.wood?fmt(pv.rate*c.wood)+' wood/h':''].filter(Boolean).join(' · '); } }
-    row.append(sel,n,del,meta); box.appendChild(row);
+        meta.textContent=[NEED(c)&&('Needs '+NEED(c)), fmt(coin)+' coin/h per plot', c.wood?fmt(pv.rate*c.wood)+' wood/h':''].filter(Boolean).join(' · '); } }
+    row.append(sel,n,del,meta); (sect[kindOf(r.id)]||box).appendChild(row);
   });
   if (!state.requests.length){ const p=document.createElement('p'); p.className='note'; p.textContent='No crops picked. The planner fills your ground with the best earners.'; box.appendChild(p); }
-  const R=plotRoom(-1), full=R.left.farm<1 && R.left.wood<1;
   if (trimmed.size){ const p=document.createElement('p'); p.className='note';
     p.textContent='Trimmed your picks to fit the '+[...trimmed].map(k=>R.cap[k]+(k==='wood'?' Woodland':' Farmland')).join(' and ')+' plots you have.'; box.appendChild(p); }
-  else if (state.requests.length && (R.cap.farm||R.cap.wood)){ const p=document.createElement('p'); p.className='note';
-    p.textContent=full ? 'Every plot you have is picked.' : 'Left to pick: '+[R.cap.farm&&(R.left.farm+' of '+R.cap.farm+' Farmland'), R.cap.wood&&(R.left.wood+' of '+R.cap.wood+' Woodland')].filter(Boolean).join(', ')+'.'; box.appendChild(p); }
-  $('addReq').disabled=full; $('addAll').disabled=R.left.farm<1;
+  $('addAll').disabled=R.left.farm<1;
 }
 function renderFillChips(){
   const box=$('fillChips'); box.innerHTML=''; let on=0, all=0;
@@ -3131,9 +3141,6 @@ $('runBtn2').onclick=()=>run();
 $('session').addEventListener('change',()=>{ save(); renderShop(); });
 document.addEventListener('change',e=>{ if(e.target.id==='crewLvl'){ state.crewLvl=parseInt(e.target.value); renderProducts(); run(); } });
 $('addProd').onclick=()=>{ (state.products||(state.products=[])).push({n:'Bread',amt:5,unit:'h'}); renderProducts(); markDirty(); };
-$('addReq').onclick=()=>{ const R=plotRoom(-1), fits=c=>R.left[c.kind==='wood'?'wood':'farm']>=1;
-  const c=allCrops().find(c=>fits(c) && available(c).ok && !state.requests.some(r=>r.id===c.id)) || allCrops().find(fits); if (!c) return;
-  state.requests.push({id:c.id,plots:1}); renderRequests(); markDirty(); };
 // Crops with mutated forms (AniimoTools item list and the Mutated Plant Exchange agree). Trees have none (Wikily).
 // Quick and Premium versions: Wikily lists the same mutated items as the plain crop, AniimoTools says none, so the plain crop is used.
 const MUTATES=['wheat','potato','rice','soybean','cotton','rose','lavender','strawberry','sugarcane','ginseng','grapes','agave','cranberry','moondew','pepper'];
