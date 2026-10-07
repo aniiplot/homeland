@@ -1097,11 +1097,19 @@ function plan(requests, fillers, o, lp){
   const autoKeys=new Set((o.auto||[]).flatMap(a=>Object.keys(a.mh)));
   for (const k of autoKeys){ if (!C['mc_'+k]) continue;
     C['mt_'+k]={max:(o.spare||{})[k]||0};
-    const v={obj:-EPS, ['mc_'+k]:1, ['mt_'+k]:-1}; if (SL) v.slots=1;
+    const v={obj:-EPS, ['mc_'+k]:1, ['mt_'+k]:-1}; if (SL && !POOLED(k)) v.slots=1;   // pooled machines share workers
     V['m_'+k]=v; model.ints['m_'+k]=1; machVars.push({name:'m_'+k, key:k}); }
+  // Workers for machines that don't run all the time: one pool per job. A job needs enough workers for the total
+  // machine time (your items' share is known; the planner's picks add theirs), plus a little for field work.
+  const poolVars=[];
+  for (const [j,P] of Object.entries((o.pool||{}).jobs||{})){
+    C['wb_'+j]={min:P.base+(P.field?FIELD_SHARE:0)}; C['wm_'+j]={min:P.field||P.base>0?1:0};
+    const v={obj:-EPS, ['wb_'+j]:1, ['wm_'+j]:1}; if (SL) v.slots=1;
+    V['w_'+j]=v; model.ints['w_'+j]=1; poolVars.push({name:'w_'+j, j}); }
+  if (SL){ V.slk={obj: mode==='coin' ? -1e7 : -1e4, slots:-1}; }       // only if your Home can't fit even the must-haves
   (o.auto||[]).forEach((a,ai)=>{ if (Object.keys(a.mh).some(k=>!C['mt_'+k])) return;
     const v={}; addCoin(v, a.profit);
-    for (const [k,h] of Object.entries(a.mh)) v['mt_'+k]=h;
+    for (const [k,h] of Object.entries(a.mh)){ v['mt_'+k]=h; if (POOLED(k)){ const j=MACH[k].job; if (C['wb_'+j]) v['wb_'+j]=(v['wb_'+j]||0)-h; } }
     for (const [it,q] of Object.entries(a.crops)){ const di=allItems.indexOf(it); if (di>=0) v['dem_'+di]=-q; }
     V['z_'+ai]=v; autoVars.push({name:'z_'+ai, a}); });
   (o.extraOpts||[]).forEach((e,ei)=>{ if (!C['mc_'+e.key]) return;
@@ -1146,6 +1154,9 @@ function plan(requests, fillers, o, lp){
   const extraCount = {}; for (const ev of extraVars) extraCount[ev.e.key]=val(ev.name);
   const autoCoin = auto.reduce((t,a)=>t+a.perHour*a.profit,0);
   const extrasCoin = extraVars.reduce((t,ev)=>t+extraCount[ev.e.key]*ev.e.coinOut,0);
+  const workers = {}; for (const pv of poolVars) workers[pv.j]=val(pv.name);
+  const poolBusy = {}; for (const [j,P] of Object.entries((o.pool||{}).jobs||{})) poolBusy[j]=P.base;
+  for (const a of auto) for (const [k,h] of Object.entries(a.mh)) if (POOLED(k) && poolBusy[MACH[k].job]!==undefined) poolBusy[MACH[k].job]+=h*a.perHour;
   const autoUse = {}; for (const a of auto) for (const [it,q] of Object.entries(a.crops)) autoUse[it]=(autoUse[it]||0)+q*a.perHour;
   const made = {}; for (const p of out){ const it=itemOf(p.crop); made[it]=(made[it]||0)+p.plots*p.pv.rate*p.crop.yield; }
   const shortfall = {}; for (const it of demItems){ const gap = demand[it]-(made[it]||0); if (gap>1e-6) shortfall[it]=gap; }
@@ -1154,7 +1165,7 @@ function plan(requests, fillers, o, lp){
   const coinRate = out.reduce((s,p)=>s+p.plots*p.coin, 0) - consumed + mineCoin + (o.extraCoin||0) + guestCoin + autoCoin + extrasCoin;
   const woodRate = out.reduce((s,p)=>s+p.plots*p.wood, 0);
   return {feasible: res.feasible!==false, raw: res, counts, pairs, pairSlots, hosted, placed: out, coinRate, woodRate, sandRate, mines, mineCoin, made, shortfall, consumed, mode, objective: res.result, model,
-    auto, autoMach, autoCoin, autoUse, extraCount, extrasCoin};
+    auto, autoMach, autoCoin, autoUse, extraCount, extrasCoin, workers, poolBusy};
 }
 
 // Spread one zone's plots over its units so every unit's layout really fits.
@@ -1258,7 +1269,7 @@ function lpText(model){
 }
 function solveHighs(model){
   const L=lpText(model); if (!L.names.length) return {feasible:true, result:0};
-  let sol; try { sol=LP.highs.solve(L.text, {time_limit:4, mip_rel_gap:LP.gap||1e-6}); } catch(e){ return null; }
+  let sol; try { sol=LP.highs.solve(L.text, {time_limit:4, mip_rel_gap:LP.gap||1e-4}); } catch(e){ return null; }
   if (sol && /^Infeasible$/.test(sol.Status)) return {feasible:false, result:-Infinity};
   const ok = sol && sol.Columns && /Optimal|limit/i.test(sol.Status||'') && isFinite(sol.ObjectiveValue);
   if (!ok) return null;
@@ -1682,10 +1693,10 @@ function renderCrew(){
                              : `<div class="pick">Best: <b>${best.join(' or ')||'any '+r.job+' Aniimo'}</b></div>`;
     const chips=groups.map(g=>`<div class="og"><span class="ol">${g.label}</span><div class="oc">${g.names.map(n=>`<button type="button" class="an${owned.has(n)?' on':''}" data-an="${n}" aria-pressed="${owned.has(n)}">${n}</button>`).join('')}</div></div>`).join('');
     const note=(AN_OPTS[r.job]||{}).note;
-    return `<div class="cc" style="--jc:var(${jobVar(r.job)})"><div class="top">${jobChip(r.job, r.lvl>1?' Lv '+r.lvl+'+':'')}<span class="n">${r.n}</span></div><div class="for">${r.does}</div>${head}
-      ${groups.length?`<details class="opts"${mine.length?'':''}><summary>${all.length} options · tap the ones you own</summary>${chips}${note?`<p class="muted">${note}</p>`:''}</details>`:''}</div>`;
+    return `<div class="cc" style="--jc:var(${jobVar(r.job)})"><div class="top">${jobChip(r.job, r.lvl>1?' Lv '+r.lvl+'+':'')}<span class="n">${r.n}</span></div><div class="for">${r.does}</div>${r.busy>0.005?`<div class="for"><b>${Math.round(100*r.busy/Math.max(1,r.n))}%</b> busy on machines${r.n>1?' each':''}</div>`:''}${head}
+      ${groups.length?`<details class="opts"${mine.length?'':''}><summary>${all.length} option${all.length>1?'s':''} · tap the ones you own</summary>${chips}${note?`<p class="muted">${note}</p>`:''}</details>`:''}</div>`;
   };
-  $('pane-crew').innerHTML = `<div class="head"><p class="note" style="max-width:60ch"><b>${crewMin}</b>${cap?` of ${cap}`:''} Aniimo slots used${int('reserve')?` (${int('reserve')} kept free)`:''}.${cap&&crewMin>cap?' <b>More than your Home holds.</b>':''} <i class="tip" tabindex="0" data-tip="One worker per machine, Mine and climate unit, and at least one of each field job. If plots sit waiting on a job in game, add another worker for it.">?</i></p>
+  $('pane-crew').innerHTML = `<div class="head"><p class="note" style="max-width:60ch"><b>${crewMin}</b>${cap?` of ${cap}`:''} Aniimo slots used${int('reserve')?` (${int('reserve')} kept free)`:''}.${cap&&crewMin>cap?' <b>More than your Home holds.</b>':''} <i class="tip" tabindex="0" data-tip="Climate units, Mines, Wells and leisure spots each keep their own worker. Machines don't run all the time, so they share: each job gets enough workers for its total machine time, plus a little for field work. If plots or machines sit waiting in game, add another worker for that job.">?</i></p>
     <label class="f" style="width:170px"><span>Suggested workers <i class="tip" tabindex="0" data-tip="Lv 3 picks are regular forms you can catch. Lv 4 picks are mostly Prismana forms, which are rare. Level changes machine and Mine speed (Lv 3 does 120 work a minute at a Mine, Lv 4 does 150).">?</i></span><select id="crewLvl"><option value="3"${lv===3?' selected':''}>Lv 3 · easier to get</option><option value="4"${lv===4?' selected':''}>Lv 4 · Prismana</option></select></label></div>
     ${owned.size?`<p class="note"><button type="button" class="linkbtn" id="clearOwned">Clear my ${owned.size} owned</button></p>`:''}
     <div class="crew">${crewList.map(card).join('')}</div>`;
@@ -1699,10 +1710,10 @@ function crewRows(best, real, o){
   const rows=[], jobs={E:new Set(),G:new Set(),D:new Set()};
   for (const p of best.placed) for (const j of (p.crop.jobs||'EGD')) jobs[j].add(p.crop.name);
   const list=s=>[...s].slice(0,3).join(', ')+(s.size>3?' +'+(s.size-3):'');
-  if (jobs.G.size) rows.push({job:'Grass', n:1, does:'Sows'+(best.placed.some(p=>!(p.crop.jobs||'D').includes('D'))?' and collects':'')+': '+list(jobs.G)});
-  if (jobs.E.size) rows.push({job:'Earth', n:1, does:'Reclaims soil: '+list(jobs.E)});
-  if (jobs.D.size) rows.push({job:'Dark',  n:1, does:'Reaps: '+list(jobs.D)});
-  if (o.watering && best.placed.length) rows.push({job:'Water', n:1, does:'Waters every plot'});
+  if (jobs.G.size) rows.push({job:'Grass', field:true, n:1, does:'Sows'+(best.placed.some(p=>!(p.crop.jobs||'D').includes('D'))?' and collects':'')+': '+list(jobs.G)});
+  if (jobs.E.size) rows.push({job:'Earth', field:true, n:1, does:'Reclaims soil: '+list(jobs.E)});
+  if (jobs.D.size) rows.push({job:'Dark', field:true, n:1, does:'Reaps: '+list(jobs.D)});
+  if (o.watering && best.placed.length) rows.push({job:'Water', field:true, n:1, does:'Waters every plot'});
   const cnt={scorch:0,warm:0,cool:0,freeze:0,lamp:0}; for (const u of real){ if (u.pair){ cnt[u.pt.h]++; cnt[u.pt.c]++; } else cnt[u.zone.key]++; }
   if (cnt.scorch+cnt.warm) rows.push({job:'Fire', n:cnt.scorch+cnt.warm, does:(cnt.scorch+cnt.warm)+' Heat Furnace'+(cnt.scorch+cnt.warm>1?'s':'')});
   if (cnt.cool) rows.push({job:'Ice', n:cnt.cool, does:cnt.cool+' Cooling Unit'+(cnt.cool>1?'s':'')+' on Cool'});
@@ -2378,6 +2389,11 @@ function extraOptions(ctx, chain){
   }
   return out;
 }
+// Processing machines don't run all the time, so their workers are shared: one pool per job (Dark covers reaping,
+// the Jukebox Dryer and the Pickling Jar, say). Gathering buildings, Mines, climate units and leisure spots keep
+// their own worker. FIELD_SHARE is the slice of one worker's time kept for that job's field work.
+const POOLED = k => MACH[k] && MACH[k].kind==='proc';
+const FIELD_SHARE = 0.15;
 // Products the planner may make on its own for coin: sold items whose whole chain runs on processing machines
 // (and Wells or leisure spots for their water and goods), from crops you can grow. Per 1 made an hour:
 // crops used, machine-hours on each kind, and coin after the crops it no longer sells.
@@ -2500,13 +2516,20 @@ function prepare(){
   const rv=int('rv'); o.machCap={}; o.spare={};
   const keys=new Set([...o.extraOpts.map(e=>e.key), ...o.auto.flatMap(a=>Object.keys(a.mh))]);
   for (const k of keys){ const m=chain.machines.find(x=>x.key===k); o.machCap[k]=placeAt(k,rv)-(m?m.need:0); if (m) o.spare[k]=Math.max(0,m.need-m.busy); }
+  // Worker pools: field jobs, your items' machine time, Bench and Kiln time for the RV goal
+  const jobs={}, J=j=>jobs[j]||(jobs[j]={base:0, field:false});
+  if (o.farmPlots+o.woodPlots>0){ for (const j of ['Grass','Earth','Dark']) J(j).field=true; if (o.watering) J('Water').field=true; }
+  for (const m of chain.machines) if (POOLED(m.key)) J(MACH[m.key].job).base+=m.busy;
+  if (gs.rv){ if (gs.rv.woodChain.length) J(MACH.bench.job).base+=int('benches'); if (gs.rv.oreChain.length) J(MACH.kiln.job).base+=int('kilns'); }
+  for (const a of o.auto) for (const k of Object.keys(a.mh)) if (POOLED(k)) J(MACH[k].job);
+  o.pool={jobs};
   const cap=(AN_CAP[rv]||0)-int('reserve');
   if (cap>0){
-    let fixed=(o.farmPlots+o.woodPlots>0 ? 3+(o.watering?1:0) : 0) + chain.machines.reduce((t,m)=>t+m.need,0);
-    if (gs.rv){ if (gs.rv.woodChain.length) fixed+=int('benches'); if (gs.rv.oreChain.length) fixed+=int('kilns'); }
+    const fixed=chain.machines.filter(m=>!POOLED(m.key)).reduce((t,m)=>t+m.need,0);           // Wells, Mines... your items use
+    const minPool=Object.values(jobs).reduce((t,P)=>t+Math.max(P.field||P.base>0?1:0, Math.ceil(P.base+(P.field?FIELD_SHARE:0)-1e-9)),0);
     const room=cap-fixed, unitsMines=o.heat+o.cool+o.lamp+o.mines;
     // Climate units and Mines always get their worker (as before); the rest share what's left
-    o.slots = room>=unitsMines ? {room, units:true} : {room:0, units:false};
+    o.slots = room>=unitsMines+minPool ? {room, units:true} : {room:Math.max(0,room-unitsMines), units:false};
   } else o.slots=null;
   return {o, warnings, reqs, fillers, reqFarm, reqWood, ctx, chain, chainMines, gs};
 }
@@ -2624,7 +2647,15 @@ function run(){
 
   // ----- Machines tab -----
   let mh='';
-  const machRows=[...chain.machines];
+  // Your items' machines plus the planner's product picks: one card per machine, with how busy they keep it
+  const machRows=chain.machines.map(m=>({...m, autoLines:[]}));
+  for (const a of best.auto||[]){ const seen=new Set();
+    for (const st of a.steps){ const k=st.r.m; let row=machRows.find(m=>m.key===k&&!m.forRv);
+      if (!row){ row={key:k, need:0, can:placeAt(k,int('rv')), busy:0, maxLvl:0, steps:[], autoLines:[]}; machRows.push(row); }
+      if (!seen.has(k)){ row.busy+=a.mh[k]*a.perHour; seen.add(k); }
+      row.maxLvl=Math.max(row.maxLvl, st.r.l); row.autoLines.push({r:st.r, perHour:st.perHour*a.perHour}); } }
+  for (const [k,n] of Object.entries(best.autoMach||{})){ const row=machRows.find(m=>m.key===k); if (row) row.need+=n; }
+  for (const m of machRows) if (m.autoLines.length){ const g={}; for (const l of m.autoLines){ (g[l.r.id]||(g[l.r.id]={r:l.r, perHour:0})).perHour+=l.perHour; } m.autoLines=Object.values(g); }
   if (gs.rv) for (const [key,stages] of [['bench',gs.rv.woodChain],['kiln',gs.rv.oreChain]]) if (stages.length){
     const count=int(key==='bench'?'benches':'kilns');
     machRows.push({key, need:count, can:placeAt(key,int('rv')), busy:NaN, maxLvl:Math.max(...stages.map(s=>s.r.l)), steps:stages.map(s=>({r:s.r, perHour:NaN, total:s.batches})), forRv:true});
@@ -2633,8 +2664,9 @@ function run(){
     mh+=`<div class="mach">${machRows.map(m=>{ const M=MACH[m.key], over=m.need>m.can, jc=`var(${jobVar(M.job)})`;
       const busy=isNaN(m.busy)?null:m.busy, slots=m.need<=10?Math.max(m.need,1):1, part=k=>m.need<=10?Math.max(0,Math.min(1,busy-k)):Math.min(1,busy/m.need);
       const meter = busy===null ? '' : `<div class="meter" title="${Math.round(busy*100)}% of one ${M.name}'s time" style="--jc:${jc}">${Array.from({length:slots},(_,k)=>`<i style="width:${part(k)*100/slots}%"></i>`).join('')}</div>`;
-      const lines = m.forRv ? m.steps.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.total)} total</span></li>`) : m.steps.map(s=>`<li><span>${recipeCtl(s.r, ctx)}</span><span>${fmt(s.perHour)}/h</span></li>`);
-      return `<div class="mc${over?' over':''}"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>need / can place</div></div>${meter}${busy===null?`<p class="note">For RV ${gs.rv.next}</p>`:`<p class="note">${Math.round(busy*100)}% busy${m.need>1?' across '+m.need:''}</p>`}<ul>${lines.join('')}</ul></div>`; }).join('')}</div>`;
+      const lines = m.forRv ? m.steps.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.total)} total</span></li>`) : [...m.steps.map(s=>`<li><span>${recipeCtl(s.r, ctx)}</span><span>${fmt(s.perHour)}/h</span></li>`),
+        ...(m.autoLines||[]).map(l=>`<li><span>${l.r.n} <span class="pill leaf">for coin</span></span><span>${fmtN(l.perHour)}/h</span></li>`)];
+      return `<div class="mc${over?' over':''}"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>need / can place</div></div>${meter}${busy===null?`<p class="note">For RV ${gs.rv.next}</p>`:`<p class="note">${Math.round(100*busy/Math.max(1,m.need))}% busy${m.need>1?' on average across '+m.need:''}</p>`}<ul>${lines.join('')}</ul></div>`; }).join('')}</div>`;
   } else mh='<p class="note">No machines needed. Add food or goods in step 3, or plan for an RV upgrade, to see machines here.</p>';
   if (extras.length || extrasCut){
     const g={}; for (const e of extras){ const k=e.key+'|'+e.r.id; (g[k]=g[k]||{...e,n:0}).n++; }
@@ -2663,21 +2695,32 @@ function run(){
   $('pane-mach').querySelectorAll('button[data-unavoid]').forEach(b=>b.onclick=()=>{ state.avoid=(state.avoid||[]).filter(x=>x!==b.dataset.unavoid); renderProducts(); run(); });
 
   // ----- Aniimo tab -----
-  const crew=crewRows(best, real, o);
-  for (const m of chain.machines){ const M=MACH[m.key];
-    const fams=[...new Set(m.steps.filter(s=>s.r.fam).map(s=>leisurePick(s.r,ctx)?.name||s.r.fam))];
-    crew.push({job:M.job, n:m.need, does:m.need+' '+M.name+(m.need>1?'s':''), fam: fams.join(' or '), line: m.steps.find(s=>s.r.fam)?.r}); }
+  // Machines that don't run all the time share one pool of workers per job; everything else keeps its own worker
+  const crew=[], pool=best.workers||{}, pjobs=new Set(Object.keys(pool).filter(j=>pool[j]>0)), pooled={};
+  const plural=(nm,n)=>n>1 ? nm+(/(sh|ch|x|s)$/.test(nm)?'es':'s') : nm;
+  const P=j=>pooled[j]||(pooled[j]={job:j, n:pool[j], lvl:1, parts:[], busy:(best.poolBusy||{})[j]||0});
+  for (const r of crewRows(best, real, o)){ if (r.field && pjobs.has(r.job)) P(r.job).parts.push(r.does); else crew.push(r); }
+  const count={}, steps={};
+  for (const m of chain.machines){ count[m.key]=(count[m.key]||0)+m.need; (steps[m.key]||(steps[m.key]=[])).push(...m.steps.map(s=>s.r)); }
+  for (const [k,n] of Object.entries(best.autoMach||{})) count[k]=(count[k]||0)+n;
+  for (const a of best.auto||[]) for (const st of a.steps) (steps[st.r.m]||(steps[st.r.m]=[])).push(st.r);
+  const lvlOf=k=>Math.max(1,...(steps[k]||[]).map(r=>r.j));
+  for (const [k,n] of Object.entries(count)){ const M=MACH[k];
+    if (POOLED(k) && pjobs.has(M.job)){ const p=P(M.job); p.parts.push(n+' '+plural(M.name,n)); p.lvl=Math.max(p.lvl,lvlOf(k)); continue; }
+    const fr=(steps[k]||[]).find(r=>r.fam);
+    crew.push({job:M.job, lvl:lvlOf(k), n, does:n+' '+plural(M.name,n), fam:fr?(leisurePick(fr,ctx)?.name||fr.fam):'', line:fr||null}); }
   const mineCount=best.mines.reduce((s,m)=>s+m.count,0);
   if (mineCount) crew.push({job:'Earth', n:mineCount, does:mineCount+' Mine'+(mineCount>1?'s':'')});
-  if (gs.rv){ if (gs.rv.woodChain.length && int('benches')) crew.push({job:'Artisanship', lvl:Math.max(...gs.rv.woodChain.map(s=>s.r.j)), n:int('benches'), does:int('benches')+' Woodworking Bench'+(int('benches')>1?'es':'')});
-              if (gs.rv.oreChain.length && int('kilns')) crew.push({job:'Fire', lvl:Math.max(...gs.rv.oreChain.map(s=>s.r.j)), n:int('kilns'), does:int('kilns')+' Chimney Kiln'+(int('kilns')>1?'s':'')}); }
-  for (const [k,n] of Object.entries(best.autoMach||{})){ const M=MACH[k], sts=(best.auto||[]).flatMap(a=>a.steps).filter(st=>st.r.m===k), fr=sts.find(st=>st.r.fam);
-    crew.push({job:M.job, lvl:Math.max(1,...sts.map(st=>st.r.j)), n, does:n+' '+M.name+(n>1?'s':''), fam:fr?leisurePick(fr.r,ctx).name:'', line:fr?fr.r:null}); }
+  if (gs.rv) for (const [key,stages,id] of [['bench',gs.rv.woodChain,'benches'],['kiln',gs.rv.oreChain,'kilns']]){ const n=int(id); if (!stages.length || !n) continue;
+    const M=MACH[key], lv=Math.max(...stages.map(s=>s.r.j));
+    if (pjobs.has(M.job)){ const p=P(M.job); p.parts.push(n+' '+plural(M.name,n)); p.lvl=Math.max(p.lvl,lv); }
+    else crew.push({job:M.job, lvl:lv, n, does:n+' '+plural(M.name,n)}); }
   for (const e of extras){ const M=MACH[e.key]; crew.push({job:M.job, n:1, does:'1 '+M.name, fam:e.r.fam?leisurePick(e.r,ctx).name:'', line:e.r.fam?e.r:null}); }
-  const byJob={}; for (const r of crew){ const k=r.job+'|'+(r.lvl&&r.lvl>1?r.lvl:0)+'|'+(r.fam||'');
+  for (const p of Object.values(pooled)) crew.push({job:p.job, lvl:p.lvl, n:p.n, does:p.parts.join(' · '), busy:p.busy, pooled:true});
+  const byJob={}; for (const r of crew){ const k=r.job+'|'+(r.lvl&&r.lvl>1?r.lvl:0)+'|'+(r.fam||'')+(r.pooled?'|pool':'');
     if (byJob[k]){ byJob[k].n+=r.n; byJob[k].does+=', '+r.does; } else byJob[k]={...r}; }
   // Merge repeats like "1 Well, 1 Well" into "2 Wells"
-  for (const r of Object.values(byJob)){
+  for (const r of Object.values(byJob)){ if (r.pooled) continue;
     const parts=[], idx={};
     for (const piece of r.does.split(', ')){
       const m=piece.match(/^(\d+) (.+)$/);
@@ -2725,6 +2768,8 @@ function planScore(){
 }
 function improvements(){
   const rv=int('rv'), form=readForm(), keep={crewLvl:state.crewLvl, land:state.land}, out=[];
+  const gap0=LP.gap; LP.gap=1e-3;                    // ranking upgrades doesn't need the last 0.1%
+  try {
   const base=planScore();
   const restore=()=>{ writeForm(form); state.crewLvl=keep.crewLvl; state.land=keep.land; };
   const lvl=(id,max)=>int(id)<max;
@@ -2754,6 +2799,7 @@ function improvements(){
   if (rv<20){ try { $('rv').value=String(rv+1); buildSelects(); maxAll(); state.land=null; const r=planScore(); if (r.v-base.v>1e-6) out.push({label:'Reach RV '+(rv+1)+' and max it', gain:r.v-base.v, after:r.v, rv:true}); } catch(e){} finally { restore(); buildSelects(); writeForm(form); } }
   out.sort((a,b)=>b.gain-a.gain);
   return {base, list:out};
+  } finally { LP.gap=gap0; }
 }
 function renderImprove(){
   const box=$('improveBox'); if (!box) return;
