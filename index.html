@@ -385,6 +385,7 @@ button.an.on::before{content:"✓ "}
           <button type="button" id="addProd">+ Add item</button>
         </header>
         <div class="rows" id="prodRows"></div>
+        <div class="toggles"><label class="inline"><input type="checkbox" id="autoProd" checked>Make more products for coin <i class="tip" tabindex="0" data-tip="Machines and Aniimo slots you have spare turn crops into whatever sells for the most, whatever your goal. Your items above always come first. Untick to sell crops as they are.">?</i></label></div>
         <details>
           <summary>RV modules for special recipes <i class="tip" tabindex="0" data-tip="Premium, Advanced and Quick recipes unlock with these RV modules. Max for RV sets them to the highest your RV allows; lower them if you haven't upgraded yet.">?</i></summary>
           <div class="in"><div class="grid">
@@ -483,7 +484,7 @@ button.an.on::before{content:"✓ "}
 <dialog id="eventDlg" aria-labelledby="evTitle"><div class="evwrap" id="evBody"></div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/javascript-lp-solver@0.4.24/prod/solver.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/highs@1.8.0/build/highs.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/highs@1.15.3/build/highs.js"></script>
 <script>
 // ===== Machines and recipes (AniimoTools station pages, cross-checked against AniimoGuide's recipe list) =====
 // kind: 'proc' processing machine, 'gather' gathering building. lv: RV needed for each facility level (index = level).
@@ -988,6 +989,8 @@ function plan(requests, fillers, o, lp){
   const EPS = 0.01, TIE = 1e-3;
   const model = {optimize:'obj', opType:'max', constraints:{}, variables:{}, ints:{}};
   const C = model.constraints, V = model.variables;
+  // Aniimo slots left for climate units, Mines, extra machines and extras (see prepare)
+  const SL = o.slots; if (SL) C.slots={max:SL.room};
   const units = {scorch:o.heat, warm:o.heat, cool:o.cool, freeze:o.allowFreeze?o.cool:0, lamp:o.lamp};
   const active = ZONES.filter(z => z.key==='open' || units[z.key]>0);
   C.heat={max:o.heat}; C.cool={max:o.cool}; C.lamp={max:o.lamp};
@@ -998,6 +1001,7 @@ function plan(requests, fillers, o, lp){
     C['slot_'+z.key]={max:0}; C['mix_'+z.key]={max:0}; C['wmax_'+z.key]={max:0}; C['fcap_'+z.key]={max:0};
     V['n_'+z.key] = {obj:-EPS, [z.unit]:1, ['slot_'+z.key]:-u.F0, ['mix_'+z.key]:-(u.F0+4), ['wmax_'+z.key]:-u.Wmax, ['fcap_'+z.key]:-capF};
     model.ints['n_'+z.key]=1;
+    if (SL && SL.units) V['n_'+z.key].slots=1;
   }
   // Buildings that need a unit's climate (Starfall Hammock, Pearl Sandcastle, Floral Windmill): hosting one inside a lone
   // unit's range costs that unit 1 Farmland slot (2 when Woodland mixes in), worked out exactly; the gain is the speed it keeps.
@@ -1007,6 +1011,7 @@ function plan(requests, fillers, o, lp){
     const name='g_'+gi, v={obj: mode==='coin' ? g.bonus : TIE*g.bonus, ['host_'+g.zone]:1, ['slot_'+g.zone]:1, ['mix_'+g.zone]:2, ['wmax_'+g.zone]:1, ['fcap_'+g.zone]:Math.max(0,capF-(u.F0-1))};
     if (mode==='target' && NC) v.tCoin=-g.bonus;
     if (o.minCoin!==undefined) v.lexCoin=g.bonus;
+    if (g.src) v['gk_'+g.key]=1;                     // only for an extra the plan actually places
     C['host_'+g.zone]={max:0}; V['n_'+g.zone]['host_'+g.zone]=-1;
     C['g1_'+gi]={max:1}; v['g1_'+gi]=1;
     V[name]=v; model.ints[name]=1; guestVars.push({name, g}); });
@@ -1016,7 +1021,7 @@ function plan(requests, fillers, o, lp){
     const zs=new Set();
     for (const pt of PAIR_TYPES){
       if (pt.c==='freeze' && !o.allowFreeze) continue;
-      PAIRS.forEach((t,ti)=>{ const name='y_'+pt.key+'_'+ti, v={obj:-3*EPS, heat:1, cool:1};   // dearer than two lone units: pairs only when they earn more
+      PAIRS.forEach((t,ti)=>{ const name='y_'+pt.key+'_'+ti, v={obj:-3*EPS, heat:1, cool:1}; if (SL && SL.units) v.slots=2;   // dearer than two lone units: pairs only when they earn more
         let useful=false;
         for (const r of ['A','B','AB']){ const zk=TEMP_ZONE[regionTemp(pt,r)]; if (!zk) continue;
           if (t['f'+r]){ v['pcf_'+zk]=(v['pcf_'+zk]||0)-t['f'+r]; useful=true; }
@@ -1040,9 +1045,15 @@ function plan(requests, fillers, o, lp){
   // Crops your products use: each raw item must be grown at its rate (units per hour), shortfall heavily penalised
   const demand = o.demand || {}, demItems = Object.keys(demand).filter(k=>demand[k]>0);
   const itemOf = c => (typeof CROP_ITEM!=='undefined' && CROP_ITEM[c.id]) || c.item || c.name;
+  // Crop items the planner's own product picks could use get a row too (their need starts at 0)
+  const autoItems = [...new Set((o.auto||[]).flatMap(a=>Object.keys(a.crops)))].filter(it=>!demItems.includes(it));
+  const allItems = [...demItems, ...autoItems];
   let consumed = 0;
-  demItems.forEach((it,k)=>{ C['dem_'+k]={min:demand[it]}; V['u_'+k]={obj:-1, ['dem_'+k]:1};
-    const src = CROPS.find(c=>itemOf(c)===it); if (src) consumed += demand[it]*src.price; });
+  allItems.forEach((it,k)=>{ C['dem_'+k]={min:demand[it]||0}; V['u_'+k]={obj:-1, ['dem_'+k]:1};
+    const src = CROPS.find(c=>itemOf(c)===it); if (src) consumed += (demand[it]||0)*src.price; });
+  // Coin from a variable, in whatever way the goal counts coin
+  const addCoin = (v, c) => { v.obj=(v.obj||0)+(mode==='coin' ? c : TIE*c); if (mode==='target' && NC) v.tCoin=(v.tCoin||0)-c; if (o.minCoin!==undefined) v.lexCoin=(v.lexCoin||0)+c; };
+
   if (mode==='target'){ V.r={obj:1};
     if (NC){ C.tCoin={max:-consumed+(o.extraCoin||0)}; V.r.tCoin=NC/NORM; }
     if (NW){ C.tWood={max:0}; V.r.tWood=NW/NORM; }
@@ -1057,7 +1068,7 @@ function plan(requests, fillers, o, lp){
     C.mineTotal={max:o.mines};
     o.mineOpts.forEach((m,k)=>{
       let obj = mode==='coin' ? m.coin : mode==='sand' ? m.sand + TIE*m.coin : TIE*m.coin;
-      const v={obj, mineTotal:1};
+      const v={obj, mineTotal:1}; if (SL && SL.units) v.slots=1;
       if (o.minCoin!==undefined) v.lexCoin=m.coin; if (o.minSand!==undefined) v.lexSand=m.sand;
       if (mode==='target'){ if (NC) v.tCoin=-m.coin; if (NS) v.tSand=-m.sand; }
       V['mine_'+k]=v; model.ints['mine_'+k]=1; mineVars.push({name:'mine_'+k, m}); });
@@ -1090,17 +1101,37 @@ function plan(requests, fillers, o, lp){
       if (o.minCoin!==undefined) v.lexCoin=coin; if (o.minWood!==undefined) v.lexWood=wood;
       if (limit!==Infinity) v['lim_'+ci]=1;
       if (reqOf[c.id]) v['link_'+ci]=-1;
-      const di = demItems.indexOf(itemOf(c)); if (di>=0) v['dem_'+di] = c.yield*pv.rate;
+      const di = allItems.indexOf(itemOf(c)); if (di>=0) v['dem_'+di] = c.yield*pv.rate;
       V[name]=v; model.ints[name]=1; xvars.push({name, crop:c, zone:z, pv, coin, wood});
     }
   });
+  // Machines beyond your own items: each needs one Aniimo and room under the RV's limit for that machine.
+  // mc_k: machines of kind k (extra product machines + free extras) <= what you can still place
+  // mt_k: work the product picks need on kind k <= new machines + spare time on the ones your items use
+  const machVars=[], autoVars=[], extraVars=[];
+  for (const [k,capk] of Object.entries(o.machCap||{})) C['mc_'+k]={max:Math.max(0,capk)};
+  const autoKeys=new Set((o.auto||[]).flatMap(a=>Object.keys(a.mh)));
+  for (const k of autoKeys){ if (!C['mc_'+k]) continue;
+    C['mt_'+k]={max:(o.spare||{})[k]||0};
+    const v={obj:-EPS, ['mc_'+k]:1, ['mt_'+k]:-1}; if (SL) v.slots=1;
+    V['m_'+k]=v; model.ints['m_'+k]=1; machVars.push({name:'m_'+k, key:k}); }
+  (o.auto||[]).forEach((a,ai)=>{ if (Object.keys(a.mh).some(k=>!C['mt_'+k])) return;
+    const v={}; addCoin(v, a.profit);
+    for (const [k,h] of Object.entries(a.mh)) v['mt_'+k]=h;
+    for (const [it,q] of Object.entries(a.crops)){ const di=allItems.indexOf(it); if (di>=0) v['dem_'+di]=-q; }
+    V['z_'+ai]=v; autoVars.push({name:'z_'+ai, a}); });
+  (o.extraOpts||[]).forEach((e,ei)=>{ if (!C['mc_'+e.key]) return;
+    const v={['mc_'+e.key]:1}; addCoin(v, e.coinOut); if (SL) v.slots=1;
+    if (e.r.clim){ v['gk_'+e.key]=-1; C['gk_'+e.key]={max:0}; }
+    V['e_'+ei]=v; model.ints['e_'+ei]=1; extraVars.push({name:'e_'+ei, e}); });
   // A requested plot must always outweigh anything a single plot could add elsewhere
   const M = 1e5 + 10*maxObj;
   // Shortfall on an item's crops costs more than any plot could earn elsewhere, but stays on the same scale as plot
   // values (a fixed huge penalty made the integer search crawl when demand can't be met)
-  const minUnits = Math.min(...xvars.filter(x=>demItems.includes(itemOf(x.crop))).map(x=>x.crop.yield*x.pv.rate), Infinity);
-  const PEN = isFinite(minUnits) && minUnits>0 ? 4*maxObj/minUnits + 1 : 1;
-  demItems.forEach((it,k)=>{ V['u_'+k].obj = -PEN; });
+  const minUnits = Math.min(...xvars.filter(x=>allItems.includes(itemOf(x.crop))).map(x=>x.crop.yield*x.pv.rate), Infinity);
+  const perCrop = Math.max(0, ...(o.auto||[]).map(a=>a.profit/Math.max(1e-9, Math.min(...Object.values(a.crops)))));
+  const PEN = Math.max(isFinite(minUnits) && minUnits>0 ? 4*maxObj/minUnits + 1 : 1, 4*perCrop + 1);
+  allItems.forEach((it,k)=>{ V['u_'+k].obj = -PEN; });
   crops.forEach((c,ci)=>{ if (reqOf[c.id]){
     C['sreq_'+ci]={max:reqOf[c.id]}; C['link_'+ci]={max:0};
     V['s_'+ci]={obj:M, ['sreq_'+ci]:1, ['link_'+ci]:1}; } });
@@ -1126,13 +1157,20 @@ function plan(requests, fillers, o, lp){
       if (p.plots-take) out.push({...p, plots:p.plots-take, requested:false});
     }
   }
+  const auto = autoVars.map(x=>({...x.a, perHour:res[x.name]||0})).filter(x=>x.perHour>1e-6);
+  const autoMach = {}; for (const mv of machVars){ const n=val(mv.name); if (n) autoMach[mv.key]=n; }
+  const extraCount = {}; for (const ev of extraVars) extraCount[ev.e.key]=val(ev.name);
+  const autoCoin = auto.reduce((t,a)=>t+a.perHour*a.profit,0);
+  const extrasCoin = extraVars.reduce((t,ev)=>t+extraCount[ev.e.key]*ev.e.coinOut,0);
+  const autoUse = {}; for (const a of auto) for (const [it,q] of Object.entries(a.crops)) autoUse[it]=(autoUse[it]||0)+q*a.perHour;
   const made = {}; for (const p of out){ const it=itemOf(p.crop); made[it]=(made[it]||0)+p.plots*p.pv.rate*p.crop.yield; }
   const shortfall = {}; for (const it of demItems){ const gap = demand[it]-(made[it]||0); if (gap>1e-6) shortfall[it]=gap; }
   const mines = mineVars.map(mv=>({...mv.m, count:val(mv.name)})).filter(x=>x.count>0);
   const mineCoin = mines.reduce((s,m)=>s+m.count*m.coin,0), sandRate = mines.reduce((s,m)=>s+m.count*m.sand,0);
-  const coinRate = out.reduce((s,p)=>s+p.plots*p.coin, 0) - consumed + mineCoin + (o.extraCoin||0) + guestCoin;
+  const coinRate = out.reduce((s,p)=>s+p.plots*p.coin, 0) - consumed + mineCoin + (o.extraCoin||0) + guestCoin + autoCoin + extrasCoin;
   const woodRate = out.reduce((s,p)=>s+p.plots*p.wood, 0);
-  return {feasible: res.feasible!==false, raw: res, counts, pairs, pairSlots, hosted, placed: out, coinRate, woodRate, sandRate, mines, mineCoin, made, shortfall, consumed, mode, objective: res.result, model};
+  return {feasible: res.feasible!==false, raw: res, counts, pairs, pairSlots, hosted, placed: out, coinRate, woodRate, sandRate, mines, mineCoin, made, shortfall, consumed, mode, objective: res.result, model,
+    auto, autoMach, autoCoin, autoUse, extraCount, extrasCoin};
 }
 
 // Spread one zone's plots over its units so every unit's layout really fits.
@@ -1236,7 +1274,7 @@ function lpText(model){
 }
 function solveHighs(model){
   const L=lpText(model); if (!L.names.length) return {feasible:true, result:0};
-  let sol; try { sol=LP.highs.solve(L.text, {time_limit:4, mip_rel_gap:1e-6}); } catch(e){ return null; }
+  let sol; try { sol=LP.highs.solve(L.text, {time_limit:4, mip_rel_gap:LP.gap||1e-6}); } catch(e){ return null; }
   if (sol && /^Infeasible$/.test(sol.Status)) return {feasible:false, result:-Infinity};
   const ok = sol && sol.Columns && /Optimal|limit/i.test(sol.Status||'') && isFinite(sol.ObjectiveValue);
   if (!ok) return null;
@@ -1274,7 +1312,8 @@ function startSolver(){
     setTimeout(()=>finish(false,'timeout'), 12000);
     try {
       if (typeof WebAssembly!=='object' || typeof window.Module!=='function') return finish(false,'no wasm');
-      const arg = window.HFP_WASM ? {wasmBinary:window.HFP_WASM} : {locateFile:f=>f};
+      const arg = window.HFP_WASM ? {instantiateWasm:(info,done)=>{ WebAssembly.instantiate(window.HFP_WASM, info).then(r=>done(r.instance), ()=>finish(false,'compile')); return {}; }} : {locateFile:f=>f};
+      arg.onAbort = () => { LP.exact=false; finish(false,'abort'); };   // if HiGHS fails to start or ever crashes, the fallback takes over
       window.Module(arg).then(h=>{ try { const t=h.solve('Maximize\n obj: x\nSubject To\n c: x <= 1\nGeneral\n x\nEnd\n',{});
           if (t.Status!=='Optimal') throw 0; LP.highs=h; finish(true); } catch(e){ finish(false,'self-test'); } }, ()=>finish(false,'load'));
     } catch(e){ finish(false,'start'); }
@@ -1295,7 +1334,7 @@ const moduleAt = (k,rv) => { let l=0; MODULE_RV[k].forEach((r,i)=>{ if(i&&rv>=r)
 const ORE_TIER = {'Mineral Sand':1,'Coarse-Sifted Ore':8,'Sintered Ore Brick':64,'Refined Ore':512,'Microcrystalline Ore Plate':2048};
 const FRONTIER_CLEAN = {"small": [{"w": 0, "f": 24, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2], [4, 4]], "wood": []}, {"w": 1, "f": 23, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[4, 4]]}, {"w": 2, "f": 22, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, 4], [4, 4]]}, {"w": 3, "f": 21, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, 4]]}, {"w": 4, "f": 20, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, 4]]}, {"w": 5, "f": 18, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 6, "f": 16, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 7, "f": 14, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 8, "f": 12, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -2], [0, 2], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, -6], [0, 4], [4, -6], [4, -2], [4, 4]]}], "cool": [{"w": 0, "f": 32, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-5, 5], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": []}, {"w": 1, "f": 31, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, 5]]}, {"w": 2, "f": 30, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, -7], [-7, 5]]}, {"w": 3, "f": 29, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, 5]]}, {"w": 4, "f": 28, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, -7], [5, 5]]}, {"w": 5, "f": 26, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 5]]}, {"w": 6, "f": 24, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 7, "f": 22, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 8, "f": 20, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 9, "f": 18, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 10, "f": 16, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 11, "f": 14, "farm": [[-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 12, "f": 12, "farm": [[-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, -7], [-3, 5], [1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}]};
 const FORM_IDS = ['rv','farmPlots','woodPlots','farmLvl','woodLvl','eco','heat','cool','lamp','mines','kilns','benches','useHeat','useCool','useLamp','extras','pairs','neutralOk','freeze',
-  'watering','hauling','persona','events','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
+  'watering','hauling','persona','events','autoProd','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
   'needCoin','needWood','needSand','kitchen','crafting','detector','reserve'];
 const DEFAULT_STATE = {requests:[{id:'ginseng',plots:10},{id:'grapes',plots:6},{id:'chestnut',plots:4}], custom:[], noFill:[],
   products:[{n:'Tanghulu',amt:4,unit:'h'},{n:'Dried Ginseng',amt:5,unit:'h'}], crewLvl:3, tab:'plant'};
@@ -1584,8 +1623,8 @@ function renderGoalInputs(){
   $('goalRv').hidden = m!=='rv' || !!g.maxed; $('goalCustom').hidden = m!=='custom'; $('goalRanked').hidden = m!=='ranked';
   let note='';
   if (m==='ranked'){ renderRank(); note='Gets the most of the first, then the most of the next without giving up the first. Drag or use the arrows to reorder.'; }
-  if (m==='coin') note='Uses every plot and Mine for Co-op Store sales, after seed costs.';
-  if (m==='wood') note='Uses every plot for Wood Blocks, with coins as the tiebreak.';
+  if (m==='coin') note='Uses every plot, Mine and spare machine for Home Coin, after seed costs.';
+  if (m==='wood') note='Uses every plot for Wood Blocks, then makes the most Home Coin it can.';
   if (m==='custom') note='Balances coins, Wood Blocks and Mineral Sand so they finish together.';
   if (m==='rv'){
     if (g.maxed) note='You are at RV 20, the highest level. Planning for coins instead.';
@@ -2147,6 +2186,7 @@ function renderHomeMap(seg, style){
   const things=[], add=(key,n,clim)=>{ const M=MACH[key], sz=MACH_SIZE[key]; if (!sz) return; for (let i=0;i<n;i++) things.push({key, name:M.name, short:SHORT[key]||M.name.split(' ')[0], job:M.job, w:sz[0], h:sz[1], clim}); };
   for (const m of chain.machines){ const cl=m.steps.map(st=>st.r.clim).find(Boolean); add(m.key, Math.min(m.need, m.can), cl); }   // only what you can place
   for (const e of extras) add(e.key, 1, e.r.clim);
+  for (const [k,n] of Object.entries(best.autoMach||{})) add(k, n);
   add('mine', best.mines.reduce((s,m)=>s+m.count,0));
   { const hostedN={}; for (const u of real) if (u.guest) hostedN[u.guest.key]=(hostedN[u.guest.key]||0)+1;
     for (const [k,n] of Object.entries(hostedN)){ let left=n; for (let i=things.length-1;i>=0 && left;i--) if (things[i].key===k && things[i].clim){ things.splice(i,1); left--; } } }
@@ -2211,7 +2251,7 @@ function fieldSvg(zone, un, colorOf, style){
 // ---------- Free extras: Wells and leisure spots ----------
 function famText(r, ctx){ const p=leisurePick(r, ctx); if (!p) return 'Needs '+r.fam;
   return `Best: <b>${p.name}</b> (Lv ${p.lvl})`; }
-const EXTRA_KEYS=['well','sand','dewy','nimbus','hammock','windmill'], ALWAYS_ON=['well','sand'];
+const EXTRA_KEYS=['well','sand','dewy','nimbus','hammock','windmill'];
 function extraOptions(ctx, chain){
   const out=[], rv=ctx.rv;
   for (const key of EXTRA_KEYS){
@@ -2224,14 +2264,29 @@ function extraOptions(ctx, chain){
       const perHour=60/mins*r.q, coin=perHour*r.p;
       if (!best || coin>best.coin) best={key, r, perHour, coin};
     }
-    if (best) for (let i=0;i<free;i++) out.push(best);
+    if (best) out.push({...best, free});
   }
-  return out.sort((a,b)=>b.coin-a.coin);
+  return out;
 }
-function crewCount(best, real, o, chain, gs){
-  let n=crewRows(best, real, o).reduce((s,r)=>s+r.n,0)+chain.machines.reduce((s,m)=>s+m.need,0)+best.mines.reduce((s,m)=>s+m.count,0);
-  if (gs.rv){ if (gs.rv.woodChain.length) n+=int('benches'); if (gs.rv.oreChain.length) n+=int('kilns'); }
-  return n;
+// Products the planner may make on its own for coin: sold items whose whole chain runs on processing machines
+// (and Wells or leisure spots for their water and goods), from crops you can grow. Per 1 made an hour:
+// crops used, machine-hours on each kind, and coin after the crops it no longer sells.
+const AUTO_SKIP=new Set(['bench','kiln','mine','dance','pod']);
+function cropPrice(it){ const c=allCrops().find(c=>(CROP_ITEM[c.id]||c.name)===it); return c?c.price:0; }
+function autoCandidates(ctx){
+  const out=[];
+  for (const n of PRODUCT_NAMES){
+    const r=pickRecipe(n, ctx);
+    if (!r || !(r.p>0) || MACH[r.m].kind!=='proc' || AUTO_SKIP.has(r.m) || lockReason(r,ctx)) continue;
+    const ch=expandChain([{recipe:r, perHour:1}], ctx);
+    if (ch.warnings.some(w=>/Nothing makes|too deep/.test(w))) continue;
+    if (ch.steps.some(st=>AUTO_SKIP.has(st.r.m) || lockReason(st.r,ctx) || st.r.u.note || st.r.clim || !isFinite(batchMinutes(st.r,ctx)))) continue;
+    const mh={}; for (const st of ch.steps) mh[st.r.m]=(mh[st.r.m]||0)+st.busy;
+    const profit=r.p-Object.entries(ch.crops).reduce((t,[it,q])=>t+q*cropPrice(it),0);
+    if (profit<=1e-6 || !Object.keys(ch.crops).length) continue;
+    out.push({n, r, crops:ch.crops, mh, profit, steps:ch.steps.map(st=>({r:st.r, perHour:st.perHour}))});
+  }
+  return out;
 }
 function layoutUnits(best, o){
   const units=[]; let distErr=false;
@@ -2270,7 +2325,7 @@ function layoutUnits(best, o){
   }
   const left=[...loose.wood, ...loose.farm, ...rest], agg=new Map();
   for (const p of left){ const e=agg.get(p)||{...p, plots:0}; e.plots++; agg.set(p,e); }
-  return {units, real:units.filter(u=>u.farm.length||u.wood.length), distErr, openLeft:[...agg.values()]};
+  return {units, real:units.filter(u=>u.farm.length||u.wood.length||u.guest), distErr, openLeft:[...agg.values()]};
 }
 
 // ---------- Run the plan ----------
@@ -2278,13 +2333,15 @@ let lastPlan=null;
 // Buildings that need a unit's climate become "guests" the plan can host inside a lone unit's range.
 // Their coin counts at the outside speed (80%, or 0 for the Windmill) unless the plan hosts them.
 const GUEST_ZONE={cool:'cool', warm:'warm', light:'lamp'};
-function setGuests(o, extras, chain, ctx){
+// Extras (one option per kind, up to `free` of them) become choices in the plan. One needing a climate earns its
+// outside speed anywhere, plus a bonus when the plan hosts it inside a matching unit's range.
+function setExtras(o, opts, chain, ctx){
   const noClim={...ctx, heat:false, cool:false, lamp:false};
-  o.guests=[]; o.extraCoin=0;
-  for (const e of extras){
-    if (!e.r.clim){ o.extraCoin+=e.coin; continue; }
-    const m=batchMinutes(e.r, noClim), outside=isFinite(m) ? 60/m*e.r.q*e.r.p : 0;
-    o.extraCoin+=outside; o.guests.push({zone:GUEST_ZONE[e.r.clim], bonus:Math.max(0,e.coin-outside), key:e.key, src:e});
+  o.guests=[]; o.extraOpts=[];
+  for (const e of opts){ let outside=e.coin;
+    if (e.r.clim){ const m=batchMinutes(e.r, noClim); outside=isFinite(m) ? 60/m*e.r.q*e.r.p : 0;
+      for (let i=0;i<e.free;i++) o.guests.push({zone:GUEST_ZONE[e.r.clim], bonus:Math.max(0,e.coin-outside), key:e.key, src:e}); }
+    o.extraOpts.push({...e, coinOut:outside});
   }
   for (const m of chain.machines){ const st=m.steps.find(s=>s.r.clim); if (!st) continue;
     const val=m.steps.reduce((t,s)=>t+s.perHour*(s.r.p||0),0)/Math.max(1,m.need);
@@ -2324,25 +2381,35 @@ function prepare(){
   o.mineOpts=PROC.filter(r=>r.m==='mine' && r.l<=mineLvl).map(r=>{ const b=60/batchMinutes(r,ctx); return {id:r.id, name:r.n, coin:b*r.q*r.p, sand:b*r.by[1], r}; });
   const gs=goalSpec(); o.goal=gs.goal;
 
-  // Wells and leisure spots: one Aniimo each, no land. Fill spare Aniimo slots, best coin first.
-  let extras = $('extras').checked ? extraOptions(ctx, chain) : [], extrasCut=0;
-  setGuests(o, extras, chain, ctx);
-  return {o, warnings, reqs, fillers, reqFarm, reqWood, ctx, chain, chainMines, gs, extras, extrasCut};
+  // Your items are sold, so their coin counts (crops they use were taken off above)
+  o.itemCoin = wants(ctx, o).reduce((t,w)=>t+w.perHour*(w.recipe.p||0),0);
+  o.extraCoin = o.itemCoin;
+  // Wells and leisure spots, and products the planner picks itself, compete for machines and Aniimo slots
+  setExtras(o, $('extras').checked ? extraOptions(ctx, chain) : [], chain, ctx);
+  o.auto = $('autoProd').checked ? autoCandidates(ctx) : [];
+  const rv=int('rv'); o.machCap={}; o.spare={};
+  const keys=new Set([...o.extraOpts.map(e=>e.key), ...o.auto.flatMap(a=>Object.keys(a.mh))]);
+  for (const k of keys){ const m=chain.machines.find(x=>x.key===k); o.machCap[k]=placeAt(k,rv)-(m?m.need:0); if (m) o.spare[k]=Math.max(0,m.need-m.busy); }
+  const cap=(AN_CAP[rv]||0)-int('reserve');
+  if (cap>0){
+    let fixed=(o.farmPlots+o.woodPlots>0 ? 3+(o.watering?1:0) : 0) + chain.machines.reduce((t,m)=>t+m.need,0);
+    if (gs.rv){ if (gs.rv.woodChain.length) fixed+=int('benches'); if (gs.rv.oreChain.length) fixed+=int('kilns'); }
+    const room=cap-fixed, unitsMines=o.heat+o.cool+o.lamp+o.mines;
+    // Climate units and Mines always get their worker (as before); the rest share what's left
+    o.slots = room>=unitsMines ? {room, units:true} : {room:0, units:false};
+  } else o.slots=null;
+  return {o, warnings, reqs, fillers, reqFarm, reqWood, ctx, chain, chainMines, gs};
 }
 function run(){
   save();
   if (LP.state==='loading'){ LP.pending=true; return; }
   if (!LP.exact && !window.solver){ $('summary').innerHTML='<p class="err">The planner couldn\'t load its solver. Check your connection and reload the page.</p>'; return; }
-  let {o, warnings, reqs, fillers, reqFarm, reqWood, ctx, chain, chainMines, gs, extras, extrasCut}=prepare();
-  let best=solveFor(reqs, fillers, o, gs), lay=layoutUnits(best, o);
+  const {o, warnings, reqs, fillers, reqFarm, reqWood, ctx, chain, chainMines, gs}=prepare();
+  const best=solveFor(reqs, fillers, o, gs), lay=layoutUnits(best, o);
   const cap=Math.max(0,(AN_CAP[int('rv')]||0)-int('reserve'));
-  if (extras.length && cap){
-    const room=Math.max(0, cap-crewCount(best, lay.real, o, chain, gs));
-    if (room<extras.length){ extrasCut=extras.length-room;
-      const always=e=>ALWAYS_ON.includes(e.key)?0:1;   // Wells and Sandcastles keep their slot first
-      extras=extras.slice().sort((a,b)=>always(a)-always(b)||b.coin-a.coin).slice(0,room).sort((a,b)=>b.coin-a.coin);
-      setGuests(o, extras, chain, ctx); best=solveFor(reqs, fillers, o, gs); lay=layoutUnits(best, o); }
-  }
+  const extras=[]; for (const e of o.extraOpts) for (let i=0;i<((best.extraCount||{})[e.key]||0);i++) extras.push(e);
+  extras.sort((a,b)=>b.coin-a.coin);
+  const extrasCut=o.extraOpts.reduce((t,e)=>t+e.free,0)-extras.length;
   lastPlan={best,o,chain,gs,ctx,extras};
   for (const [item,gap] of Object.entries(best.shortfall||{})) warnings.push(`Not enough ground for your items: ${fmt(gap)} ${item} an hour short.`);
   for (const r of reqs){
@@ -2396,7 +2463,7 @@ function run(){
   }
 
   // ----- Summary tiles -----
-  const itemsWorth = wants(ctx, o).reduce((s,w)=>s+w.perHour*w.recipe.p,0);
+  const itemsWorth = o.itemCoin + (best.auto||[]).reduce((t,a)=>t+a.perHour*a.r.p,0);
   let sum='';
   if (distErr) sum+=`<p class="err">Some plots couldn't be drawn in the Layout tab. Your totals still count them.</p>`;
   for (const w of warnings) sum+=`<p class="warn">${esc(w)}</p>`;
@@ -2404,10 +2471,10 @@ function run(){
     ${gs.need?`<div class="tile goal"><b>${etaText(lastPlan.eta)}</b><span>${gs.rv?'to afford RV '+gs.rv.next:'to reach target'}</span></div>`:''}
     <div class="tile hero"><b>${fmt(best.coinRate)}</b><span>coin / hour</span></div>
     <div class="tile"><b>${fmt(best.coinRate*24)}</b><span>coin / day</span></div>
-    ${extras.length?`<div class="tile"><b>${fmt(o.extraCoin+(best.hosted||[]).filter(g=>g.src).reduce((t,g)=>t+g.bonus,0))}</b><span>of it from ${extras.length} extra${extras.length>1?'s':''}</span></div>`:''}
+    ${extras.length?`<div class="tile"><b>${fmt((best.extrasCoin||0)+(best.hosted||[]).filter(g=>g.src).reduce((t,g)=>t+g.bonus,0))}</b><span>of it from ${extras.length} extra${extras.length>1?'s':''}</span></div>`:''}
     <div class="tile"><b>${fmt(best.woodRate)}</b><span>wood / hour</span></div>
     ${best.sandRate?`<div class="tile"><b>${fmt(best.sandRate)}</b><span>mineral sand / hour</span></div>`:''}
-    ${chain.steps.length?`<div class="tile"><b>${fmt(itemsWorth)}</b><span>items worth / hour</span></div>`:''}
+    ${itemsWorth>0?`<div class="tile"><b>${fmt(itemsWorth)}</b><span>products sold / hour</span></div>`:''}
     <div class="tile"><b>${usedF}/${o.farmPlots}</b><span>Farmland used</span></div>
     ${o.woodPlots?`<div class="tile"><b>${usedW}/${o.woodPlots}</b><span>Woodland used</span></div>`:''}
   </div>${goalHtml}
@@ -2426,7 +2493,8 @@ function run(){
     for (const r of list){
       const coin=r.pv.rate*(r.crop.yield*r.crop.price-r.crop.seed);
       const where = r.zone.key==='open' ? (o.neutralOk && r.crop.temp===0 && !r.crop.light ? 'Anywhere · fills spare unit space' : 'Open ground') : (best.pairSlots&&best.pairSlots[r.zone.key]&&(best.pairSlots[r.zone.key].farm+best.pairSlots[r.zone.key].wood)>0 ? TEMP_NAME[r.zone.temp]+' · unit or overlap' : UNITNAME[r.zone.unit]+(r.zone.key==='lamp'?'':' · '+SETTING[r.zone.key]));
-      const tag = r.requested ? '' : (o.demand[CROP_ITEM[r.crop.id]||r.crop.name] ? '<span class="pill leaf">for items</span>' : '<span class="pill">leftover</span>');
+      const it = CROP_ITEM[r.crop.id]||r.crop.name;
+      const tag = r.requested ? '' : o.demand[it] ? '<span class="pill leaf">for items</span>' : (best.autoUse||{})[it]>1e-6 ? '<span class="pill leaf">for products</span>' : '<span class="pill">leftover</span>';
       h+=`<tr title="${r.pv.cycle.toFixed(1)} min per harvest · ${fmt(coin)} coin/h per plot"><td><span class="sw" style="background:var(${colorOf(r)})"></span>${r.crop.name}${tag}</td><td>${where}</td><td class="n">${r.plots}</td><td class="n">${Math.round(r.pv.eff*100)}%</td><td class="n">${fmt(coin*r.plots)}</td></tr>`;
     }
   }
@@ -2466,7 +2534,16 @@ function run(){
       return `<div class="mc extra" style="--jc:var(${jobVar(M.job)})"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${e.r.l}</span> ${jobChip(M.job)}</div><div class="cnt"><b>${e.n}</b><br>to place</div></div>
         <ul><li><span>${e.r.n}</span><span>${fmtN(e.perHour*e.n)}/h</span></li><li><span>Coin</span><span>${fmt(e.coin*e.n)}/h</span></li></ul>
         <p class="note">${e.r.fam?famText(e.r, ctx):'Any Water Aniimo'}${e.r.clim?'. '+CLIM[e.r.clim]:''}.</p></div>`; }).join('')}</div>`;
-    if (extrasCut) mh+=`<p class="note">${extrasCut} more could earn coin, but your Home is out of Aniimo slots at RV ${int('rv')}.</p>`;
+    if (extrasCut>0) mh+=`<p class="note">${extrasCut} more could go in, but the plan gets more from those Aniimo slots and buildings elsewhere.</p>`;
+  }
+  const au=(best.auto||[]).slice().sort((a,b)=>b.perHour*b.profit-a.perHour*a.profit);
+  if (au.length){
+    const addM=Object.entries(best.autoMach||{}).map(([k,n])=>`${n} more ${MACH[k].name}${n>1?(/(sh|ch|x|s)$/.test(MACH[k].name)?'es':'s'):''}`);
+    mh+=`<div class="head" style="margin-top:18px"><h3>More products for coin</h3><i class="tip" tabindex="0" data-tip="With machines and Aniimo slots to spare, these turn crops into goods worth more than the crops. Coin shown is after the crops they use. Untick Make more products for coin in step 3 to sell crops as they are.">?</i></div>
+      <p class="note">${addM.length?'Place '+addM.join(', ')+' for these.':'These use spare time on the machines above.'}</p>
+      <div class="mach">${au.map(a=>{ const M=MACH[a.r.m];
+        return `<div class="mc extra" style="--jc:var(${jobVar(M.job)})"><div class="top"><div><h4>${a.n}</h4><span class="pill">${M.name} Lv ${a.r.l}</span> ${jobChip(M.job)}</div><div class="cnt"><b>${fmtN(a.perHour)}</b><br>an hour</div></div>
+          <ul><li><span>Coin after crops</span><span>${fmt(a.perHour*a.profit)}/h</span></li>${Object.entries(a.crops).map(([it,q])=>`<li><span>Uses ${it}</span><span>${fmtN(q*a.perHour)}/h</span></li>`).join('')}</ul></div>`; }).join('')}</div>`;
   }
   const av=(state.avoid||[]).map(id=>PROC.find(r=>r.id===id)).filter(Boolean);
   if (av.length) mh=`<p class="note">Not using: ${av.map(r=>`<button type="button" class="chipbtn" data-unavoid="${r.id}" title="Use again">${r.n} · ${MACH[r.m].name} Lv ${r.l} ✕</button>`).join(' ')}</p>`+mh;
@@ -2484,6 +2561,8 @@ function run(){
   if (mineCount) crew.push({job:'Earth', n:mineCount, does:mineCount+' Mine'+(mineCount>1?'s':'')});
   if (gs.rv){ if (gs.rv.woodChain.length && int('benches')) crew.push({job:'Artisanship', lvl:Math.max(...gs.rv.woodChain.map(s=>s.r.j)), n:int('benches'), does:int('benches')+' Woodworking Bench'+(int('benches')>1?'es':'')});
               if (gs.rv.oreChain.length && int('kilns')) crew.push({job:'Fire', lvl:Math.max(...gs.rv.oreChain.map(s=>s.r.j)), n:int('kilns'), does:int('kilns')+' Chimney Kiln'+(int('kilns')>1?'s':'')}); }
+  for (const [k,n] of Object.entries(best.autoMach||{})){ const M=MACH[k], sts=(best.auto||[]).flatMap(a=>a.steps).filter(st=>st.r.m===k), fr=sts.find(st=>st.r.fam);
+    crew.push({job:M.job, lvl:Math.max(1,...sts.map(st=>st.r.j)), n, does:n+' '+M.name+(n>1?'s':''), fam:fr?leisurePick(fr.r,ctx).name:'', line:fr?fr.r:null}); }
   for (const e of extras){ const M=MACH[e.key]; crew.push({job:M.job, n:1, does:'1 '+M.name, fam:e.r.fam?leisurePick(e.r,ctx).name:'', line:e.r.fam?e.r:null}); }
   const byJob={}; for (const r of crew){ const k=r.job+'|'+(r.lvl&&r.lvl>1?r.lvl:0)+'|'+(r.fam||'');
     if (byJob[k]){ byJob[k].n+=r.n; byJob[k].does+=', '+r.does; } else byJob[k]={...r}; }
@@ -2502,7 +2581,7 @@ function run(){
   const crewList=Object.values(byJob), crewMin=crewList.reduce((s,r)=>s+r.n,0);
   Object.assign(lastPlan,{crewList, crewMin, cap, openCards:new Set()}); renderCrew();
   // tab counts
-  setCount('tab-mach', machRows.length+extras.length); setCount('tab-crew', crewMin); setCount('tab-layout', real.length);
+  setCount('tab-mach', machRows.length+extras.length+(best.auto||[]).length); setCount('tab-crew', crewMin); setCount('tab-layout', real.length);
   renderShop(); renderData(); markClean();
 }
 // Every crop at its best climate, one plot each: sortable reference table
@@ -2685,12 +2764,13 @@ function sellHtml(hrs){
   const {best, chain, extras, gs}=lastPlan, sell=[], keep=[];
   const priceOf={}; for (const c of allCrops()){ const it=CROP_ITEM[c.id]||c.name; if (priceOf[it]===undefined) priceOf[it]=c.price; }
   for (const [it,made] of Object.entries(best.made||{})){
-    const used=(chain.crops||{})[it]||0, left=made-used;
+    const used=((chain.crops||{})[it]||0)+((best.autoUse||{})[it]||0), left=made-used;
     if (left>1e-6) sell.push({name:it, kind:'Crop', n:left, coin:left*priceOf[it]});
   }
   for (const w of wants(lastPlan.ctx, lastPlan.o)){
     if (w.recipe.p>0) sell.push({name:w.recipe.n, kind:'Your item', n:w.perHour, coin:w.perHour*w.recipe.p}); else keep.push({name:w.recipe.n, n:w.perHour});
   }
+  for (const a of best.auto||[]) sell.push({name:a.n, kind:'Made for coin', n:a.perHour, coin:a.perHour*a.r.p});
   for (const m of best.mines){ const n=m.count*m.coin/m.r.p; sell.push({name:m.name, kind:'Mine', n, coin:m.count*m.coin}); }
   const ex={}; for (const e of extras){ const k=e.r.n; (ex[k]=ex[k]||{name:k, kind:MACH[e.key].name, n:0, coin:0}); ex[k].n+=e.perHour; ex[k].coin+=e.coin; }
   sell.push(...Object.values(ex));
@@ -2702,8 +2782,6 @@ function sellHtml(hrs){
     <div class="tablewrap"><table><thead><tr><th>Item</th><th>From</th><th class="n">Per hour</th><th class="n">In ${hrs} h</th><th class="n">Coin / h</th></tr></thead><tbody>`;
   for (const r of sell) h+=`<tr><td>${r.name}</td><td>${r.kind}</td><td class="n">${fmtN(r.n)}</td><td class="n">${fmt(r.n*hrs)}</td><td class="n">${fmt(r.coin)}</td></tr>`;
   h+=`<tr class="grp"><td colspan="4">Total</td><td class="n">${fmt(tot)}</td></tr></tbody></table></div>`;
-  const mine=sell.filter(r=>r.kind==='Your item').reduce((t,r)=>t+r.coin,0);
-  if (mine) h+=`<p class="note">Includes ${fmt(mine)}/h from your items. The coin/hour figure leaves those out, in case you keep them.</p>`;
   if (keep.length) h+=`<p class="note">Kept, not sold: ${keep.map(k=>`${fmtN(k.n)} ${k.name} an hour`).join(', ')}.</p>`;
   return h;
 }
