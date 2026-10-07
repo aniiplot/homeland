@@ -2391,12 +2391,24 @@ function cornerGeom(u, corner){
   const g=UNIT[u.zone.geo], lo=g.lo, hi=g.hi, core={x:0,y:0,w:g.size,h:g.size}, R={x:lo,y:lo,w:hi-lo,h:hi-lo};
   const top=corner<2, left=corner===0||corner===3, C=[left?lo-4:hi+4, top?lo-4:hi+4];
   const out=r=>Math.max(top ? lo-r.y : r.y+r.h-hi, left ? lo-r.x : r.x+r.w-hi);       // how far it reaches past the outer sides
-  const cands=s=>{ const L=[]; for (let x=Math.floor(lo-s+1); x<hi; x++) for (let y=Math.floor(lo-s+1); y<hi; y++){
-      const r={x,y,w:s,h:s}; if (hit(r,R) && !hit(r,core)) L.push(r); }
-    return L.sort((a,b)=>out(b)-out(a) || Math.hypot(a.x+s/2-C[0],a.y+s/2-C[1])-Math.hypot(b.x+s/2-C[0],b.y+s/2-C[1])); };
-  const used=[core], plots=[];
-  for (const [list,s] of [[u.wood,4],[u.farm,2]]){ const L=cands(s);
-    for (const p of list){ const r=L.find(q=>!used.some(z=>hit(q,z))); if (!r) return null; used.push(r); plots.push({x:r.x,y:r.y,s,p}); } }
+  // A straight line along each outer side. A farm plot can only reach 1 past the range (it has to overlap it), so a
+  // side is either pulled in to that line, woodland and farmland flush, or sits further out with woodland only and the
+  // farmland kept behind it. The tightest pair of lines that still fits every plot wins, so the range sits near the edge.
+  const reach=r=>[left ? lo-r.x : r.x+r.w-hi, top ? lo-r.y : r.y+r.h-hi];
+  const cands=(s,D)=>{ const L=[]; for (let x=Math.floor(lo-s+1); x<hi; x++) for (let y=Math.floor(lo-s+1); y<hi; y++){
+      const r={x,y,w:s,h:s}; if (!hit(r,R) || hit(r,core)) continue;
+      const k=reach(r); if (k.some((v,i)=>v>(s===2 && D[i]>1 ? 0 : D[i])+1e-9)) continue;
+      r.line=k.some((v,i)=>v>0 && Math.abs(v-D[i])<1e-9)?1:0; L.push(r); }
+    return L.sort((a,b)=>b.line-a.line || out(b)-out(a) || Math.hypot(a.x+s/2-C[0],a.y+s/2-C[1])-Math.hypot(b.x+s/2-C[0],b.y+s/2-C[1])); };
+  const lay=D=>{ const used=[core], plots=[];
+    for (const [list,s] of [[u.wood,4],[u.farm,2]]){ const L=cands(s,D);
+      for (const p of list){ const r=L.find(q=>!used.some(z=>hit(q,z))); if (!r) return null; used.push(r); plots.push({x:r.x,y:r.y,s,p}); } }
+    return {used, plots}; };
+  const combos=[]; for (const a of [1,2,3]) for (const b of [1,2,3]) combos.push([a,b]);
+  combos.sort((p,q)=>(p[0]+p[1])-(q[0]+q[1]) || Math.max(...p)-Math.max(...q));
+  let got=null; for (const D of combos) if ((got=lay(D))) break;
+  if (!got) return null;
+  const {used, plots}=got;
   let guests=[];
   if (u.guest){ let best=null;
     for (let x=lo-4; x<hi; x+=0.5) for (let y=lo-4; y<hi; y+=0.5){ const r={x,y,w:5,h:5};
