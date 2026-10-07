@@ -2092,7 +2092,14 @@ function planHomelandSquare(real, openPlots, land, edge, things){
   const climB=things.filter(t=>t.clim);
   // Ring: up to four climate units on the corners, everything else along the edges in order (clockwise from the
   // top), long side along the edge and fronts facing the empty middle. The smallest ring that holds it all wins.
-  const rotsOf=u=>{ const G=geomOf(u,'clean'); return [0,1,2,3].map(t=>{ const R=rotGeom(G,t), parts=[...R.cores,...R.plots,...(R.guests||[])].map(sq); return {R, bb:bboxOf([...parts,...R.ranges])}; }); };
+  const rotsOf=u=>{ const G=geomOf(u,'clean'); return [0,1,2,3].map(t=>{ const R=rotGeom(G,t), parts=[...R.cores,...R.plots,...(R.guests||[])].map(sq); return {R, P:bboxOf(parts), bb:bboxOf([...parts,...R.ranges])}; }); };
+  // A corner unit's footprint: its plots set the two outer sides (so the plots make the corner, and the range may
+  // hang off the outside); plots and range together set the two inner sides. Pick the turn with the smallest one.
+  const cornerFit=(e,i)=>{ let best=null;
+    for (const r of allRots.get(e.u)){ const P=r.P, A=r.bb, L=i===0||i===3, T=i<2;
+      const x0=L?P.x:A.x, x1=L?A.x+A.w:P.x+P.w, y0=T?P.y:A.y, y1=T?A.y+A.h:P.y+P.h, f={x:x0,y:y0,w:x1-x0,h:y1-y0};
+      if (!best || f.w*f.h<best.f.w*best.f.h) best={R:r.R, f}; }
+    return best; };
   const allRots=new Map(units.map(e=>[e.u, rotsOf(e.u)]));
   const corners=units.slice(0,4), extraU=units.slice(4);
   const mines=plainB.filter(m=>m.t.key==='mine'), others=plainB.filter(m=>m.t.key!=='mine');
@@ -2105,12 +2112,12 @@ function planHomelandSquare(real, openPlots, land, edge, things){
   const gapBetween=(x,y)=>!x ? 0 : (x.kind==='plot' && y.kind==='plot' && x.group===y.group) ? 0 : (x.kind==='unit'||y.kind==='unit'||x.group!==y.group) ? GAP : 0.5;
   const DEF=9;                                           // depth of an edge next to an empty corner
   const pack=(W,H)=>{
-    const c=[corners[0],corners[1],corners[2],corners[3]];   // TL, TR, BR, BL
-    const cw=i=>c[i]?c[i].bb.w:DEF, ch=i=>c[i]?c[i].bb.h:DEF;
+    const c=[0,1,2,3].map(i=>corners[i] ? cornerFit(corners[i],i) : null);   // TL, TR, BR, BL
+    const cw=i=>c[i]?c[i].f.w:DEF, ch=i=>c[i]?c[i].f.h:DEF;
     if (cw(0)+GAP+cw(1)>W || cw(3)+GAP+cw(2)>W || ch(0)+GAP+ch(3)>H || ch(1)+GAP+ch(2)>H) return null;
     const P={units:[], open:[], builds:[]};
     const at=[[0,0],[W-cw(1),0],[W-cw(2),H-ch(2)],[0,H-ch(3)]];
-    c.forEach((e,i)=>{ if (e) P.units.push({u:e, ox:at[i][0]-e.bb.x, oy:at[i][1]-e.bb.y}); });
+    c.forEach((e,i)=>{ if (e) P.units.push({u:{u:corners[i].u, R:e.R}, ox:at[i][0]-e.f.x, oy:at[i][1]-e.f.y}); });
     // edges: start, length and depth; side says where "outside" is
     const E=[
       {side:'top',    s:cw(0)+GAP, len:W-cw(0)-cw(1)-2*GAP, D:Math.min(ch(0),ch(1))},
@@ -2142,12 +2149,12 @@ function planHomelandSquare(real, openPlots, land, edge, things){
       if (!placed) return null;
     }
     return P; };
-  const minW=Math.max(12,...corners.map(e=>e.bb.w*2+GAP)), minH=Math.max(12,...corners.map(e=>e.bb.h*2+GAP));
+  const minW=12, minH=12;
   const designs=[];
   for (let W=Math.ceil(minW); W<=N; W++) for (let H=Math.ceil(minH); H<=N; H++){
-    if (designs.length>=40 && W*H>designs[designs.length-1].area) continue;
+    if (designs.length>=150 && W*H>designs[designs.length-1].area) continue;
     const P=pack(W,H); if (!P) continue;
-    P.area=W*H*(1+0.25*Math.abs(W-H)/Math.max(W,H)); designs.push(P); designs.sort((a,b)=>a.area-b.area); if (designs.length>40) designs.pop(); }
+    P.area=W*H*(1+1.2*Math.abs(W-H)/Math.max(W,H)); designs.push(P); designs.sort((a,b)=>a.area-b.area); if (designs.length>150) designs.pop(); }
   // Place the block on your land, as near the middle of it as fits
   for (const P of designs){
     const rects=[];
