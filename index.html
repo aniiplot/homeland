@@ -774,11 +774,13 @@ function pickRecipe(item, ctx){
 function expandChain(wants, ctx){
   const steps = new Map();        // recipe id -> {r, batches}
   const crops = {};               // raw crop item -> units per hour
+  const goods = {};               // with ctx.leaf: Mine and leisure-spot items used, per hour
   const warnings = new Set();
   const visit = (item, perHour, depth) => {
     if (perHour<=0) return;
     if (depth>12){ warnings.add(`${item}: chain too deep.`); return; }
     if (CROP_ITEMS.has(item)){ crops[item]=(crops[item]||0)+perHour; return; }
+    if (ctx.leaf && ctx.leaf.has(item)){ goods[item]=(goods[item]||0)+perHour; return; }   // taken from what Mines and leisure spots make
     const r = pickRecipe(item, ctx);
     if (!r){ warnings.add(`Nothing makes ${item}.`); return; }
     addRecipe(r, perHour, depth);
@@ -811,7 +813,7 @@ function expandChain(wants, ctx){
     m.can = placeAt(m.key, ctx.rv);
     if (m.need > m.can) warnings.add(`You need ${m.need} ${MACH[m.key].name}${m.need>1?'s':''} but can place ${m.can} at RV ${ctx.rv}. Lower the amounts or expect it to take longer.`);
   }
-  return {steps:[...steps.values()], crops, machines:Object.values(machines), warnings:[...warnings]};
+  return {steps:[...steps.values()], crops, goods, machines:Object.values(machines), warnings:[...warnings]};
 }
 
 
@@ -1112,9 +1114,13 @@ function plan(requests, fillers, o, lp){
     const v={}; addCoin(v, a.profit);
     for (const [k,h] of Object.entries(a.mh)){ v['mt_'+k]=h; if (POOLED(k)){ const j=MACH[k].job; if (C['wb_'+j]) v['wb_'+j]=(v['wb_'+j]||0)-h; } }
     for (const [it,q] of Object.entries(a.crops)){ const di=allItems.indexOf(it); if (di>=0) v['dem_'+di]=-q; }
+    for (const [it,q] of Object.entries(a.goods||{})){ v['gd_'+it]=q; C['gd_'+it]={max:0}; }
     V['z_'+ai]=v; autoVars.push({name:'z_'+ai, a}); });
+  // what Mines make, per Mine on each recipe; what each extra makes (at its outside speed)
+  for (const mv of mineVars){ const it=mv.m.name; if (C['gd_'+it]) V[mv.name]['gd_'+it]=-(mv.m.coin/mv.m.r.p); }
   (o.extraOpts||[]).forEach((e,ei)=>{ if (!C['mc_'+e.key]) return;
     const v={['mc_'+e.key]:1}; addCoin(v, e.coinOut); if (SL) v.slots=1;
+    if (C['gd_'+e.r.n] && e.r.p>0) v['gd_'+e.r.n]=-(e.coinOut/e.r.p);
     if (e.r.clim){ v['gk_'+e.key]=-1; C['gk_'+e.key]={max:0}; }
     V['e_'+ei]=v; model.ints['e_'+ei]=1; extraVars.push({name:'e_'+ei, e}); });
   // A requested plot must always outweigh anything a single plot could add elsewhere
@@ -1158,6 +1164,7 @@ function plan(requests, fillers, o, lp){
   const workers = {}; for (const pv of poolVars) workers[pv.j]=val(pv.name);
   const poolBusy = {}; for (const [j,P] of Object.entries((o.pool||{}).jobs||{})) poolBusy[j]=P.base;
   for (const a of auto) for (const [k,h] of Object.entries(a.mh)) if (POOLED(k) && poolBusy[MACH[k].job]!==undefined) poolBusy[MACH[k].job]+=h*a.perHour;
+  const goodsUse = {}; for (const a of auto) for (const [it,q] of Object.entries(a.goods||{})) goodsUse[it]=(goodsUse[it]||0)+q*a.perHour;
   const autoUse = {}; for (const a of auto) for (const [it,q] of Object.entries(a.crops)) autoUse[it]=(autoUse[it]||0)+q*a.perHour;
   const made = {}; for (const p of out){ const it=itemOf(p.crop); made[it]=(made[it]||0)+p.plots*p.pv.rate*p.crop.yield; }
   const shortfall = {}; for (const it of demItems){ const gap = demand[it]-(made[it]||0); if (gap>1e-6) shortfall[it]=gap; }
@@ -1166,7 +1173,7 @@ function plan(requests, fillers, o, lp){
   const coinRate = out.reduce((s,p)=>s+p.plots*p.coin, 0) - consumed + mineCoin + (o.extraCoin||0) + guestCoin + autoCoin + extrasCoin;
   const woodRate = out.reduce((s,p)=>s+p.plots*p.wood, 0);
   return {feasible: res.feasible!==false, raw: res, counts, pairs, pairSlots, hosted, placed: out, coinRate, woodRate, sandRate, mines, mineCoin, made, shortfall, consumed, mode, objective: res.result, model,
-    auto, autoMach, autoCoin, autoUse, extraCount, extrasCoin, workers, poolBusy};
+    auto, autoMach, autoCoin, autoUse, goodsUse, extraCount, extrasCoin, workers, poolBusy};
 }
 
 // Spread one zone's plots over its units so every unit's layout really fits.
@@ -2433,8 +2440,12 @@ const FIELD_SHARE = 0.15;
 // crops used, machine-hours on each kind, and coin after the crops it no longer sells.
 const AUTO_SKIP=new Set(['bench','kiln','mine','dance','pod']);
 function cropPrice(it){ const c=allCrops().find(c=>(CROP_ITEM[c.id]||c.name)===it); return c?c.price:0; }
-function autoCandidates(ctx){
-  const out=[];
+// Items Mines and climate-needing leisure spots make (Copper Ore, Star...): product picks can use them instead of
+// selling them, so these count as inputs taken from the plan's own Mines and extras.
+const GOOD_ITEMS=new Set(PROC.filter(r=>r.m==='mine' || (MACH[r.m].kind==='gather' && r.clim)).map(r=>r.n));
+function goodPrice(it){ const r=PROC.find(x=>x.n===it); return r?r.p:0; }
+function autoCandidates(ctx0){
+  const out=[], ctx={...ctx0, leaf:GOOD_ITEMS};
   for (const n of PRODUCT_NAMES){
     const r=pickRecipe(n, ctx);
     if (!r || !(r.p>0) || MACH[r.m].kind!=='proc' || AUTO_SKIP.has(r.m) || lockReason(r,ctx)) continue;
@@ -2442,9 +2453,9 @@ function autoCandidates(ctx){
     if (ch.warnings.some(w=>/Nothing makes|too deep/.test(w))) continue;
     if (ch.steps.some(st=>AUTO_SKIP.has(st.r.m) || lockReason(st.r,ctx) || st.r.u.note || st.r.clim || !isFinite(batchMinutes(st.r,ctx)))) continue;
     const mh={}; for (const st of ch.steps) mh[st.r.m]=(mh[st.r.m]||0)+st.busy;
-    const profit=r.p-Object.entries(ch.crops).reduce((t,[it,q])=>t+q*cropPrice(it),0);
-    if (profit<=1e-6 || !Object.keys(ch.crops).length) continue;
-    out.push({n, r, crops:ch.crops, mh, profit, steps:ch.steps.map(st=>({r:st.r, perHour:st.perHour}))});
+    const profit=r.p-Object.entries(ch.crops).reduce((t,[it,q])=>t+q*cropPrice(it),0)-Object.entries(ch.goods).reduce((t,[it,q])=>t+q*goodPrice(it),0);
+    if (profit<=1e-6 || !(Object.keys(ch.crops).length || Object.keys(ch.goods).length)) continue;
+    out.push({n, r, crops:ch.crops, goods:ch.goods, mh, profit, steps:ch.steps.map(st=>({r:st.r, perHour:st.perHour}))});
   }
   return out;
 }
@@ -2719,7 +2730,7 @@ function run(){
       <p class="note">${addM.length?'Place '+addM.join(', ')+' for these.':'These use spare time on the machines above.'}</p>
       <div class="mach">${au.map(a=>{ const M=MACH[a.r.m];
         return `<div class="mc extra" style="--jc:var(${jobVar(M.job)})"><div class="top"><div><h4>${a.n}</h4><span class="pill">${M.name} Lv ${a.r.l}</span> ${jobChip(M.job)}</div><div class="cnt"><b>${fmtN(a.perHour)}</b><br>an hour</div></div>
-          <ul><li><span>Coin after crops</span><span>${fmt(a.perHour*a.profit)}/h</span></li>${Object.entries(a.crops).map(([it,q])=>`<li><span>Uses ${it}</span><span>${fmtN(q*a.perHour)}/h</span></li>`).join('')}</ul></div>`; }).join('')}</div>`;
+          <ul><li><span>Coin after crops</span><span>${fmt(a.perHour*a.profit)}/h</span></li>${[...Object.entries(a.crops),...Object.entries(a.goods||{})].map(([it,q])=>`<li><span>Uses ${it}</span><span>${fmtN(q*a.perHour)}/h</span></li>`).join('')}</ul></div>`; }).join('')}</div>`;
   }
   const av=(state.avoid||[]).map(id=>PROC.find(r=>r.id===id)).filter(Boolean);
   if (av.length) mh=`<p class="note">Not using: ${av.map(r=>`<button type="button" class="chipbtn" data-unavoid="${r.id}" title="Use again">${r.n} · ${MACH[r.m].name} Lv ${r.l} ✕</button>`).join(' ')}</p>`+mh;
@@ -2961,9 +2972,11 @@ function sellHtml(hrs){
     if (w.recipe.p>0) sell.push({name:w.recipe.n, kind:'Your item', n:w.perHour, coin:w.perHour*w.recipe.p}); else keep.push({name:w.recipe.n, n:w.perHour});
   }
   for (const a of best.auto||[]) sell.push({name:a.n, kind:'Made for coin', n:a.perHour, coin:a.perHour*a.r.p});
-  for (const m of best.mines){ const n=m.count*m.coin/m.r.p; sell.push({name:m.name, kind:'Mine', n, coin:m.count*m.coin}); }
+  const gLeft={...(best.goodsUse||{})};
+  const takeG=(it,n)=>{ const u=Math.min(n, gLeft[it]||0); gLeft[it]=(gLeft[it]||0)-u; return n-u; };
+  for (const m of best.mines){ const n=takeG(m.name, m.count*m.coin/m.r.p); if (n<=1e-6) continue; sell.push({name:m.name, kind:'Mine', n, coin:n*m.r.p}); }
   const ex={}; for (const e of extras){ const k=e.r.n; (ex[k]=ex[k]||{name:k, kind:MACH[e.key].name, n:0, coin:0}); ex[k].n+=e.perHour; ex[k].coin+=e.coin; }
-  sell.push(...Object.values(ex));
+  for (const r of Object.values(ex)){ const left=takeG(r.name, r.n); if (left<=1e-6) continue; r.coin*=left/r.n; r.n=left; sell.push(r); }
   if (best.woodRate>0) keep.push({name:'Wood Block', n:best.woodRate});
   if (best.sandRate>0) keep.push({name:'Mineral Sand', n:best.sandRate});
   sell.sort((a,b)=>b.coin-a.coin);
