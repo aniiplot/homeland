@@ -72,6 +72,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-siz
 .also li{display:flex;justify-content:space-between;gap:8px}
 .layhead{flex-wrap:wrap;display:flex;align-items:center;gap:8px;margin-bottom:10px}
 .seg{display:inline-flex;border:1px solid var(--line);border-radius:10px;padding:3px;background:var(--sunk);gap:3px}
+.panel > .seg{justify-self:start}
 .seg button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:.85rem;padding:6px 12px;border-radius:7px}
 .seg button:disabled{opacity:.5;cursor:default}
 .seg button[aria-pressed="true"]{background:var(--leaf);color:var(--leaf-ink)}
@@ -2698,7 +2699,7 @@ function run(){
       const busy=isNaN(m.busy)?null:m.busy, slots=m.need<=10?Math.max(m.need,1):1, part=k=>m.need<=10?Math.max(0,Math.min(1,busy-k)):Math.min(1,busy/m.need);
       const meter = busy===null ? '' : `<div class="meter" title="${Math.round(busy*100)}% of one ${M.name}'s time" style="--jc:${jc}">${Array.from({length:slots},(_,k)=>`<i style="width:${part(k)*100/slots}%"></i>`).join('')}</div>`;
       const lines = m.forRv ? m.steps.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.total)} total</span></li>`) : [...m.steps.map(s=>`<li><span>${recipeCtl(s.r, ctx)}</span><span>${fmt(s.perHour)}/h</span></li>`),
-        ...(m.autoLines||[]).map(l=>`<li><span>${l.r.n} <span class="pill leaf">for coin</span></span><span>${fmtN(l.perHour)}/h</span></li>`)];
+        ...(m.autoLines||[]).map(l=>`<li><span>${l.r.n}</span><span>${fmtN(l.perHour)}/h</span></li>`)];
       return `<div class="mc${over?' over':''}"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>need / can place</div></div>${meter}${busy===null?`<p class="note">For RV ${gs.rv.next}</p>`:`<p class="note">${Math.round(100*busy/Math.max(1,m.need))}% busy${m.need>1?' on average across '+m.need:''}</p>`}<ul>${lines.join('')}</ul></div>`; }).join('')}</div>`;
   } else mh='<p class="note">No machines needed. Add food or goods in step 3, or plan for an RV upgrade, to see machines here.</p>';
   if (extras.length || extrasCut){
@@ -2943,7 +2944,7 @@ function renderShop(){
     const col=lastPlan.colorOf?lastPlan.colorOf({crop:e.c}):'--c0';
     h+=`<div class="sc"><span class="sw" style="background:var(${col})"></span><span class="nm">${e.c.name}</span><span class="buy">${fmt(seeds)}</span><span class="sub"><span>${e.c.event?'Moonray Wheat':fmt(seeds*e.c.seed)+' coin'}</span><span>${fmt(e.harvests*e.c.yield)} harvested</span></span></div>`;
   }
-  h+=`</div><div class="tiles"><div class="tile"><b>${fmt(cost)}</b><span>seed cost</span></div><div class="tile"><b>${fmt(wood)}</b><span>wood blocks</span></div><div class="tile"><b>${fmt(coin-cost)}</b><span>field coin after seeds</span></div></div>
+  h+=`</div><div class="tiles"><div class="tile"><b>${fmt(cost)}</b><span>seed cost</span></div><div class="tile"><b>${fmt(coin-cost)}</b><span>field coin after seeds</span></div></div>
   <p class="note">One seed per harvest.</p>`;
   h+=sellHtml(hrs);
   $('shop').innerHTML=h;
