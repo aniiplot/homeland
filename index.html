@@ -75,6 +75,7 @@ body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-siz
 .panel > .seg{justify-self:start}
 .seg button{border:0;background:transparent;color:var(--muted);font-weight:700;font-size:.85rem;padding:6px 12px;border-radius:7px}
 .seg button:disabled{opacity:.5;cursor:default}
+button:disabled{opacity:.5;cursor:not-allowed}
 .seg button[aria-pressed="true"]{background:var(--leaf);color:var(--leaf-ink)}
 #summary{display:grid;gap:12px}
 .stepper{display:flex;gap:4px;align-items:center}
@@ -1382,7 +1383,8 @@ const range=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
 function buildSelects(){
   const rv=parseInt($('rv').value)||12;
   fillSelect('rv', range(1,20));
-  fillSelect('farmPlots', range(0,40)); fillSelect('woodPlots', range(0,20));
+  for (const [id,cap] of [['farmPlots',farmCap(rv)],['woodPlots',woodCap(rv)]]){ const was=$(id).value; fillSelect(id, range(0,cap));
+    if (was!=='' && parseInt(was)>cap) $(id).value=String(cap); }
   fillSelect('farmLvl', range(1,7), l=>'Lv '+l+(rv<FARM_RV[l]?' · RV '+FARM_RV[l]:''));
   fillSelect('woodLvl', range(0,6), l=>l===0?'None':'Lv '+l+(rv<WOOD_RV[l]?' · RV '+WOOD_RV[l]:''));
   fillSelect('eco', range(0,8), l=>l===0?'None':'Lv '+l);
@@ -1460,24 +1462,39 @@ function opts(){
 }
 
 // ---------- Crop rows ----------
+// Plots of each kind you own, and how many your crop rows use (optionally leaving one row out)
+const kindOf=id=>{ const c=cropById(id); return c&&c.kind==='wood'?'wood':'farm'; };
+function plotRoom(skip){ const o=opts(), cap={farm:o.farmPlots, wood:o.woodPlots}, used={farm:0, wood:0};
+  state.requests.forEach((r,i)=>{ if (i!==skip) used[kindOf(r.id)]+=r.plots||0; });
+  return {cap, used, left:{farm:cap.farm-used.farm, wood:cap.wood-used.wood}}; }
+// Crop rows can't ask for more plots than you own: later rows give way first
+function fitRequests(){ const o=opts(), cap={farm:o.farmPlots, wood:o.woodPlots}, used={farm:0, wood:0}, trimmed=new Set(), keep=[];
+  for (const r of state.requests){ const k=kindOf(r.id), n=Math.min(r.plots||1, cap[k]-used[k]);
+    if (n<(r.plots||1)) trimmed.add(k);
+    if (n>=1){ r.plots=n; used[k]+=n; keep.push(r); } }
+  if (trimmed.size){ state.requests=keep; save(); }
+  return trimmed; }
 function renderRequests(){
   const box=$('reqRows'); box.innerHTML='';
-  const o=opts();
+  const o=opts(), trimmed=fitRequests();
   state.requests.forEach((r,i)=>{
     const row=document.createElement('div'); row.className='row';
     const sel=document.createElement('select'); sel.id='req-crop-'+i; sel.setAttribute('aria-label','Crop');
     for (const [kind,label] of [['farm','Farmland'],['wood','Woodland']]){
       const g=document.createElement('optgroup'); g.label=label;
-      for (const c of allCrops().filter(c=>c.kind===kind)){ const op=document.createElement('option'); op.value=c.id; op.textContent=c.name+(available(c).ok?'':' 🔒'); g.appendChild(op); }
+      const room=plotRoom(i).left[kind];
+      if (room<1 && kindOf(r.id)!==kind) g.label=label+' (all plots picked)';
+      for (const c of allCrops().filter(c=>c.kind===kind)){ const op=document.createElement('option'); op.value=c.id; op.textContent=c.name+(available(c).ok?'':' 🔒');
+        if (room<1 && c.id!==r.id) op.disabled=true; g.appendChild(op); }
       sel.appendChild(g);
     }
     sel.value=r.id;
-    const c=cropById(r.id), max=c&&c.kind==='wood'?20:40;
+    const c=cropById(r.id), max=Math.max(1, plotRoom(i).left[kindOf(r.id)]);
     const n=document.createElement('select'); n.id='req-plots-'+i; n.setAttribute('aria-label','Plots');
     for (const v of range(1,max)){ const op=document.createElement('option'); op.value=v; op.textContent=v+(v===1?' plot':' plots'); n.appendChild(op); }
     n.value=Math.min(r.plots,max);
     const del=document.createElement('button'); del.type='button'; del.className='icon'; del.textContent='✕'; del.setAttribute('aria-label','Remove '+(c?c.name:'crop'));
-    sel.onchange=()=>{ r.id=sel.value; renderRequests(); markDirty(); };
+    sel.onchange=()=>{ r.id=sel.value; r.plots=Math.max(1,Math.min(r.plots, plotRoom(i).left[kindOf(r.id)])); renderRequests(); markDirty(); };
     n.onchange=()=>{ r.plots=parseInt(n.value); markDirty(); };
     del.onclick=()=>{ state.requests.splice(i,1); renderRequests(); markDirty(); };
     const meta=document.createElement('div'); meta.className='meta';
@@ -1489,6 +1506,12 @@ function renderRequests(){
     row.append(sel,n,del,meta); box.appendChild(row);
   });
   if (!state.requests.length){ const p=document.createElement('p'); p.className='note'; p.textContent='No crops picked. The planner fills your ground with the best earners.'; box.appendChild(p); }
+  const R=plotRoom(-1), full=R.left.farm<1 && R.left.wood<1;
+  if (trimmed.size){ const p=document.createElement('p'); p.className='note';
+    p.textContent='Trimmed your picks to fit the '+[...trimmed].map(k=>R.cap[k]+(k==='wood'?' Woodland':' Farmland')).join(' and ')+' plots you have.'; box.appendChild(p); }
+  else if (state.requests.length && (R.cap.farm||R.cap.wood)){ const p=document.createElement('p'); p.className='note';
+    p.textContent=full ? 'Every plot you have is picked.' : 'Left to pick: '+[R.cap.farm&&(R.left.farm+' of '+R.cap.farm+' Farmland'), R.cap.wood&&(R.left.wood+' of '+R.cap.wood+' Woodland')].filter(Boolean).join(', ')+'.'; box.appendChild(p); }
+  $('addReq').disabled=full; $('addAll').disabled=R.left.farm<1;
 }
 function renderFillChips(){
   const box=$('fillChips'); box.innerHTML=''; let on=0, all=0;
@@ -3092,7 +3115,7 @@ if (!restored){ maxAll(); for (const [k,v] of Object.entries(DEFAULTS)) if(k!=='
 $('setup').addEventListener('change', e=>{ if (e.target.closest('#prodRows,#reqRows,#fillChips,#codeIn')) return; markDirty(); });
 $('setup').addEventListener('input', e=>{ if (e.target.type==='number' && !e.target.closest('#prodRows')) markDirty(); });
 $('rv').addEventListener('change',()=>{ buildSelects(); $('maxAll').style.boxShadow='0 0 0 3px var(--gold)'; refreshInputs(); });
-for (const id of ['farmLvl','woodLvl','eco','events','kitchen','crafting','detector','persona','useLamp','useHeat','useCool','watering','hauling','hours']) $(id).addEventListener('change',()=>{ renderRequests(); renderProducts(); renderFillChips(); });
+for (const id of ['farmPlots','woodPlots','farmLvl','woodLvl','eco','events','kitchen','crafting','detector','persona','useLamp','useHeat','useCool','watering','hauling','hours']) $(id).addEventListener('change',()=>{ renderRequests(); renderProducts(); renderFillChips(); });
 for (const id of ['goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand','needCoin','needWood','needSand']) $(id).addEventListener('input',renderGoalInputs);
 $('goalMode').addEventListener('change',renderGoalInputs);
 const stepRv=d=>{ const el=$('rv'), v=Math.max(1,Math.min(20,int('rv')+d)); if (v===int('rv')) return; el.value=String(v); el.dispatchEvent(new Event('change',{bubbles:true})); };
@@ -3108,12 +3131,14 @@ $('runBtn2').onclick=()=>run();
 $('session').addEventListener('change',()=>{ save(); renderShop(); });
 document.addEventListener('change',e=>{ if(e.target.id==='crewLvl'){ state.crewLvl=parseInt(e.target.value); renderProducts(); run(); } });
 $('addProd').onclick=()=>{ (state.products||(state.products=[])).push({n:'Bread',amt:5,unit:'h'}); renderProducts(); markDirty(); };
-$('addReq').onclick=()=>{ const c=allCrops().find(c=>available(c).ok && !state.requests.some(r=>r.id===c.id))||CROPS[0]; state.requests.push({id:c.id,plots:1}); renderRequests(); markDirty(); };
+$('addReq').onclick=()=>{ const R=plotRoom(-1), fits=c=>R.left[c.kind==='wood'?'wood':'farm']>=1;
+  const c=allCrops().find(c=>fits(c) && available(c).ok && !state.requests.some(r=>r.id===c.id)) || allCrops().find(fits); if (!c) return;
+  state.requests.push({id:c.id,plots:1}); renderRequests(); markDirty(); };
 // Crops with mutated forms (AniimoTools item list and the Mutated Plant Exchange agree). Trees have none (Wikily).
 // Quick and Premium versions: Wikily lists the same mutated items as the plain crop, AniimoTools says none, so the plain crop is used.
 const MUTATES=['wheat','potato','rice','soybean','cotton','rose','lavender','strawberry','sugarcane','ginseng','grapes','agave','cranberry','moondew','pepper'];
 $('addAll').onclick=()=>{ const o=opts(); for (const id of MUTATES){ const c=cropById(id); if (!c || !available(c).ok || state.requests.some(r=>r.id===id)) continue;
-    if (c.light && o.lamp===0) continue; state.requests.push({id,plots:1}); }
+    if (c.light && o.lamp===0) continue; if (plotRoom(-1).left[kindOf(id)]<1) break; state.requests.push({id,plots:1}); }
   renderRequests(); markDirty(); };
 refreshInputs();
 selectTab(TABS.includes(state.tab)?state.tab:'plant');
