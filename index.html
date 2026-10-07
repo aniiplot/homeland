@@ -1842,8 +1842,44 @@ function planHomeland(real, openPlots, style, land, edge, things=[]){
       inClimate=false;
     }
     if (!got){ missed.push(t); continue; }
-    solid.push(got); builds.push({...t, x:got.x, y:got.y, inClimate});
+    solid.push(got); builds.push({...t, x:got.x, y:got.y, inClimate, _r:got});
   }
+  // Tidy-up: take each building out, farthest first, and put it back nearer the middle, either way round. If the
+  // spot it wants is blocked by one other machine, try nudging that one to its own nearest free spot; keep the swap
+  // when the two together end up closer. Repeats while anything improves.
+  const dist=r=>Math.hypot(r.x+r.w/2-ax, r.y+r.h/2-ay);
+  const spots=(w,h)=>bc[w+'x'+h]||(bc[w+'x'+h]=(()=>{ const out=[]; for (let x=0; x+w<=N; x+=bstep) for (let y=0; y+h<=N; y+=bstep) out.push([x,y,Math.hypot(x+w/2-ax,y+h/2-ay)]); return out.sort((a,b)=>a[2]-b[2]); })());
+  const turns=b=>b.w===b.h ? [[b.w,b.h]] : [[b.w,b.h],[b.h,b.w]];
+  const owner=new Map(builds.filter(b=>b.inClimate===null).map(b=>[b._r,b]));
+  const free=(r,skip)=>onLand(r) && !solid.some(q=>hit(r,q)) && !(skip && hit(r,skip));
+  const nearestFree=(b,limit,skip)=>{ let best=null;
+    for (const [w,h] of turns(b)) for (const [x,y,d] of spots(w,h)){ if (d>=limit || (best && d>=best.d)) break;
+      const r={x,y,w,h}; if (free(r,skip)){ best={r,d}; break; } }
+    return best; };
+  const setR=(b,r)=>{ owner.delete(b._r); b._r=r; b.x=r.x; b.y=r.y; b.w=r.w; b.h=r.h; owner.set(r,b); };
+  for (let pass=0; pass<(window.HFP_TIDY??6); pass++){ let moved=false;
+    for (const A of builds.filter(b=>b.inClimate===null).sort((p,q)=>dist(q._r)-dist(p._r))){
+      const dA=dist(A._r); solid.splice(solid.indexOf(A._r),1);
+      let done=null, gain=0;
+      const one=nearestFree(A, dA-0.25); if (one){ gain=dA-one.d; done=()=>{ solid.push(one.r); setR(A,one.r); }; }
+      // one blocker: nudge it out of the way if that's a net gain
+      let tries=0;
+      for (const [w,h] of turns(A)) for (const [x,y,d] of spots(w,h)){
+        if (d>=dA-0.25 || tries>400 || (one && d>=one.d)) break;
+        const r={x,y,w,h}; if (!onLand(r)) continue;
+        const bl=solid.filter(q=>hit(r,q)); if (bl.length!==1 || !owner.has(bl[0])) continue;
+        tries++;
+        const B=owner.get(bl[0]), dB=dist(B._r); solid.splice(solid.indexOf(B._r),1);
+        const nb=nearestFree(B, Infinity, r);
+        const g=nb ? (dA-d)-(nb.d-dB) : 0;
+        if (nb && g>0.5 && g>gain){ gain=g; const rb=nb.r; done=()=>{ solid.splice(solid.indexOf(B._r),1); solid.push(rb, r); setR(B,rb); setR(A,r); }; solid.push(B._r); break; }
+        solid.push(B._r);
+      }
+      if (done){ done(); moved=true; } else solid.push(A._r);
+    }
+    if (!moved) break;
+  }
+  for (const b of builds) delete b._r;
   return addFacing({placed, open, unplaced, openLeft, N, builds, missed, ax, ay});
 }
 
