@@ -2066,129 +2066,113 @@ function faceMark(b, X, Y, T){
 }
 
 // ---------- Square homeland map ----------
-// Everything in one ring, as close to square and as tight as your land allows: climate units on the corners, then
-// Mines, machines, Woodland and Farmland along the edges with fronts facing the empty middle, so workers walk the
-// courtyard. Falls back to Clean grid when the ring won't fit your land.
+// One compact block, as near square as your land allows. Climate units take the corners with their plots wrapped
+// round the outside of their range, then everything else is pulled toward the outer edge: each piece takes the
+// free spot closest to the block's border (clockwise from the top-left on ties), so edges fill first, then the next
+// band in, and the middle fills last. Machines may sit in free space inside a range. The smallest block that holds
+// everything wins. Falls back to Clean grid when even that won't fit your land.
 function planHomelandSquare(real, openPlots, land, edge, things){
-  const N=4*edge, GAP=1, own=(x,y)=>{ const px=Math.floor(x/edge), py=Math.floor(y/edge); return px>=0&&py>=0&&px<4&&py<4&&land[py*4+px]; };
-  // owned tiles as a summed-area table, so "is this rectangle on my land" is one lookup
+  const N=4*edge, own=(x,y)=>{ const px=Math.floor(x/edge), py=Math.floor(y/edge); return px>=0&&py>=0&&px<4&&py<4&&land[py*4+px]; };
   const S=new Int32Array((N+1)*(N+1)); for (let y=0;y<N;y++) for (let x=0;x<N;x++) S[(y+1)*(N+1)+x+1]=(own(x,y)?1:0)+S[y*(N+1)+x+1]+S[(y+1)*(N+1)+x]-S[y*(N+1)+x];
-  const onLand=r=>{ const x0=Math.floor(r.x), y0=Math.floor(r.y), x1=Math.ceil(r.x+r.w), y1=Math.ceil(r.y+r.h);
+  const onLand=r=>{ const x0=Math.floor(r.x+1e-9), y0=Math.floor(r.y+1e-9), x1=Math.ceil(r.x+r.w-1e-9), y1=Math.ceil(r.y+r.h-1e-9);
     if (x0<0||y0<0||x1>N||y1>N) return false; return S[y1*(N+1)+x1]-S[y0*(N+1)+x1]-S[y1*(N+1)+x0]+S[y0*(N+1)+x0]===(x1-x0)*(y1-y0); };
   let ax=0, ay=0, k=0; for (let i=0;i<16;i++) if (land[i]){ ax+=(i%4+.5)*edge; ay+=(Math.floor(i/4)+.5)*edge; k++; }
   if (!k) return {placed:[], open:[], unplaced:real.length, openLeft:openPlots.reduce((s,p)=>s+p.plots,0), N, builds:[], missed:things.slice()};
   ax/=k; ay/=k;
   const bboxOf=rs=>{ let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; for (const r of rs){ x0=Math.min(x0,r.x); y0=Math.min(y0,r.y); x1=Math.max(x1,r.x+r.w); y1=Math.max(y1,r.y+r.h); } return {x:x0,y:y0,w:x1-x0,h:y1-y0}; };
   const sq=q=>({x:q.x,y:q.y,w:q.s,h:q.s});
-  // Units: the turn with the smallest footprint (plots, hosted building and range together), wider than tall
-  const units=real.map(u=>{ const G=geomOf(u,'clean'); let best=null;
-    for (let t=0;t<4;t++){ const R=rotGeom(G,t), parts=[...R.cores,...R.plots,...(R.guests||[])].map(sq), bb=bboxOf([...parts,...R.ranges]);
-      const sc=bb.w*bb.h*1000+(bb.w>=bb.h?0:1); if (!best || sc<best.sc) best={u,R,bb,sc}; }
-    return best; }).sort((a,b)=>b.bb.w*b.bb.h-a.bb.w*a.bb.h);
+  // Every unit's four turns, biggest units first; the four biggest take the corners
+  const units=real.map(u=>{ const G=geomOf(u,'clean'); const rots=[0,1,2,3].map(t=>{ const R=rotGeom(G,t); return {R, bb:bboxOf([...[...R.cores,...R.plots,...(R.guests||[])].map(sq), ...R.ranges])}; });
+    return {u, rots, area:Math.min(...rots.map(r=>r.bb.w*r.bb.h))}; }).sort((a,b)=>b.area-a.area);
+  const corners=units.slice(0,4), rest=units.slice(4);
+  const fits=corners.map((e,i)=>{ const cg=cornerGeom(e.u,i);
+    if (cg) return {R:cg, f:bboxOf([...[...cg.cores,...cg.plots,...cg.guests].map(sq), ...cg.ranges])};
+    let best=null; for (const r of e.rots) if (!best || r.bb.w*r.bb.h<best.f.w*best.f.h) best={R:r.R, f:r.bb}; return best; });
   const woods=[], farms=[];
   for (const p of openPlots.slice().sort((a,b)=>a.crop.id.localeCompare(b.crop.id))) for (let i=0;i<p.plots;i++) (p.crop.kind==='wood'?woods:farms).push(p);
-  const asRow=t=>({t, w:Math.max(t.w,t.h), h:Math.min(t.w,t.h)});
-  const plainB=things.filter(t=>!t.clim).map(asRow).sort((a,b)=>b.h-a.h || b.w-a.w || a.t.key.localeCompare(b.t.key));
-  const climB=things.filter(t=>t.clim);
-  // Ring: up to four climate units on the corners, everything else along the edges in order (clockwise from the
-  // top), long side along the edge and fronts facing the empty middle. The smallest ring that holds it all wins.
-  const rotsOf=u=>{ const G=geomOf(u,'clean'); return [0,1,2,3].map(t=>{ const R=rotGeom(G,t), parts=[...R.cores,...R.plots,...(R.guests||[])].map(sq); return {R, P:bboxOf(parts), bb:bboxOf([...parts,...R.ranges])}; }); };
-  // A corner unit: plots wrapped round the outer sides of its range when they fit that way, else its tightest turn.
-  // Its footprint is plots and range together, so the range stays inside the ring (and on your land).
-  const fitMemo=new Map();
-  const cornerFit=(e,i)=>{ const key=i+'|'+units.indexOf(e); if (fitMemo.has(key)) return fitMemo.get(key); const v=cornerFit0(e,i); fitMemo.set(key,v); return v; };
-  const cornerFit0=(e,i)=>{ const cg=cornerGeom(e.u,i);
-    if (cg) return {R:cg, f:bboxOf([...[...cg.cores,...cg.plots,...cg.guests].map(sq), ...cg.ranges])};
-    let best=null; for (const r of allRots.get(e.u)) if (!best || r.bb.w*r.bb.h<best.f.w*best.f.h) best={R:r.R, f:r.bb};
-    return best; };
-  const allRots=new Map(units.map(e=>[e.u, rotsOf(e.u)]));
-  const corners=units.slice(0,4), extraU=units.slice(4);
-  const mines=plainB.filter(m=>m.t.key==='mine'), others=plainB.filter(m=>m.t.key!=='mine');
-  // what goes along the edges: [{kind, group, a (along), d (depth), ...}]
-  const seq=[];
-  for (const e of extraU) seq.push({kind:'unit', group:'unit', e});
-  for (const m of [...mines, ...others]) seq.push({kind:'build', group:m.t.key==='mine'?'mine':'build', m, a:m.w, d:m.h});
-  for (const p of woods) seq.push({kind:'plot', group:'w:'+p.crop.id, p, a:4, d:4});
-  for (const p of farms) seq.push({kind:'plot', group:'f:'+p.crop.id, p, a:2, d:2});
-  const gapBetween=(x,y)=>!x ? 0 : (x.kind==='plot' && y.kind==='plot' && x.group===y.group) ? 0 : (x.kind==='unit'||y.kind==='unit'||x.group!==y.group) ? GAP : 0.5;
-  const DEF=9;                                           // depth of an edge next to an empty corner
-  const pack=(W,H)=>{
-    const c=[0,1,2,3].map(i=>corners[i] ? cornerFit(corners[i],i) : null);   // TL, TR, BR, BL
-    const cw=i=>c[i]?c[i].f.w:DEF, ch=i=>c[i]?c[i].f.h:DEF;
-    if (cw(0)+GAP+cw(1)>W || cw(3)+GAP+cw(2)>W || ch(0)+GAP+ch(3)>H || ch(1)+GAP+ch(2)>H) return null;
-    const P={units:[], open:[], builds:[]};
-    const at=[[0,0],[W-cw(1),0],[W-cw(2),H-ch(2)],[0,H-ch(3)]];
-    c.forEach((e,i)=>{ if (e) P.units.push({u:{u:corners[i].u, R:e.R}, ox:at[i][0]-e.f.x, oy:at[i][1]-e.f.y}); });
-    // edges: start, length and depth; side says where "outside" is
-    const E=[
-      {side:'top',    s:cw(0)+GAP, len:W-cw(0)-cw(1)-2*GAP, D:Math.min(ch(0),ch(1))},
-      {side:'right',  s:ch(1)+GAP, len:H-ch(1)-ch(2)-2*GAP, D:Math.min(cw(1),cw(2))},
-      {side:'bottom', s:cw(2)+GAP, len:W-cw(3)-cw(2)-2*GAP, D:Math.min(ch(2),ch(3))},
-      {side:'left',   s:ch(3)+GAP, len:H-ch(0)-ch(3)-2*GAP, D:Math.min(cw(0),cw(3))}];
-    let ei=0, pos=0, off=0, ld=0, prev=null;
-    const putAt=(it,a,d,rot)=>{ const ed=E[ei], o=off, p=ed.s+pos;
-      let x,y,w,h;
-      if (ed.side==='top'){ x=p; y=o; w=a; h=d; } else if (ed.side==='bottom'){ x=W-p-a; y=H-o-d; w=a; h=d; }
-      else if (ed.side==='right'){ x=W-o-d; y=p; w=d; h=a; } else { x=o; y=H-p-a; w=d; h=a; }
-      const face={top:'down', bottom:'up', left:'right', right:'left'}[ed.side];
-      if (it.kind==='build') P.builds.push({...it.m.t, w, h, x, y, face, inClimate:null});
-      else if (it.kind==='plot') P.open.push({x, y, s:a, p:it.p});
-      else { const r=rot; P.units.push({u:{u:it.e.u, R:r.R, bb:r.bb}, ox:x-r.bb.x, oy:y-r.bb.y}); } };
-    for (const it of seq){
-      let placed=false;
-      while (!placed && ei<E.length){
-        const ed=E[ei]; let a=it.a, d=it.d, rot=null;
-        if (it.kind==='unit'){   // the turn whose depth fits best
-          const want=(ed.side==='top'||ed.side==='bottom'), rs=allRots.get(it.e.u).map(r=>({r, a:want?r.bb.w:r.bb.h, d:want?r.bb.h:r.bb.w})).sort((p,q)=>p.d-q.d);
-          ({r:rot, a, d}=rs[0]); }
-        const g=gapBetween(prev,it);
-        if (ed.len>0 && pos+(pos?g:0)+a<=ed.len+1e-9 && off+d<=ed.D+1e-9){ if (pos) pos+=g; putAt(it,a,d,rot); pos+=a; ld=Math.max(ld,d); prev=it; placed=true; break; }
-        // new layer further in, or the next edge
-        if (pos>0 && off+ld+GAP+d<=ed.D+1e-9){ off+=ld+GAP; pos=0; ld=0; prev=null; continue; }
-        ei++; pos=0; off=0; ld=0; prev=null;
-      }
-      if (!placed) return null;
-    }
-    return P; };
-  const minW=12, minH=12;
-  const designs=[];
-  for (let W=Math.ceil(minW); W<=N; W++) for (let H=Math.ceil(minH); H<=N; H++){
-    if (designs.length>=150 && W*H>designs[designs.length-1].area) continue;
-    const P=pack(W,H); if (!P) continue;
-    P.area=W*H*(1+1.2*Math.abs(W-H)/Math.max(W,H)); designs.push(P); designs.sort((a,b)=>a.area-b.area); if (designs.length>150) designs.pop(); }
-  // Place the block on your land, as near the middle of it as fits
-  for (const P of designs){
-    const rects=[];
-    const rangeRects=[];
-    for (const e of P.units){ const R=e.u.R; for (const q of [...R.cores,...R.plots,...(R.guests||[])]) rects.push({x:q.x+e.ox,y:q.y+e.oy,w:q.s,h:q.s});
-      for (const q of R.ranges) rangeRects.push({x:q.x+e.ox,y:q.y+e.oy,w:q.w,h:q.h}); }
-    for (const q of P.open) rects.push({x:q.x,y:q.y,w:q.s,h:q.s});
-    for (const b of P.builds) rects.push({x:b.x,y:b.y,w:b.w,h:b.h});
-    const bb=bboxOf(rects), offs=[]; let at=null;
-    for (let ox=-bb.x; ox+bb.x+bb.w<=N; ox++) for (let oy=-bb.y; oy+bb.y+bb.h<=N; oy++) offs.push([ox,oy,Math.hypot(ox+bb.x+bb.w/2-ax, oy+bb.y+bb.h/2-ay)]);
-    offs.sort((a,b)=>a[2]-b[2]);
-    const allR=[...rects,...rangeRects], bb2=bboxOf(allR);
-    for (const [ox,oy] of offs) if (onLand({x:bb2.x+ox,y:bb2.y+oy,w:bb2.w,h:bb2.h}) || allR.every(r=>onLand({x:r.x+ox,y:r.y+oy,w:r.w,h:r.h}))){ at={ox,oy}; break; }
-    if (!at) continue;
-    const {ox,oy}=at, sh=q=>({...q, x:q.x+ox, y:q.y+oy});
-    const placed=P.units.map(e=>{ const R=e.u.R, m=q=>({...q, x:q.x+e.ox+ox, y:q.y+e.oy+oy});
-      return {u:e.u.u, cores:R.cores.map(m), ranges:R.ranges.map(m), plots:R.plots.map(m), guests:(R.guests||[]).map(m)}; });
-    const open=P.open.map(sh), builds=P.builds.map(sh), missed=[];
-    // Buildings that need heat, cold or light: the free spot most inside a matching range, else beside the block
-    const solid=[...rects.map(r=>({x:r.x+ox,y:r.y+oy,w:r.w,h:r.h}))], ranges=placed.flatMap(p=>p.ranges);
-    for (const one of climB){ const want=CLIM_ZONE[one.clim], okR=ranges.filter(r=>r.zk===want); let got=null, bo=0;
-      for (const R of okR) for (let x=Math.floor(R.x-one.w+1); x<R.x+R.w; x+=0.5) for (let y=Math.floor(R.y-one.h+1); y<R.y+R.h; y+=0.5){
-        const r={x,y,w:one.w,h:one.h}; if (!onLand(r) || solid.some(q=>hit(r,q))) continue;
-        const inR=ranges.filter(q=>hit(r,q)); if (inR.length!==1 || inR[0]!==R) continue;
-        const ov=ovArea(r,R); if (ov>bo+1e-9){ bo=ov; got=r; } }
+  const climB=things.filter(t=>t.clim), plainB=things.filter(t=>!t.clim).sort((a,b)=>b.w*b.h-a.w*a.h || a.key.localeCompare(b.key));
+  const total=[...units.map(e=>e.area), ...things.map(t=>t.w*t.h), woods.length*16, farms.length*4].reduce((a,b)=>a+b,0);
+  const sens=p=>p.crop.temp!==0 || p.crop.light;        // open-ground crops that must stay out of every range
+
+  const attempt=(W,H)=>{
+    const cw=i=>fits[i]?fits[i].f.w:0, ch=i=>fits[i]?fits[i].f.h:0;
+    if (cw(0)+cw(1)>W || cw(3)+cw(2)>W || ch(0)+ch(3)>H || ch(1)+ch(2)>H) return null;
+    // the block's spot on your land, nearest the middle of it
+    let X0=null, Y0=null, bd=Infinity;
+    for (let x=0;x+W<=N;x++) for (let y=0;y+H<=N;y++){ const d=Math.hypot(x+W/2-ax,y+H/2-ay); if (d<bd && onLand({x,y,w:W,h:H})){ bd=d; X0=x; Y0=y; } }
+    if (X0===null) return null;
+    const X1=X0+W, Y1=Y0+H;
+    const Q=4, MQ=N*Q, cell=new Uint8Array(MQ*MQ);
+    const span=r=>[Math.round(r.x*Q), Math.round(r.y*Q), Math.round((r.x+r.w)*Q), Math.round((r.y+r.h)*Q)];
+    const occ=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (cell[y*MQ+x]) return true; return false; };
+    const fill=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) cell.fill(1, y*MQ+x0, y*MQ+x1); };
+    const inside=r=>r.x>=X0-1e-9 && r.y>=Y0-1e-9 && r.x+r.w<=X1+1e-9 && r.y+r.h<=Y1+1e-9;
+    const ranges=[], plotsK=[];   // ranges placed; plots that no other range may cover
+    const placed=[], open=[], builds=[], missed=[];
+    const addUnit=(u,R,ox,oy)=>{ const m=q=>({...q,x:q.x+ox,y:q.y+oy});
+      const cores=R.cores.map(m), plots=R.plots.map(m), guests=(R.guests||[]).map(m), rr=R.ranges.map(m);
+      for (const q of [...cores,...plots,...guests]) fill(sq(q));
+      for (const q of plots) plotsK.push({...sq(q), u});
+      for (const r of rr) ranges.push({...r, u});
+      placed.push({u, cores, ranges:rr, plots, guests}); };
+    const unitOK=(u,R,ox,oy)=>{
+      const parts=[...R.cores,...R.plots,...(R.guests||[])].map(q=>({x:q.x+ox,y:q.y+oy,w:q.s,h:q.s})), rr=R.ranges.map(q=>({x:q.x+ox,y:q.y+oy,w:q.w,h:q.h}));
+      if (!parts.every(r=>inside(r) && !occ(r)) || !rr.every(r=>inside(r))) return false;
+      if (rr.some(r=>ranges.some(q=>hit(r,q)) || plotsK.some(q=>hit(r,q)))) return false;       // no shared or crossed ranges
+      const own=R.plots.map(q=>({x:q.x+ox,y:q.y+oy,w:q.s,h:q.s}));
+      return !own.some(r=>ranges.some(q=>hit(r,q))); };
+    // corners
+    const at=[[X0,Y0],[X1-cw(1),Y0],[X1-cw(2),Y1-ch(2)],[X0,Y1-ch(3)]];
+    for (let i=0;i<fits.length;i++){ const F=fits[i], ox=at[i][0]-F.f.x, oy=at[i][1]-F.f.y;
+      if (!unitOK(corners[i].u,F.R,ox,oy)) return null; addUnit(corners[i].u,F.R,ox,oy); }
+    // spots for a w x h piece, nearest the border first, then clockwise from the top-left
+    const per=r=>{ const cx=r.x+r.w/2-X0, cy=r.y+r.h/2-Y0, d=[cy, W-cx, H-cy, cx], s=d.indexOf(Math.min(...d));
+      return s===0 ? cx : s===1 ? W+cy : s===2 ? W+H+(W-cx) : 2*W+H+(H-cy); };
+    const cache={};
+    const spots=(w,h)=>cache[w+'x'+h]||(cache[w+'x'+h]=(()=>{ const L=[];
+      for (let x=X0;x+w<=X1+1e-9;x+=0.5) for (let y=Y0;y+h<=Y1+1e-9;y+=0.5){ const r={x,y,w,h}; L.push([x,y,Math.min(x-X0,y-Y0,X1-x-w,Y1-y-h),per(r)]); }
+      return L.sort((a,b)=>a[2]-b[2] || a[3]-b[3]); })());
+    const better=(a,b)=>!b || a[2]<b[2]-1e-9 || (Math.abs(a[2]-b[2])<1e-9 && a[3]<b[3]);
+    // other units: the best turn's first good spot
+    for (const e of rest){ let best=null;
+      for (const r of e.rots){ const o=r.bb; for (const s of spots(o.w,o.h)){ if (best && !better(s,best.s)) break;
+          const ox=s[0]-o.x, oy=s[1]-o.y; if (unitOK(e.u,r.R,ox,oy)){ best={s,R:r.R,ox,oy}; break; } } }
+      if (!best) return null; addUnit(e.u,best.R,best.ox,best.oy); }
+    // buildings that need a climate: a free spot touching one matching range (most inside it)
+    for (const t of climB){ const want=CLIM_ZONE[t.clim], okR=ranges.filter(r=>r.zk===want); let got=null, bo=0;
+      for (const [w,h] of t.w===t.h?[[t.w,t.h]]:[[t.w,t.h],[t.h,t.w]]) for (const [x,y] of spots(w,h)){ const r={x,y,w,h};
+        if (occ(r)) continue; const inR=ranges.filter(q=>hit(r,q)); if (inR.length!==1 || !okR.includes(inR[0])) continue;
+        const ov=ovArea(r,inR[0]); if (ov>bo+1e-9){ bo=ov; got=r; } }
       let inClimate=!!got;
-      if (!got && want!=='lamp'){ let bd=Infinity;
-        for (let x=0; x+one.w<=N; x+=0.5) for (let y=0; y+one.h<=N; y+=0.5){ const r={x,y,w:one.w,h:one.h}, d=Math.hypot(x+one.w/2-ax,y+one.h/2-ay);
-          if (d<bd && onLand(r) && !solid.some(q=>hit(r,q)) && !ranges.some(q=>hit(r,q))){ bd=d; got=r; } } }
-      if (!got){ missed.push(one); continue; }
-      solid.push(got); builds.push({...one, x:got.x, y:got.y, inClimate}); }
-    return addFacing({placed, open, unplaced:0, openLeft:0, N, builds, missed, ax, ay});
-  }
+      if (!got && want!=='lamp'){ for (const [x,y] of spots(t.w,t.h)){ const r={x,y,w:t.w,h:t.h}; if (!occ(r)){ got=r; break; } } inClimate=false; }
+      if (!got){ missed.push(t); continue; }
+      fill(got); builds.push({...t, x:got.x, y:got.y, w:got.w, h:got.h, inClimate}); }
+    // everything else: first free spot nearest the border, either way round for buildings
+    // Within the nearest band to the border that has room, a spot next to the same kind of thing wins (rows of
+    // Mines, blocks of one crop), so the outside fills in tidy runs.
+    const kin={}, touches=(r,g)=>(kin[g]||[]).some(q=>hit({x:r.x-0.5,y:r.y-0.5,w:r.w+1,h:r.h+1},q));
+    const putFirst=(w,h,ok,g)=>{ let first=null, nb=null;
+      for (const [ww,hh] of w===h?[[w,h]]:[[w,h],[h,w]]){ let looked=0;
+        for (const s of spots(ww,hh)){ const band=Math.floor(s[2]/2);
+          if (first && band>first.band) break;
+          const r={x:s[0],y:s[1],w:ww,h:hh}; if (occ(r) || !ok(r)) continue;
+          const t=touches(r,g);
+          if (!first || band<first.band || (band===first.band && !first.t && t)) first={r,band,t};
+          if (first.t || ++looked>400) break; } }
+      return first ? first.r : null; };
+    for (const t of plainB){ const g='b:'+t.key, r=putFirst(t.w,t.h,()=>true,g); if (!r) return null; fill(r); (kin[g]||(kin[g]=[])).push(r); builds.push({...t, x:r.x, y:r.y, w:r.w, h:r.h, inClimate:null}); }
+    for (const [list,s] of [[woods,4],[farms,2]]) for (const p of list){ const g='p:'+p.crop.id;
+      const r=putFirst(s,s, q=>!(sens(p) && ranges.some(R=>hit(q,R))), g); if (!r) return null;
+      fill(r); (kin[g]||(kin[g]=[])).push(r); open.push({x:r.x, y:r.y, s, p}); if (sens(p)) plotsK.push(r); }
+    // fronts face the middle of the block
+    return addFacing({placed, open, unplaced:0, openLeft:0, N, builds, missed, ax:X0+W/2, ay:Y0+H/2});
+  };
+  // sizes from the smallest square that could hold everything, growing toward square
+  const minS=Math.max(8, Math.ceil(Math.sqrt(total)));
+  const sizes=[]; for (let W=minS; W<=N; W++) for (let H=minS; H<=N; H++) if (Math.max(W,H)/Math.min(W,H)<=1.6) sizes.push([W,H, W*H*(1+0.6*Math.abs(W-H)/Math.max(W,H))]);
+  sizes.sort((a,b)=>a[2]-b[2]);
+  const t0=Date.now();
+  for (const [W,H] of sizes){ if (Date.now()-t0>2500) break; const R=attempt(W,H); if (R) return R; }
   const H=planHomelandClean(real, openPlots, land, edge, things); H.squareFallback=true; return H;
 }
 
@@ -2260,7 +2244,7 @@ function renderHomeMap(seg, style){
   if (H.squareFallback) warn.push('Everything won\'t fit in one block on the land you ticked, so this shows Clean grid. Tick more land for Square.');
   if (H.unplaced) warn.push(`${H.unplaced} climate unit${H.unplaced>1?'s':''} didn't fit on the land you ticked.`); if (H.openLeft) warn.push(`${H.openLeft} open-ground plot${H.openLeft>1?'s':''} didn't fit.`);
   const legend={}; for (const u of H.placed) for (const p of u.plots) legend[p.p.crop.id]=p.p; for (const p of H.open) legend[p.p.crop.id]=p.p;
-  $('pane-layout').innerHTML=`<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Packed: tightest, shortest walks. Clean grid: tidy blocks with a walkway between them. Square: everything in one neat block, climate units on the corners and Woodland down the sides.">?</i></div>
+  $('pane-layout').innerHTML=`<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Packed: tightest, shortest walks. Clean grid: tidy blocks with a walkway between them. Square: one compact block, climate units on the corners with their plots round the outside, everything else pulled toward the edges.">?</i></div>
     <div class="mapwrap"><div class="mapside">
       <div><h3>Land you own</h3>${picker}</div>
       ${H.builds.length?`<div><h3>Buildings</h3><ul class="also">${Object.values(H.builds.reduce((m,b)=>((m[b.name]=m[b.name]||{b,n:0}).n++,m),{})).map(({b,n})=>`<li><span><span class="sw" style="background:var(${jobVar(b.job)})"></span>${b.name}</span><b>${n}</b></li>`).join('')}</ul></div>`:''}
