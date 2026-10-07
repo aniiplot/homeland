@@ -1504,11 +1504,12 @@ function renderRequests(){
     sel.value=r.id;
     const c=cropById(r.id), max=Math.max(1, plotRoom(i).left[kindOf(r.id)]);
     const n=document.createElement('select'); n.id='req-plots-'+i; n.setAttribute('aria-label','Plots');
-    for (const v of range(1,max)){ const op=document.createElement('option'); op.value=v; op.textContent=v+(v===1?' plot':' plots')+(v>r.plots?` (+${v-r.plots})`:''); n.appendChild(op); }
+    for (const v of range(1,max)){ const op=document.createElement('option'); op.value=v; op.textContent=v+(v===1?' plot':' plots'); n.appendChild(op); }
     n.value=Math.min(r.plots,max);
     const del=document.createElement('button'); del.type='button'; del.className='icon'; del.textContent='✕'; del.setAttribute('aria-label','Remove '+(c?c.name:'crop'));
     sel.onchange=()=>{ r.id=sel.value; r.plots=Math.max(1,Math.min(r.plots, plotRoom(i).left[kindOf(r.id)])); renderRequests(); markDirty(); };
-    n.onchange=()=>{ r.plots=parseInt(n.value); markDirty(); };
+    // redraw every row straight away so the others' limits shrink or grow with this one
+    n.onchange=()=>{ r.plots=parseInt(n.value); renderRequests(); markDirty(); const f=$('req-plots-'+i); if (f) f.focus(); };
     del.onclick=()=>{ state.requests.splice(i,1); renderRequests(); markDirty(); };
     const meta=document.createElement('div'); meta.className='meta';
     if (c){ const a=available(c);
