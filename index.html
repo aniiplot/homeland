@@ -48,7 +48,7 @@
 :root[data-skin="midnight"]{--bg:#000000; --panel:#0c0c0e; --sunk:#060607; --ink:#ededee; --muted:#9b9ba1; --line:#232327; --leaf:#e6e6e9; --leaf-ink:#0c0c0e; --leaf-soft:#1c1c20; --accent:#5aa9ff; --accent-ink:#00111f; --sky:#5aa9ff; --tip-bg:#ededee; --tip-fg:#000000;}
 :root[data-skin="aurora"]{--bg:#0d1020; --panel:#151a2e; --sunk:#111528; --ink:#e7ebff; --muted:#9da3c4; --line:#2a3050; --leaf:#6fdcc9; --leaf-ink:#06201b; --leaf-soft:#173a3a; --accent:#d79bff; --accent-ink:#220a33; --sky:#6fdcc9; --tip-bg:#e7ebff; --tip-fg:#0d1020;}
 :root[data-skin="ember"]{--bg:#14110f; --panel:#1d1916; --sunk:#181411; --ink:#f2e9e1; --muted:#b3a596; --line:#362e28; --leaf:#ffb27a; --leaf-ink:#2a1404; --leaf-soft:#3a2618; --accent:#ff8f87; --accent-ink:#2b0907; --sky:#ffb27a; --tip-bg:#f2e9e1; --tip-fg:#14110f;}
-:root[data-skin="paper"]{--bg:#f3efe7; --panel:#fffdf8; --sunk:#f8f4ec; --ink:#2a2520; --muted:#6b6157; --line:#ddd5c8; --leaf:#3d55a8; --leaf-ink:#ffffff; --leaf-soft:#e2e6f5; --accent:#b5482f; --accent-ink:#ffffff; --sky:#8d7b62; --tip-bg:#2a2520; --tip-fg:#fffdf8;}
+:root[data-skin="paper"]{--bg:#efe4cb; --panel:#f7eedb; --sunk:#f2e7cf; --ink:#3d3324; --muted:#7b6b52; --line:#dccdab; --leaf:#9c6230; --leaf-ink:#fbf4e4; --leaf-soft:#ead9b8; --accent:#b4583a; --accent-ink:#fbf4e4; --sky:#a8875a; --tip-bg:#3d3324; --tip-fg:#f7eedb; --gold:#8a5c0a; --gold-soft:#ecdcae; --warn-bg:#f0dfb4; --warn-fg:#6b4405;}
 :root[data-skin="daylight"]{--bg:#eef1f6; --panel:#ffffff; --sunk:#f5f7fb; --ink:#1a2230; --muted:#5a6577; --line:#d6dce6; --leaf:#4256c4; --leaf-ink:#ffffff; --leaf-soft:#e3e7fa; --accent:#8a45c2; --accent-ink:#ffffff; --sky:#6170c8; --tip-bg:#1a2230; --tip-fg:#ffffff;}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
@@ -2066,9 +2066,9 @@ function faceMark(b, X, Y, T){
 }
 
 // ---------- Square homeland map ----------
-// Everything in one tidy block, as close to square as your land allows: climate units on the corners (more along the
-// top and bottom edges), Woodland down the sides, and machines in rows facing each other across aisles with the
-// Farmland in between. Blocks keep a 1-tile walkway. Falls back to Clean grid when the block won't fit your land.
+// Everything in one ring, as close to square and as tight as your land allows: climate units on the corners, then
+// Mines, machines, Woodland and Farmland along the edges with fronts facing the empty middle, so workers walk the
+// courtyard. Falls back to Clean grid when the ring won't fit your land.
 function planHomelandSquare(real, openPlots, land, edge, things){
   const N=4*edge, GAP=1, own=(x,y)=>{ const px=Math.floor(x/edge), py=Math.floor(y/edge); return px>=0&&py>=0&&px<4&&py<4&&land[py*4+px]; };
   // owned tiles as a summed-area table, so "is this rectangle on my land" is one lookup
@@ -2090,59 +2090,67 @@ function planHomelandSquare(real, openPlots, land, edge, things){
   const asRow=t=>({t, w:Math.max(t.w,t.h), h:Math.min(t.w,t.h)});
   const plainB=things.filter(t=>!t.clim).map(asRow).sort((a,b)=>b.h-a.h || b.w-a.w || a.t.key.localeCompare(b.t.key));
   const climB=things.filter(t=>t.clim);
-  const corners=units.slice(0,4), extra=units.slice(4);
-  const topRow=[corners[0], ...extra.filter((_,i)=>i%2===0), corners[1]].filter(Boolean);
-  const botRow=[corners[2], ...extra.filter((_,i)=>i%2===1), corners[3]].filter(Boolean);
-  const rowW=l=>l.reduce((t,u)=>t+u.bb.w,0)+GAP*Math.max(0,l.length-1), rowH=l=>Math.max(0,...l.map(u=>u.bb.h));
-  // Machines in rows across width Wi: rows face each other in pairs across a 1-tile aisle
-  const machineRows=Wi=>{ const out=[]; let y=0, row=0, i=0;
-    while (i<plainB.length){ let x=0; const r=[];
-      while (i<plainB.length && x+plainB[i].w<=Wi+1e-9){ r.push({...plainB[i], x}); x+=plainB[i].w+0.5; i++; }
-      if (!r.length) return null;
-      const h=Math.max(...r.map(m=>m.h)), face=row%2?'up':'down';
-      for (const m of r) out.push({...m, y: face==='down' ? y+h-m.h : y, face});
-      y+=h+(row%2?GAP+0.5:GAP); row++; }
-    return {parts:out, h:out.length ? y-(row%2?GAP:GAP+0.5) : 0}; };
-  const build=W=>{
-    const tH=rowH(topRow), bH=rowH(botRow);
-    let best=null;
-    for (let nCol=0; nCol<=8; nCol++){
-      const lc=Math.ceil(nCol/2), rc=Math.floor(nCol/2), Wi=W-4*nCol-(lc?GAP:0)-(rc?GAP:0); if (Wi<6) break;
-      const M=machineRows(Wi); if (!M) continue;
-      const cols=Math.max(1,Math.floor(Wi/2)), fH=Math.ceil(farms.length/cols)*2;
-      const inner=M.h+(M.h&&fH?GAP:0)+fH;
-      const perCol=nCol ? Math.max(Math.floor(inner/4), Math.ceil(woods.length/nCol)) : 0;
-      const woodH=perCol*4, mH=Math.max(inner, woodH), rest=nCol ? Math.max(0, woods.length-perCol*nCol) : woods.length;
-      const stripRows=Math.ceil(rest/Math.max(1,Math.floor(W/4))), sH=stripRows*4;
-      const H=tH+(tH?GAP:0)+mH+(sH?GAP+sH:0)+(bH?GAP:0)+bH;
-      const sc=Math.max(W,H)*100+W*H/100;
-      if (!best || sc<best.sc) best={sc, W, H, nCol, lc, rc, Wi, M, cols, fH, mH, perCol, stripRows, tH, bH};
+  // Ring: up to four climate units on the corners, everything else along the edges in order (clockwise from the
+  // top), long side along the edge and fronts facing the empty middle. The smallest ring that holds it all wins.
+  const rotsOf=u=>{ const G=geomOf(u,'clean'); return [0,1,2,3].map(t=>{ const R=rotGeom(G,t), parts=[...R.cores,...R.plots,...(R.guests||[])].map(sq); return {R, bb:bboxOf([...parts,...R.ranges])}; }); };
+  const allRots=new Map(units.map(e=>[e.u, rotsOf(e.u)]));
+  const corners=units.slice(0,4), extraU=units.slice(4);
+  const mines=plainB.filter(m=>m.t.key==='mine'), others=plainB.filter(m=>m.t.key!=='mine');
+  // what goes along the edges: [{kind, group, a (along), d (depth), ...}]
+  const seq=[];
+  for (const e of extraU) seq.push({kind:'unit', group:'unit', e});
+  for (const m of [...mines, ...others]) seq.push({kind:'build', group:m.t.key==='mine'?'mine':'build', m, a:m.w, d:m.h});
+  for (const p of woods) seq.push({kind:'plot', group:'w:'+p.crop.id, p, a:4, d:4});
+  for (const p of farms) seq.push({kind:'plot', group:'f:'+p.crop.id, p, a:2, d:2});
+  const gapBetween=(x,y)=>!x ? 0 : (x.kind==='plot' && y.kind==='plot' && x.group===y.group) ? 0 : (x.kind==='unit'||y.kind==='unit'||x.group!==y.group) ? GAP : 0.5;
+  const DEF=9;                                           // depth of an edge next to an empty corner
+  const pack=(W,H)=>{
+    const c=[corners[0],corners[1],corners[2],corners[3]];   // TL, TR, BR, BL
+    const cw=i=>c[i]?c[i].bb.w:DEF, ch=i=>c[i]?c[i].bb.h:DEF;
+    if (cw(0)+GAP+cw(1)>W || cw(3)+GAP+cw(2)>W || ch(0)+GAP+ch(3)>H || ch(1)+GAP+ch(2)>H) return null;
+    const P={units:[], open:[], builds:[]};
+    const at=[[0,0],[W-cw(1),0],[W-cw(2),H-ch(2)],[0,H-ch(3)]];
+    c.forEach((e,i)=>{ if (e) P.units.push({u:e, ox:at[i][0]-e.bb.x, oy:at[i][1]-e.bb.y}); });
+    // edges: start, length and depth; side says where "outside" is
+    const E=[
+      {side:'top',    s:cw(0)+GAP, len:W-cw(0)-cw(1)-2*GAP, D:Math.min(ch(0),ch(1))},
+      {side:'right',  s:ch(1)+GAP, len:H-ch(1)-ch(2)-2*GAP, D:Math.min(cw(1),cw(2))},
+      {side:'bottom', s:cw(2)+GAP, len:W-cw(3)-cw(2)-2*GAP, D:Math.min(ch(2),ch(3))},
+      {side:'left',   s:ch(3)+GAP, len:H-ch(0)-ch(3)-2*GAP, D:Math.min(cw(0),cw(3))}];
+    let ei=0, pos=0, off=0, ld=0, prev=null;
+    const putAt=(it,a,d,rot)=>{ const ed=E[ei], o=off, p=ed.s+pos;
+      let x,y,w,h;
+      if (ed.side==='top'){ x=p; y=o; w=a; h=d; } else if (ed.side==='bottom'){ x=W-p-a; y=H-o-d; w=a; h=d; }
+      else if (ed.side==='right'){ x=W-o-d; y=p; w=d; h=a; } else { x=o; y=H-p-a; w=d; h=a; }
+      const face={top:'down', bottom:'up', left:'right', right:'left'}[ed.side];
+      if (it.kind==='build') P.builds.push({...it.m.t, w, h, x, y, face, inClimate:null});
+      else if (it.kind==='plot') P.open.push({x, y, s:a, p:it.p});
+      else { const r=rot; P.units.push({u:{u:it.e.u, R:r.R, bb:r.bb}, ox:x-r.bb.x, oy:y-r.bb.y}); } };
+    for (const it of seq){
+      let placed=false;
+      while (!placed && ei<E.length){
+        const ed=E[ei]; let a=it.a, d=it.d, rot=null;
+        if (it.kind==='unit'){   // the turn whose depth fits best
+          const want=(ed.side==='top'||ed.side==='bottom'), rs=allRots.get(it.e.u).map(r=>({r, a:want?r.bb.w:r.bb.h, d:want?r.bb.h:r.bb.w})).sort((p,q)=>p.d-q.d);
+          ({r:rot, a, d}=rs[0]); }
+        const g=gapBetween(prev,it);
+        if (ed.len>0 && pos+(pos?g:0)+a<=ed.len+1e-9 && off+d<=ed.D+1e-9){ if (pos) pos+=g; putAt(it,a,d,rot); pos+=a; ld=Math.max(ld,d); prev=it; placed=true; break; }
+        // new layer further in, or the next edge
+        if (pos>0 && off+ld+GAP+d<=ed.D+1e-9){ off+=ld+GAP; pos=0; ld=0; prev=null; continue; }
+        ei++; pos=0; off=0; ld=0; prev=null;
+      }
+      if (!placed) return null;
     }
-    return best; };
-  const minW=Math.max(rowW(topRow), rowW(botRow), 12, ...plainB.map(m=>m.w+8));
-  const layouts=[]; for (let W=Math.ceil(minW); W<=Math.min(N, minW+50); W++){ const L=build(W); if (L) layouts.push(L); }
-  layouts.sort((a,b)=>a.sc-b.sc);
-  // Lay one design out at the origin: returns every piece with its local position
-  const draw=L=>{ const P={units:[], open:[], builds:[]};
-    const row=(list,y0,h,bottom)=>{ if (!list.length) return;
-      const xs=[]; let x=0; for (const u of list){ xs.push(x); x+=u.bb.w+GAP; }
-      if (list.length>=2) xs[xs.length-1]=L.W-list[list.length-1].bb.w;                   // last one on the right corner
-      list.forEach((u,i)=>P.units.push({u, ox:xs[i]-u.bb.x, oy:(bottom? y0+h-u.bb.h : y0)-u.bb.y})); };
-    row(topRow, 0, L.tH, false);
-    let y=L.tH+(L.tH?GAP:0);
-    let wi=0; const colX=[]; for (let c=0;c<L.lc;c++) colX.push(c*4); for (let c=0;c<L.rc;c++) colX.push(L.W-4*(c+1));
-    for (const cx of colX) for (let r=0;r<L.perCol && wi<woods.length;r++) P.open.push({x:cx, y:y+r*4, s:4, p:woods[wi++]});
-    const x0=L.lc*4+(L.lc?GAP:0);
-    for (const m of L.M.parts) P.builds.push({...m.t, w:m.w, h:m.h, x:x0+m.x, y:y+m.y, face:m.face, inClimate:null});
-    let fy=y+L.M.h+(L.M.h&&L.fH?GAP:0);
-    farms.forEach((p,i)=>P.open.push({x:x0+(i%L.cols)*2, y:fy+Math.floor(i/L.cols)*2, s:2, p}));
-    y+=L.mH;
-    if (wi<woods.length){ y+=GAP; const per=Math.max(1,Math.floor(L.W/4)); let i=0; while (wi<woods.length){ P.open.push({x:(i%per)*4, y:y+Math.floor(i/per)*4, s:4, p:woods[wi++]}); i++; } y+=L.stripRows*4; }
-    row(botRow, y+(L.bH?GAP:0), L.bH, true);
     return P; };
+  const minW=Math.max(12,...corners.map(e=>e.bb.w*2+GAP)), minH=Math.max(12,...corners.map(e=>e.bb.h*2+GAP));
+  const designs=[];
+  for (let W=Math.ceil(minW); W<=N; W++) for (let H=Math.ceil(minH); H<=N; H++){
+    if (designs.length>=40 && W*H>designs[designs.length-1].area) continue;
+    const P=pack(W,H); if (!P) continue;
+    P.area=W*H*(1+0.25*Math.abs(W-H)/Math.max(W,H)); designs.push(P); designs.sort((a,b)=>a.area-b.area); if (designs.length>40) designs.pop(); }
   // Place the block on your land, as near the middle of it as fits
-  for (const L of layouts.slice(0,12)){
-    const P=draw(L), rects=[];
+  for (const P of designs){
+    const rects=[];
     for (const e of P.units){ const R=e.u.R; for (const q of [...R.cores,...R.plots,...(R.guests||[])]) rects.push({x:q.x+e.ox,y:q.y+e.oy,w:q.s,h:q.s}); }
     for (const q of P.open) rects.push({x:q.x,y:q.y,w:q.s,h:q.s});
     for (const b of P.builds) rects.push({x:b.x,y:b.y,w:b.w,h:b.h});
