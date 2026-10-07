@@ -44,6 +44,7 @@
   --j-artisanship:#959df2; --j-perfumery:#d590d6; --j-leisure:#f27fb0; --j-hauling:#a3ada8;
   color-scheme:dark; }
 /* Themes: each sets the base colours; data-theme (light/dark) picks the matching crop and element colours */
+:root[data-skin="lagoon"]{--bg:#061417; --panel:#0b1f24; --sunk:#08191d; --ink:#e0f8fb; --muted:#8db5bb; --line:#1b3a41; --leaf:#22d3ee; --leaf-ink:#021a1f; --leaf-soft:#0d3942; --accent:#67e8f9; --accent-ink:#03222a; --sky:#22d3ee; --tip-bg:#e0f8fb; --tip-fg:#061417;}
 :root[data-skin="midnight"]{--bg:#000000; --panel:#0c0c0e; --sunk:#060607; --ink:#ededee; --muted:#9b9ba1; --line:#232327; --leaf:#e6e6e9; --leaf-ink:#0c0c0e; --leaf-soft:#1c1c20; --accent:#5aa9ff; --accent-ink:#00111f; --sky:#5aa9ff; --tip-bg:#ededee; --tip-fg:#000000;}
 :root[data-skin="aurora"]{--bg:#0d1020; --panel:#151a2e; --sunk:#111528; --ink:#e7ebff; --muted:#9da3c4; --line:#2a3050; --leaf:#6fdcc9; --leaf-ink:#06201b; --leaf-soft:#173a3a; --accent:#d79bff; --accent-ink:#220a33; --sky:#6fdcc9; --tip-bg:#e7ebff; --tip-fg:#0d1020;}
 :root[data-skin="ember"]{--bg:#14110f; --panel:#1d1916; --sunk:#181411; --ink:#f2e9e1; --muted:#b3a596; --line:#362e28; --leaf:#ffb27a; --leaf-ink:#2a1404; --leaf-soft:#3a2618; --accent:#ff8f87; --accent-ink:#2b0907; --sky:#ffb27a; --tip-bg:#f2e9e1; --tip-fg:#14110f;}
@@ -280,7 +281,7 @@ button.an.on::before{content:"✓ "}
 @media (max-width:520px){ .bar{grid-template-columns:78px minmax(0,1fr) 80px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
 </style>
-<script>window.SKINS={"aurora": ["dark", "Aurora"], "midnight": ["dark", "Midnight"], "ember": ["dark", "Ember"], "paper": ["light", "Paper"], "daylight": ["light", "Daylight"]};(function(){ var k='aurora'; try{ k=localStorage.getItem('hfp-skin')||'aurora'; }catch(e){} if(!SKINS[k]) k='aurora';
+<script>window.SKINS={"aurora": ["dark", "Aurora"], "midnight": ["dark", "Midnight"], "lagoon": ["dark", "Lagoon"], "ember": ["dark", "Ember"], "paper": ["light", "Paper"], "daylight": ["light", "Daylight"]};(function(){ var k='aurora'; try{ k=localStorage.getItem('hfp-skin')||'aurora'; }catch(e){} if(!SKINS[k]) k='aurora';
   document.documentElement.setAttribute('data-skin', k); document.documentElement.setAttribute('data-theme', SKINS[k][0]); })();</script>
 
 </head><body>
@@ -359,23 +360,6 @@ button.an.on::before{content:"✓ "}
         <details>
           <summary>Allowed on leftover ground <span id="fillCount" class="pill"></span></summary>
           <div class="in" id="fillChips"></div>
-        </details>
-        <details id="customBox">
-          <summary>Add your own crop <i class="tip" tabindex="0" data-tip="For a crop the list doesn't have yet. Copy the numbers from its recipe screen in game.">?</i></summary>
-          <div class="in">
-            <div class="grid">
-              <label class="f"><span>Name</span><input type="text" id="cName" placeholder="Pumpkin"></label>
-              <label class="f"><span>Grows on</span><select id="cKind"><option value="farm">Farmland</option><option value="wood">Woodland</option></select></label>
-              <label class="f"><span>Facility level</span><select id="cLvl"></select></label>
-              <label class="f"><span>Needs</span><select id="cNeed"><option value="0">Nothing</option><option value="1">Warm</option><option value="2">Scorching</option><option value="-1">Cool</option><option value="-2">Freeze</option><option value="L">Sunlamp</option></select></label>
-              <label class="f"><span>Per seed</span><input type="number" id="cYield" min="1" value="6"></label>
-              <label class="f"><span>Wood Blocks</span><input type="number" id="cWood" min="0" value="0"></label>
-              <label class="f"><span>Sell each</span><input type="number" id="cPrice" min="0" value="100"></label>
-              <label class="f"><span>Seed price</span><input type="number" id="cSeed" min="0" value="40"></label>
-              <label class="f"><span>Grow minutes</span><input type="number" id="cTime" min="1" step="0.1" value="40"></label>
-            </div>
-            <div class="actions"><button type="button" class="primary" id="saveCustom">Save crop</button><span id="customList" class="actions"></span></div>
-          </div>
         </details>
       </section>
 
@@ -1352,8 +1336,8 @@ function cleanState(raw){
     const kind=c.kind==='wood'?'wood':'farm', light=!!c.light;
     custom.push({id, name, custom:true, kind, lvl:Math.round(nb(c.lvl,1,kind==='wood'?6:7,1)), eco:0, yield:nb(c.yield,1,1e4,1), price:nb(c.price,0,1e6,0),
       seed:nb(c.seed,0,1e6,0), base:nb(c.base,1,1e4,40), temp:light?0:Math.round(nb(c.temp,-2,2,0)), light, wood:kind==='wood'?Math.round(nb(c.wood,0,1e4,0)):0, jobs:'EGD'}); }
-  st.custom=custom;
-  const ids=new Set([...CROPS.map(c=>c.id), ...custom.map(c=>c.id)]);
+  st.custom=[];   // custom crops were removed; old saves drop theirs
+  const ids=new Set(CROPS.map(c=>c.id));
   if (Array.isArray(d.requests)) st.requests=arr(d.requests,60).filter(r=>r&&ids.has(r.id)).map(r=>({id:r.id, plots:Math.round(nb(r.plots,1,40,1))}));
   st.noFill=arr(d.noFill,100).filter(x=>ids.has(x));
   if (Array.isArray(d.products)) st.products=arr(d.products,40).filter(w=>w&&PRODUCT_NAMES.includes(w.n)).map(w=>({n:w.n, amt:nb(w.amt,0,1e6,1), unit:['h','d','p'].includes(w.unit)?w.unit:'h'}));
@@ -1388,7 +1372,7 @@ function buildSelects(){
   fillSelect('hours', [0,0.5,1,2,3,4,6,8,12,24], h=>h===0?'Always on':h+' h');
   fillSelect('capSmall', range(1,24)); fillSelect('capCool', range(1,32));
   fillSelect('session', [1,2,4,6,8,12,24,48,72], h=>h+' h');
-  fillSelect('cLvl', range(1,7), l=>'Lv '+l);
+  
   for (const [k,n] of [['kitchen',7],['crafting',7],['detector',8]]) fillSelect(k, range(0,n), l=>l?'Lv '+l+(rv<MODULE_RV[k][l]?' · RV '+MODULE_RV[k][l]:''):'None');
 }
 const DEFAULTS = {hours:'0', capSmall:'24', capCool:'32', session:'8', rv:'12'};
@@ -1502,11 +1486,6 @@ function renderFillChips(){
     box.appendChild(wrap);
   }
   $('fillCount').textContent=on+' of '+all;
-}
-function renderCustomList(){
-  const box=$('customList'); box.innerHTML='';
-  state.custom.forEach((c,i)=>{ const b=document.createElement('button'); b.type='button'; b.textContent=c.name+' ✕'; b.setAttribute('aria-label','Delete '+c.name);
-    b.onclick=()=>{ state.custom.splice(i,1); state.requests=state.requests.filter(r=>r.id!==c.id); refreshInputs(); markDirty(); }; box.appendChild(b); });
 }
 
 // ---------- Item rows ----------
@@ -1764,7 +1743,7 @@ const ovArea = (a,b) => Math.max(0,Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x))*
 const within = (a,R) => a.x >= R.x-1e-9 && a.y >= R.y-1e-9 && a.x+a.w <= R.x+R.w+1e-9 && a.y+a.h <= R.y+R.h+1e-9;
 
 function planHomeland(real, openPlots, style, land, edge, things=[]){
-  if (style==='grid') return planHomelandGrid(real, openPlots, land, edge, things);
+  if (style==='square') return planHomelandSquare(real, openPlots, land, edge, things);
   if (style!=='packed') return planHomelandClean(real, openPlots, land, edge, things);
   const N=4*edge, own=(x,y)=>{ const px=Math.floor(x/edge), py=Math.floor(y/edge); return px>=0&&py>=0&&px<4&&py<4&&land[py*4+px]; };
   // A rect sits fully on owned land
@@ -1846,39 +1825,54 @@ function planHomeland(real, openPlots, style, land, edge, things=[]){
   }
   // Tidy-up: take each building out, farthest first, and put it back nearer the middle, either way round. If the
   // spot it wants is blocked by one other machine, try nudging that one to its own nearest free spot; keep the swap
-  // when the two together end up closer. Repeats while anything improves.
+  // when the two together end up closer. Repeats while anything improves. Uses a quarter-tile grid of who is where.
   const dist=r=>Math.hypot(r.x+r.w/2-ax, r.y+r.h/2-ay);
   const spots=(w,h)=>bc[w+'x'+h]||(bc[w+'x'+h]=(()=>{ const out=[]; for (let x=0; x+w<=N; x+=bstep) for (let y=0; y+h<=N; y+=bstep) out.push([x,y,Math.hypot(x+w/2-ax,y+h/2-ay)]); return out.sort((a,b)=>a[2]-b[2]); })());
   const turns=b=>b.w===b.h ? [[b.w,b.h]] : [[b.w,b.h],[b.h,b.w]];
+  const Q=4, MQ=N*Q, cell=new Int32Array(MQ*MQ), rectOf=[null], idOf=new Map();
+  const span=r=>[Math.max(0,Math.round(r.x*Q)), Math.max(0,Math.round(r.y*Q)), Math.min(MQ,Math.round((r.x+r.w)*Q)), Math.min(MQ,Math.round((r.y+r.h)*Q))];
+  const mark=(r,v)=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) cell.fill(v, y*MQ+x0, y*MQ+x1); };
+  const put=r=>{ const id=rectOf.length; rectOf.push(r); idOf.set(r,id); mark(r,id); }, take=r=>{ mark(r,0); idOf.delete(r); };
+  for (const r of solid) put(r);
+  const who=(r,stopAt2)=>{ const [x0,y0,x1,y1]=span(r), seen=new Set();
+    for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++){ const c=cell[y*MQ+x]; if (c && !seen.has(c)){ seen.add(c); if (stopAt2 && seen.size>1) return seen; } }
+    return seen; };
+  const LS=new Int32Array((N+1)*(N+1)); for (let y=0;y<N;y++) for (let x=0;x<N;x++) LS[(y+1)*(N+1)+x+1]=(own(x,y)?1:0)+LS[y*(N+1)+x+1]+LS[(y+1)*(N+1)+x]-LS[y*(N+1)+x];
+  const landOK=r=>{ const x0=Math.floor(r.x), y0=Math.floor(r.y), x1=Math.ceil(r.x+r.w-1e-9), y1=Math.ceil(r.y+r.h-1e-9);
+    if (x0<0||y0<0||x1>N||y1>N) return false; return LS[y1*(N+1)+x1]-LS[y0*(N+1)+x1]-LS[y1*(N+1)+x0]+LS[y0*(N+1)+x0]===(x1-x0)*(y1-y0); };
   const owner=new Map(builds.filter(b=>b.inClimate===null).map(b=>[b._r,b]));
-  const free=(r,skip)=>onLand(r) && !solid.some(q=>hit(r,q)) && !(skip && hit(r,skip));
+  const occ=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (cell[y*MQ+x]) return true; return false; };
+  const free=(r,skip)=>!(skip && hit(r,skip)) && landOK(r) && !occ(r);
   const nearestFree=(b,limit,skip)=>{ let best=null;
     for (const [w,h] of turns(b)) for (const [x,y,d] of spots(w,h)){ if (d>=limit || (best && d>=best.d)) break;
       const r={x,y,w,h}; if (free(r,skip)){ best={r,d}; break; } }
     return best; };
   const setR=(b,r)=>{ owner.delete(b._r); b._r=r; b.x=r.x; b.y=r.y; b.w=r.w; b.h=r.h; owner.set(r,b); };
-  for (let pass=0; pass<(window.HFP_TIDY??6); pass++){ let moved=false;
+  const t0=Date.now();                                  // a time limit keeps very large plans quick
+  for (let pass=0; pass<(window.HFP_TIDY??6) && Date.now()-t0<600; pass++){ let moved=false;
     for (const A of builds.filter(b=>b.inClimate===null).sort((p,q)=>dist(q._r)-dist(p._r))){
-      const dA=dist(A._r); solid.splice(solid.indexOf(A._r),1);
+      if (Date.now()-t0>600) break;
+      const dA=dist(A._r); take(A._r);
       let done=null, gain=0;
-      const one=nearestFree(A, dA-0.25); if (one){ gain=dA-one.d; done=()=>{ solid.push(one.r); setR(A,one.r); }; }
+      const one=nearestFree(A, dA-0.25); if (one){ gain=dA-one.d; done=()=>{ put(one.r); setR(A,one.r); }; }
       // one blocker: nudge it out of the way if that's a net gain
       let tries=0;
       for (const [w,h] of turns(A)) for (const [x,y,d] of spots(w,h)){
-        if (d>=dA-0.25 || tries>400 || (one && d>=one.d)) break;
-        const r={x,y,w,h}; if (!onLand(r)) continue;
-        const bl=solid.filter(q=>hit(r,q)); if (bl.length!==1 || !owner.has(bl[0])) continue;
+        if (d>=dA-0.25 || tries>150 || (one && d>=one.d)) break;
+        const r={x,y,w,h}; if (!landOK(r)) continue;
+        const bl=[...who(r,true)]; if (bl.length!==1 || !owner.has(rectOf[bl[0]])) continue;
         tries++;
-        const B=owner.get(bl[0]), dB=dist(B._r); solid.splice(solid.indexOf(B._r),1);
-        const nb=nearestFree(B, Infinity, r);
+        const Br=rectOf[bl[0]], B=owner.get(Br), dB=dist(Br); take(Br);
+        const nb=nearestFree(B, dB+(dA-d)-0.5, r);        // only spots that still leave a gain
         const g=nb ? (dA-d)-(nb.d-dB) : 0;
-        if (nb && g>0.5 && g>gain){ gain=g; const rb=nb.r; done=()=>{ solid.splice(solid.indexOf(B._r),1); solid.push(rb, r); setR(B,rb); setR(A,r); }; solid.push(B._r); break; }
-        solid.push(B._r);
+        put(Br);
+        if (nb && g>0.5 && g>gain){ gain=g; const rb=nb.r; done=()=>{ take(B._r); put(rb); put(r); setR(B,rb); setR(A,r); }; break; }
       }
-      if (done){ done(); moved=true; } else solid.push(A._r);
+      if (done){ done(); moved=true; } else put(A._r);
     }
     if (!moved) break;
   }
+  solid.length=0; for (const [r] of idOf) solid.push(r);
   for (const b of builds) delete b._r;
   return addFacing({placed, open, unplaced, openLeft, N, builds, missed, ax, ay});
 }
@@ -2071,119 +2065,120 @@ function faceMark(b, X, Y, T){
   return `<polygon points="${pts.map(p=>p.join(',')).join(' ')}" fill="var(${jobVar(b.job)})"><title>Front faces ${b.face}</title></polygon>`;
 }
 
-// ---------- Grid homeland map ----------
-// Each 15x15 land plot is one module with one job (a climate unit, a field, the Mines, the workshop...),
-// centred in its plot so the plot borders become straight paths. Jobs nearest the middle of your land go first.
-function planHomelandGrid(real, openPlots, land, edge, things){
-  const N=4*edge, M=0.5, IN=edge-2*M;              // usable inside a plot: half a tile kept free on each side
-  const own=(x,y)=>{ const px=Math.floor(x/edge), py=Math.floor(y/edge); return px>=0&&py>=0&&px<4&&py<4&&land[py*4+px]; };
+// ---------- Square homeland map ----------
+// Everything in one tidy block, as close to square as your land allows: climate units on the corners (more along the
+// top and bottom edges), Woodland down the sides, and machines in rows facing each other across aisles with the
+// Farmland in between. Blocks keep a 1-tile walkway. Falls back to Clean grid when the block won't fit your land.
+function planHomelandSquare(real, openPlots, land, edge, things){
+  const N=4*edge, GAP=1, own=(x,y)=>{ const px=Math.floor(x/edge), py=Math.floor(y/edge); return px>=0&&py>=0&&px<4&&py<4&&land[py*4+px]; };
+  // owned tiles as a summed-area table, so "is this rectangle on my land" is one lookup
+  const S=new Int32Array((N+1)*(N+1)); for (let y=0;y<N;y++) for (let x=0;x<N;x++) S[(y+1)*(N+1)+x+1]=(own(x,y)?1:0)+S[y*(N+1)+x+1]+S[(y+1)*(N+1)+x]-S[y*(N+1)+x];
+  const onLand=r=>{ const x0=Math.floor(r.x), y0=Math.floor(r.y), x1=Math.ceil(r.x+r.w), y1=Math.ceil(r.y+r.h);
+    if (x0<0||y0<0||x1>N||y1>N) return false; return S[y1*(N+1)+x1]-S[y0*(N+1)+x1]-S[y1*(N+1)+x0]+S[y0*(N+1)+x0]===(x1-x0)*(y1-y0); };
   let ax=0, ay=0, k=0; for (let i=0;i<16;i++) if (land[i]){ ax+=(i%4+.5)*edge; ay+=(Math.floor(i/4)+.5)*edge; k++; }
-  if (!k) return {placed:[], open:[], unplaced:real.length, openLeft:openPlots.reduce((s,p)=>s+p.plots,0), N, builds:[], missed:things.slice(), grid:true};
+  if (!k) return {placed:[], open:[], unplaced:real.length, openLeft:openPlots.reduce((s,p)=>s+p.plots,0), N, builds:[], missed:things.slice()};
   ax/=k; ay/=k;
-  const cells=[]; for (let i=0;i<16;i++) if (land[i]) cells.push({i, cx:i%4, cy:Math.floor(i/4), d:Math.hypot((i%4+.5)*edge-ax,(Math.floor(i/4)+.5)*edge-ay)});
-  cells.sort((a,b)=>a.d-b.d);
-  const free=new Set(cells.map(c=>c.i)), solid=[], ranges=[];
   const bboxOf=rs=>{ let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; for (const r of rs){ x0=Math.min(x0,r.x); y0=Math.min(y0,r.y); x1=Math.max(x1,r.x+r.w); y1=Math.max(y1,r.y+r.h); } return {x:x0,y:y0,w:x1-x0,h:y1-y0}; };
-  // Claim a w x h block of free plots (nearest the middle) and centre content of size cw x ch in it
-  const claim=(cw,ch)=>{
-    const wc=cw<=edge?1:Math.ceil((cw+2*M)/edge), hc=ch<=edge?1:Math.ceil((ch+2*M)/edge);   // a full 15-tile unit still takes one plot
-    let best=null;
-    for (const c of cells){ if (c.cx+wc>4 || c.cy+hc>4) continue; const ids=[];
-      for (let dx=0;dx<wc;dx++) for (let dy=0;dy<hc;dy++) ids.push((c.cy+dy)*4+c.cx+dx);
-      if (!ids.every(i=>free.has(i))) continue;
-      const mx=(c.cx+wc/2)*edge, my=(c.cy+hc/2)*edge, d=Math.hypot(mx-ax,my-ay);
-      if (!best || d<best.d) best={ids, d, x:c.cx*edge, y:c.cy*edge, w:wc*edge, h:hc*edge}; }
-    return best;
-  };
-  const commit=(cl)=>cl.ids.forEach(i=>free.delete(i));
-  // Units and pairs: smallest-footprint turn, centred on whole tiles
-  const placed=[]; let unplaced=0;
-  const order=real.map(u=>({u, G:geomOf(u,'clean')})).sort((a,b)=>(b.G.cores.length-a.G.cores.length)||(b.G.plots.length-a.G.plots.length));
-  for (const {u,G} of order){
-    let done=false;
-    const rots=[0,1,2,3].map(kk=>rotGeom(G,kk)).map(R=>{ const parts=[...R.cores.map(q=>({x:q.x,y:q.y,w:q.s,h:q.s})), ...R.plots.map(q=>({x:q.x,y:q.y,w:q.s,h:q.s})), ...(R.guests||[]).map(q=>({x:q.x,y:q.y,w:q.s,h:q.s}))];
-      const bb=bboxOf(parts); return {R, parts, bb}; })   // physical footprint; ranges are checked against neighbours below
-      .sort((a,b)=>Math.max(a.bb.w,a.bb.h)-Math.max(b.bb.w,b.bb.h) || a.bb.w*a.bb.h-b.bb.w*b.bb.h);
-    for (const {R,bb} of rots){
-      const cl=claim(bb.w,bb.h); if (!cl) continue;
-      const ox=Math.round(cl.x+(cl.w-bb.w)/2-bb.x), oy=Math.round(cl.y+(cl.h-bb.h)/2-bb.y);
-      const cores=R.cores.map(q=>({...q,x:q.x+ox,y:q.y+oy})), plots=R.plots.map(q=>({...q,x:q.x+ox,y:q.y+oy})), rr=R.ranges.map(q=>({...q,x:q.x+ox,y:q.y+oy}));
-      const gsts=(R.guests||[]).map(q=>({...q,x:q.x+ox,y:q.y+oy}));
-      const all=[...cores,...plots,...gsts].map(q=>({x:q.x,y:q.y,w:q.s,h:q.s}));
-      if (all.some(q=>solid.some(r=>hit(q,r)) || ranges.some(r=>hit(q,r))) || rr.some(r=>solid.some(q=>hit(r,q)))) continue;
-      commit(cl); solid.push(...all); ranges.push(...rr); placed.push({u, cores, ranges:rr, plots, guests:gsts}); done=true; break;
-    }
-    if (!done) unplaced++;
-  }
-  // Fill one plot with rows of items (each row facing the next across a 1-tile aisle); returns parts and what didn't fit
-  const fillRows=(items, rowW, rowH0)=>{
-    const parts=[]; let y=0, row=0, i=0;
-    while (i<items.length){
-      let x=0; const rowItems=[];
-      while (i<items.length && x+items[i].w<=rowW+1e-9){ rowItems.push({...items[i], x}); x+=items[i].w+0.5; i++; }
-      if (!rowItems.length) break;
-      const h=Math.max(...rowItems.map(r=>r.h)), face=row%2?'up':'down';
-      if (y+h>rowH0+1e-9){ i-=rowItems.length; break; }
-      for (const r of rowItems) parts.push({...r, y: face==='down' ? y+h-r.h : y, face});
-      y+=h+(row%2?1:1); row++;
-    }
-    return {parts, rest:items.slice(i)};
-  };
-  const builds=[], missed=[];
-  const placeModule=(items)=>{                         // items: [{t,w,h}] → one plot after another
-    let left=items.slice();
-    while (left.length){
-      const cl=claim(IN,IN); if (!cl){ missed.push(...left.map(m=>m.t)); break; }
-      const {parts, rest}=fillRows(left, IN, IN);
-      if (!parts.length){ missed.push(...left.map(m=>m.t)); break; }
-      const bb=bboxOf(parts), ox=cl.x+(cl.w-bb.w)/2-bb.x, oy=cl.y+(cl.h-bb.h)/2-bb.y;
-      const ps=parts.map(p=>({...p, x:Math.round((p.x+ox)*2)/2, y:Math.round((p.y+oy)*2)/2}));
-      if (ps.some(q=>solid.some(r=>hit(q,r)) || ranges.some(r=>hit(q,r)))){ missed.push(...left.map(m=>m.t)); break; }
-      commit(cl); solid.push(...ps);
-      for (const p of ps) builds.push({...p.t, w:p.w, h:p.h, x:p.x, y:p.y, inClimate:null, face:p.face});
-      left=rest;
-    }
-  };
+  const sq=q=>({x:q.x,y:q.y,w:q.s,h:q.s});
+  // Units: the turn with the smallest footprint (plots, hosted building and range together), wider than tall
+  const units=real.map(u=>{ const G=geomOf(u,'clean'); let best=null;
+    for (let t=0;t<4;t++){ const R=rotGeom(G,t), parts=[...R.cores,...R.plots,...(R.guests||[])].map(sq), bb=bboxOf([...parts,...R.ranges]);
+      const sc=bb.w*bb.h*1000+(bb.w>=bb.h?0:1); if (!best || sc<best.sc) best={u,R,bb,sc}; }
+    return best; }).sort((a,b)=>b.bb.w*b.bb.h-a.bb.w*a.bb.h);
+  const woods=[], farms=[];
+  for (const p of openPlots.slice().sort((a,b)=>a.crop.id.localeCompare(b.crop.id))) for (let i=0;i<p.plots;i++) (p.crop.kind==='wood'?woods:farms).push(p);
   const asRow=t=>({t, w:Math.max(t.w,t.h), h:Math.min(t.w,t.h)});
-  const plain=things.filter(t=>!t.clim), mines=plain.filter(t=>t.key==='mine');
-  const big=plain.filter(t=>t.key!=='mine' && t.w*t.h>9).sort((a,b)=>a.key.localeCompare(b.key));
-  const small=plain.filter(t=>t.w*t.h<=9).sort((a,b)=>a.key.localeCompare(b.key));
-  if (mines.length) placeModule(mines.map(asRow));
-  if (big.length) placeModule([...big.map(asRow), ...small.map(asRow)]); else if (small.length) placeModule(small.map(asRow));
-  // Climate buildings: inside a matching range if there is room in that unit's plot, else with the workshop
-  for (const one of things.filter(t=>t.clim)){
-    const want=CLIM_ZONE[one.clim], okR=ranges.filter(r=>r.zk===want); let got=null;
-    { let bo=0; for (const R of okR) for (let x=Math.floor(R.x-one.w+1); x<R.x+R.w; x+=0.5) for (let y=Math.floor(R.y-one.h+1); y<R.y+R.h; y+=0.5){
-      const r={x,y,w:one.w,h:one.h}; if (!own(x,y)||!own(x+one.w-0.01,y+one.h-0.01)||!own(x+one.w-0.01,y)||!own(x,y+one.h-0.01)) continue;
-      const inR=ranges.filter(q=>hit(r,q)); if (inR.length!==1 || inR[0]!==R || solid.some(q=>hit(r,q))) continue;
-      const ov=ovArea(r,R); if (ov>bo+1e-9){ bo=ov; got=r; } } }
-    if (got){ solid.push(got); builds.push({...one, x:got.x, y:got.y, inClimate:true}); continue; }
-    if (want==='lamp'){ missed.push(one); continue; }
-    placeModule([asRow(one)]); const b=builds[builds.length-1]; if (b && b.key===one.key) b.inClimate=false;
-  }
-  // Open-ground crops: field plots in tidy rows, Woodland rows first, one crop after another
-  const open=[]; let openLeft=0;
-  const list=[]; for (const p of openPlots.slice().sort((a,b)=>(b.crop.kind==='wood')-(a.crop.kind==='wood'))) for (let i=0;i<p.plots;i++) list.push(p);
-  let li=0;
-  while (li<list.length){
-    const cl=claim(IN,IN); if (!cl){ openLeft+=list.length-li; break; }
-    commit(cl); const FI=edge-2, x0=cl.x+1, y0=cl.y+1, cellParts=[]; let y=0;
-    while (li<list.length && y<FI){
-      const s=list[li].crop.kind==='wood'?4:2, per=Math.floor(FI/s); if (y+s>FI+1e-9) break;
-      const rowW=Math.min(per, list.slice(li).filter((q,j)=>j<per && (q.crop.kind==='wood'?4:2)===s).length)*s, xs=x0+Math.floor((FI-rowW)/2);
-      let x=0; while (li<list.length && x+s<=rowW && (list[li].crop.kind==='wood'?4:2)===s){ cellParts.push({x:xs+x, y:y0+y, s, p:list[li]}); li++; x+=s; }
-      y+=s;
+  const plainB=things.filter(t=>!t.clim).map(asRow).sort((a,b)=>b.h-a.h || b.w-a.w || a.t.key.localeCompare(b.t.key));
+  const climB=things.filter(t=>t.clim);
+  const corners=units.slice(0,4), extra=units.slice(4);
+  const topRow=[corners[0], ...extra.filter((_,i)=>i%2===0), corners[1]].filter(Boolean);
+  const botRow=[corners[2], ...extra.filter((_,i)=>i%2===1), corners[3]].filter(Boolean);
+  const rowW=l=>l.reduce((t,u)=>t+u.bb.w,0)+GAP*Math.max(0,l.length-1), rowH=l=>Math.max(0,...l.map(u=>u.bb.h));
+  // Machines in rows across width Wi: rows face each other in pairs across a 1-tile aisle
+  const machineRows=Wi=>{ const out=[]; let y=0, row=0, i=0;
+    while (i<plainB.length){ let x=0; const r=[];
+      while (i<plainB.length && x+plainB[i].w<=Wi+1e-9){ r.push({...plainB[i], x}); x+=plainB[i].w+0.5; i++; }
+      if (!r.length) return null;
+      const h=Math.max(...r.map(m=>m.h)), face=row%2?'up':'down';
+      for (const m of r) out.push({...m, y: face==='down' ? y+h-m.h : y, face});
+      y+=h+(row%2?GAP+0.5:GAP); row++; }
+    return {parts:out, h:out.length ? y-(row%2?GAP:GAP+0.5) : 0}; };
+  const build=W=>{
+    const tH=rowH(topRow), bH=rowH(botRow);
+    let best=null;
+    for (let nCol=0; nCol<=8; nCol++){
+      const lc=Math.ceil(nCol/2), rc=Math.floor(nCol/2), Wi=W-4*nCol-(lc?GAP:0)-(rc?GAP:0); if (Wi<6) break;
+      const M=machineRows(Wi); if (!M) continue;
+      const cols=Math.max(1,Math.floor(Wi/2)), fH=Math.ceil(farms.length/cols)*2;
+      const inner=M.h+(M.h&&fH?GAP:0)+fH;
+      const perCol=nCol ? Math.max(Math.floor(inner/4), Math.ceil(woods.length/nCol)) : 0;
+      const woodH=perCol*4, mH=Math.max(inner, woodH), rest=nCol ? Math.max(0, woods.length-perCol*nCol) : woods.length;
+      const stripRows=Math.ceil(rest/Math.max(1,Math.floor(W/4))), sH=stripRows*4;
+      const H=tH+(tH?GAP:0)+mH+(sH?GAP+sH:0)+(bH?GAP:0)+bH;
+      const sc=Math.max(W,H)*100+W*H/100;
+      if (!best || sc<best.sc) best={sc, W, H, nCol, lc, rc, Wi, M, cols, fH, mH, perCol, stripRows, tH, bH};
     }
-    const dy=Math.floor((FI-y)/2);                     // centre the rows in the plot
-    for (const c of cellParts){ c.y+=dy; solid.push({x:c.x,y:c.y,w:c.s,h:c.s}); open.push(c); }
+    return best; };
+  const minW=Math.max(rowW(topRow), rowW(botRow), 12, ...plainB.map(m=>m.w+8));
+  const layouts=[]; for (let W=Math.ceil(minW); W<=Math.min(N, minW+50); W++){ const L=build(W); if (L) layouts.push(L); }
+  layouts.sort((a,b)=>a.sc-b.sc);
+  // Lay one design out at the origin: returns every piece with its local position
+  const draw=L=>{ const P={units:[], open:[], builds:[]};
+    const row=(list,y0,h,bottom)=>{ if (!list.length) return;
+      const xs=[]; let x=0; for (const u of list){ xs.push(x); x+=u.bb.w+GAP; }
+      if (list.length>=2) xs[xs.length-1]=L.W-list[list.length-1].bb.w;                   // last one on the right corner
+      list.forEach((u,i)=>P.units.push({u, ox:xs[i]-u.bb.x, oy:(bottom? y0+h-u.bb.h : y0)-u.bb.y})); };
+    row(topRow, 0, L.tH, false);
+    let y=L.tH+(L.tH?GAP:0);
+    let wi=0; const colX=[]; for (let c=0;c<L.lc;c++) colX.push(c*4); for (let c=0;c<L.rc;c++) colX.push(L.W-4*(c+1));
+    for (const cx of colX) for (let r=0;r<L.perCol && wi<woods.length;r++) P.open.push({x:cx, y:y+r*4, s:4, p:woods[wi++]});
+    const x0=L.lc*4+(L.lc?GAP:0);
+    for (const m of L.M.parts) P.builds.push({...m.t, w:m.w, h:m.h, x:x0+m.x, y:y+m.y, face:m.face, inClimate:null});
+    let fy=y+L.M.h+(L.M.h&&L.fH?GAP:0);
+    farms.forEach((p,i)=>P.open.push({x:x0+(i%L.cols)*2, y:fy+Math.floor(i/L.cols)*2, s:2, p}));
+    y+=L.mH;
+    if (wi<woods.length){ y+=GAP; const per=Math.max(1,Math.floor(L.W/4)); let i=0; while (wi<woods.length){ P.open.push({x:(i%per)*4, y:y+Math.floor(i/per)*4, s:4, p:woods[wi++]}); i++; } y+=L.stripRows*4; }
+    row(botRow, y+(L.bH?GAP:0), L.bH, true);
+    return P; };
+  // Place the block on your land, as near the middle of it as fits
+  for (const L of layouts.slice(0,12)){
+    const P=draw(L), rects=[];
+    for (const e of P.units){ const R=e.u.R; for (const q of [...R.cores,...R.plots,...(R.guests||[])]) rects.push({x:q.x+e.ox,y:q.y+e.oy,w:q.s,h:q.s}); }
+    for (const q of P.open) rects.push({x:q.x,y:q.y,w:q.s,h:q.s});
+    for (const b of P.builds) rects.push({x:b.x,y:b.y,w:b.w,h:b.h});
+    const bb=bboxOf(rects), offs=[]; let at=null;
+    for (let ox=-bb.x; ox+bb.x+bb.w<=N; ox++) for (let oy=-bb.y; oy+bb.y+bb.h<=N; oy++) offs.push([ox,oy,Math.hypot(ox+bb.x+bb.w/2-ax, oy+bb.y+bb.h/2-ay)]);
+    offs.sort((a,b)=>a[2]-b[2]);
+    for (const [ox,oy] of offs) if (onLand({x:bb.x+ox,y:bb.y+oy,w:bb.w,h:bb.h}) || rects.every(r=>onLand({x:r.x+ox,y:r.y+oy,w:r.w,h:r.h}))){ at={ox,oy}; break; }
+    if (!at) continue;
+    const {ox,oy}=at, sh=q=>({...q, x:q.x+ox, y:q.y+oy});
+    const placed=P.units.map(e=>{ const R=e.u.R, m=q=>({...q, x:q.x+e.ox+ox, y:q.y+e.oy+oy});
+      return {u:e.u.u, cores:R.cores.map(m), ranges:R.ranges.map(m), plots:R.plots.map(m), guests:(R.guests||[]).map(m)}; });
+    const open=P.open.map(sh), builds=P.builds.map(sh), missed=[];
+    // Buildings that need heat, cold or light: the free spot most inside a matching range, else beside the block
+    const solid=[...rects.map(r=>({x:r.x+ox,y:r.y+oy,w:r.w,h:r.h}))], ranges=placed.flatMap(p=>p.ranges);
+    for (const one of climB){ const want=CLIM_ZONE[one.clim], okR=ranges.filter(r=>r.zk===want); let got=null, bo=0;
+      for (const R of okR) for (let x=Math.floor(R.x-one.w+1); x<R.x+R.w; x+=0.5) for (let y=Math.floor(R.y-one.h+1); y<R.y+R.h; y+=0.5){
+        const r={x,y,w:one.w,h:one.h}; if (!onLand(r) || solid.some(q=>hit(r,q))) continue;
+        const inR=ranges.filter(q=>hit(r,q)); if (inR.length!==1 || inR[0]!==R) continue;
+        const ov=ovArea(r,R); if (ov>bo+1e-9){ bo=ov; got=r; } }
+      let inClimate=!!got;
+      if (!got && want!=='lamp'){ let bd=Infinity;
+        for (let x=0; x+one.w<=N; x+=0.5) for (let y=0; y+one.h<=N; y+=0.5){ const r={x,y,w:one.w,h:one.h}, d=Math.hypot(x+one.w/2-ax,y+one.h/2-ay);
+          if (d<bd && onLand(r) && !solid.some(q=>hit(r,q)) && !ranges.some(q=>hit(r,q))){ bd=d; got=r; } } }
+      if (!got){ missed.push(one); continue; }
+      solid.push(got); builds.push({...one, x:got.x, y:got.y, inClimate}); }
+    return addFacing({placed, open, unplaced:0, openLeft:0, N, builds, missed, ax, ay});
   }
-  return addFacing({placed, open, unplaced, openLeft, N, builds, missed, ax, ay, grid:true});
+  const H=planHomelandClean(real, openPlots, land, edge, things); H.squareFallback=true; return H;
 }
 
 // ---------- Layout tab ----------
 function renderLayout(){
   if (!lastPlan || !lastPlan.real) return;
-  const {real, best, o, colorOf}=lastPlan, style=['packed','grid'].includes(state.layoutStyle)?state.layoutStyle:'clean';
+  if ($('pane-layout').hidden){ lastPlan.layoutStale=true; return; }   // drawn when you open the tab
+  lastPlan.layoutStale=false;
+  const {real, best, o, colorOf}=lastPlan, style=['packed','square'].includes(state.layoutStyle)?state.layoutStyle:'clean';
   const cards=[]; const cnt={heat:0,cool:0,lamp:0};
   let pn=0;
   for (const u of real){
@@ -2207,7 +2202,7 @@ function renderLayout(){
   // Clean vs Packed only differs for full units; part-filled units always use their tightest layout
   const anyFull=view==='map' || real.some(u=>!u.pair && !(COMPACT[u.zone.geo]||{})[u.w+','+u.farm.length]);
   const seg=`<div class="seg" role="group" aria-label="Layout view"><button type="button" data-view="units" aria-pressed="${view==='units'}">Each unit</button><button type="button" data-view="map" aria-pressed="${view==='map'}">Homeland map</button></div>
-    <div class="seg" role="group" aria-label="Layout style"${anyFull?'':' title="No unit is full, so every unit already uses its tightest layout. Clean and Packed only differ for full units."'}><button type="button" data-style="clean" aria-pressed="${style==='clean'}"${anyFull?'':' disabled'}>Clean grid</button><button type="button" data-style="packed" aria-pressed="${style==='packed'}"${anyFull?'':' disabled'}>Packed</button><button type="button" data-style="grid" aria-pressed="${style==='grid'}"${view==='map'?'':' hidden'}>Grid</button></div>${anyFull?'':'<span class="note">Clean and Packed only differ for full units.</span>'}`;
+    <div class="seg" role="group" aria-label="Layout style"${anyFull?'':' title="No unit is full, so every unit already uses its tightest layout. Clean and Packed only differ for full units."'}><button type="button" data-style="clean" aria-pressed="${style==='clean'}"${anyFull?'':' disabled'}>Clean grid</button><button type="button" data-style="packed" aria-pressed="${style==='packed'}"${anyFull?'':' disabled'}>Packed</button><button type="button" data-style="square" aria-pressed="${style==='square'}"${view==='map'?'':' hidden'}>Square</button></div>${anyFull?'':'<span class="note">Clean and Packed only differ for full units.</span>'}`;
   if (view==='map'){ renderHomeMap(seg, style); return; }
   let lh = cards.length ? `<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Both fit exactly the same number of plots around every unit, so your coin and wood don't change. Clean grid lines every plot up on one 2-tile grid; Packed staggers them wherever they fit.">?</i></div>
     <div class="fields">${cards.join('')}</div>` : '<p class="note">Nothing to lay out yet.</p>';
@@ -2243,9 +2238,10 @@ function renderHomeMap(seg, style){
   const warn=[]; if (H.missed.length) warn.push(`No room for: ${[...new Set(H.missed.map(t=>t.name))].join(', ')}. Tick more land.`);
   for (const k of new Set(H.builds.filter(b=>b.inClimate===false).map(b=>b.name+'|'+b.clim))){ const [n,cl]=k.split('|');
     warn.push(`${n} sits outside a ${cl==='cool'?'Cooling Unit (Cool)':'Heat Furnace (Warm)'} range, so it works at 80% speed.`); }
+  if (H.squareFallback) warn.push('Everything won\'t fit in one block on the land you ticked, so this shows Clean grid. Tick more land for Square.');
   if (H.unplaced) warn.push(`${H.unplaced} climate unit${H.unplaced>1?'s':''} didn't fit on the land you ticked.`); if (H.openLeft) warn.push(`${H.openLeft} open-ground plot${H.openLeft>1?'s':''} didn't fit.`);
   const legend={}; for (const u of H.placed) for (const p of u.plots) legend[p.p.crop.id]=p.p; for (const p of H.open) legend[p.p.crop.id]=p.p;
-  $('pane-layout').innerHTML=`<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Packed: tightest, shortest walks. Clean grid: tidy blocks in rows and columns with a walkway between them. Grid: one job per land plot, so plot borders are your paths; uses more land.">?</i></div>
+  $('pane-layout').innerHTML=`<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Packed: tightest, shortest walks. Clean grid: tidy blocks with a walkway between them. Square: everything in one neat block, climate units on the corners and Woodland down the sides.">?</i></div>
     <div class="mapwrap"><div class="mapside">
       <div><h3>Land you own</h3>${picker}</div>
       ${H.builds.length?`<div><h3>Buildings</h3><ul class="also">${Object.values(H.builds.reduce((m,b)=>((m[b.name]=m[b.name]||{b,n:0}).n++,m),{})).map(({b,n})=>`<li><span><span class="sw" style="background:var(${jobVar(b.job)})"></span>${b.name}</span><b>${n}</b></li>`).join('')}</ul></div>`:''}
@@ -2859,11 +2855,11 @@ function renderData(){
   $('dataTable').innerHTML=h+'</tbody></table>';
   $('solverNote').hidden=LP.exact;
 }
-function refreshInputs(){ renderOrders(); renderRequests(); renderProducts(); renderFillChips(); renderCustomList(); renderGoalInputs(); }
+function refreshInputs(){ renderOrders(); renderRequests(); renderProducts(); renderFillChips(); renderGoalInputs(); }
 
 // ---------- Tabs ----------
 const TABS=['plant','layout','mach','crew','shop','orders','data'];
-function selectTab(t){ for (const k of TABS){ const on=k===t; $('tab-'+k).setAttribute('aria-selected',on); $('tab-'+k).tabIndex=on?0:-1; $('pane-'+k).hidden=!on; } state.tab=t; save(); }
+function selectTab(t){ for (const k of TABS){ const on=k===t; $('tab-'+k).setAttribute('aria-selected',on); $('tab-'+k).tabIndex=on?0:-1; $('pane-'+k).hidden=!on; } state.tab=t; save(); if (t==='layout' && lastPlan && lastPlan.layoutStale) renderLayout(); }
 for (const k of TABS) $('tab-'+k).onclick=()=>selectTab(k);
 document.querySelector('[role=tablist]').addEventListener('keydown',e=>{ const i=TABS.indexOf(state.tab);
   if (e.key==='ArrowRight'||e.key==='ArrowLeft'){ const n=TABS[(i+(e.key==='ArrowRight'?1:TABS.length-1))%TABS.length]; selectTab(n); $('tab-'+n).focus(); e.preventDefault(); } });
@@ -2894,8 +2890,8 @@ try{ const s=JSON.parse(localStorage.getItem('hfp6')||localStorage.getItem('hfp3
 if (!restored){ maxAll(); for (const [k,v] of Object.entries(DEFAULTS)) if(k!=='rv') $(k).value=v; }
 
 // Any input in the setup column marks the plan out of date
-$('setup').addEventListener('change', e=>{ if (e.target.closest('#prodRows,#reqRows,#fillChips,#codeIn')) return; if (['cName','cKind','cLvl','cNeed','cYield','cWood','cPrice','cSeed','cTime'].includes(e.target.id)) return; markDirty(); });
-$('setup').addEventListener('input', e=>{ if (e.target.type==='number' && !e.target.closest('#prodRows,#customBox')) markDirty(); });
+$('setup').addEventListener('change', e=>{ if (e.target.closest('#prodRows,#reqRows,#fillChips,#codeIn')) return; markDirty(); });
+$('setup').addEventListener('input', e=>{ if (e.target.type==='number' && !e.target.closest('#prodRows')) markDirty(); });
 $('rv').addEventListener('change',()=>{ buildSelects(); $('maxAll').style.boxShadow='0 0 0 3px var(--gold)'; refreshInputs(); });
 for (const id of ['farmLvl','woodLvl','eco','events','kitchen','crafting','detector','persona','useLamp','useHeat','useCool','watering','hauling','hours']) $(id).addEventListener('change',()=>{ renderRequests(); renderProducts(); renderFillChips(); });
 for (const id of ['goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand','needCoin','needWood','needSand']) $(id).addEventListener('input',renderGoalInputs);
@@ -2920,14 +2916,6 @@ const MUTATES=['wheat','potato','rice','soybean','cotton','rose','lavender','str
 $('addAll').onclick=()=>{ const o=opts(); for (const id of MUTATES){ const c=cropById(id); if (!c || !available(c).ok || state.requests.some(r=>r.id===id)) continue;
     if (c.light && o.lamp===0) continue; state.requests.push({id,plots:1}); }
   renderRequests(); markDirty(); };
-$('saveCustom').onclick=()=>{
-  const name=cleanName($('cName').value); if(!name){ $('cName').focus(); return; }
-  const need=$('cNeed').value, kind=$('cKind').value;
-  const c={id:'custom-'+Date.now(), name, custom:true, kind, lvl:Math.min(kind==='wood'?6:7, int('cLvl')||1), eco:0,
-    yield:Math.max(1,parseFloat($('cYield').value)||1), price:Math.max(0,parseFloat($('cPrice').value)||0), seed:Math.max(0,parseFloat($('cSeed').value)||0),
-    base:Math.max(1,parseFloat($('cTime').value)||40), temp:need==='L'?0:parseInt(need), light:need==='L', wood:kind==='wood'?Math.max(0,parseInt($('cWood').value)||0):0, jobs:'EGD'};
-  state.custom.push(c); state.requests.push({id:c.id,plots:2}); $('cName').value=''; refreshInputs(); markDirty();
-};
 refreshInputs();
 selectTab(TABS.includes(state.tab)?state.tab:'plant');
 if (Date.now()>EVENT.end) $('events').checked=false;
