@@ -1362,7 +1362,7 @@ function cleanState(raw){
   st.owned=arr(d.owned,300).filter(x=>typeof x==='string').map(x=>cleanName(x,40));
   st.orders=arr(d.orders,50).filter(x=>x&&typeof x==='object').map(x=>({n:cleanName(x.n,60), q:nb(x.q,0,1e7,1), r:nb(x.r,0,1e10,0)}));
   if (d.event&&typeof d.event==='object') st.event={day:String(d.event.day||'').slice(0,12), done:arr(d.event.done,10).filter(x=>typeof x==='string'), points:nb(d.event.points,0,1e7,0)};
-  for (const k of ['layoutStyle','layoutView','cmpKey']) if (typeof d[k]==='string' && /^[a-z]{1,10}$/.test(d[k])) st[k]=d[k];
+  for (const k of ['layoutStyle','layoutView','cmpKey','crewMode']) if (typeof d[k]==='string' && /^[a-z]{1,10}$/.test(d[k])) st[k]=d[k];
   return st;
 }
 
@@ -1679,9 +1679,36 @@ function crewOptions(r, ctx){
   return g;
 }
 const slug = n => n.replace(/ Prismana$/,'').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+// ---------- Fewest Aniimo ----------
+// Which jobs each Aniimo can do, and at what level (from the suggested-worker lists above). At the Lv 3 setting,
+// Lv 4 and Prismana entries are left out.
+function speciesTable(lv){ const T={};
+  for (const [job,o] of Object.entries(AN_OPTS)) for (const [k,names] of Object.entries(o)){ if (k==='note') continue;
+    const l=k==='P'?4:+k; if (lv<4 && l>=4) continue;
+    for (const n of names){ const t=T[n]||(T[n]={}); t[job]=Math.max(t[job]||0, l); } }
+  return T; }
+// The fewest Aniimo that cover the shared work: each Aniimo splits its time between jobs it can do at the level
+// needed. req: [{job, lvl, d (share of one Aniimo's time)}]. Ones you own are preferred, Prismana forms last.
+function fewestCrew(req, lv, owned){
+  if (!req.length) return [];
+  const T=speciesTable(lv), model={optimize:'obj', opType:'min', constraints:{}, variables:{}, ints:{}}, xs=[];
+  req.forEach((q,i)=>{ model.constraints['d'+i]={min:q.d}; });
+  for (const [n,jobs] of Object.entries(T)){
+    const use=req.map((q,i)=>(jobs[q.job]||0)>=Math.max(1,q.lvl) ? i : -1).filter(i=>i>=0); if (!use.length) continue;
+    const cx='c_'+n; model.constraints[cx]={max:0};
+    model.variables['x_'+n]={obj:1+(owned.has(n)?0:0.01)+(/Prismana/.test(n)?0.02:0)-0.001*use.length, [cx]:-1}; model.ints['x_'+n]=1; xs.push(n);
+    for (const i of use) model.variables['y_'+n+'_'+i]={[cx]:1, ['d'+i]:1}; }
+  const r=SOLVER.Solve(model); if (!r || r.feasible===false) return null;
+  return xs.map(n=>({name:n, n:Math.round(r['x_'+n]||0), jobs:req.map((q,i)=>({...q, share:r['y_'+n+'_'+i]||0})).filter(j=>j.share>1e-4)}))
+    .filter(s=>s.n>0).sort((a,b)=>b.jobs.length-a.jobs.length || b.n-a.n); }
+
 function renderCrew(){
   const L=lastPlan; if (!L || !L.crewList) return;
-  const {crewList, crewMin, cap, ctx}=L, lv=state.crewLvl===4?4:3, owned=new Set(state.owned||[]);
+  const {crewList, cap, ctx}=L, lv=state.crewLvl===4?4:3, owned=new Set(state.owned||[]), fewest=state.crewMode==='fewest';
+  // Fewest Aniimo: one Aniimo can split its time across jobs it knows, so shared work may need fewer of them
+  const pooledRows=crewList.filter(r=>r.pooled), fixedRows=crewList.filter(r=>!r.pooled);
+  const team=fewest ? fewestCrew(pooledRows.map(r=>({job:r.job, lvl:r.lvl||1, d:Math.max(r.d||0, 0.01), does:r.does})), lv, owned) : null;
+  const crewMin = team ? fixedRows.reduce((t,r)=>t+r.n,0)+team.reduce((t,s)=>t+s.n,0) : L.crewMin;
   if (!crewList.length){ $('pane-crew').innerHTML='<p class="note">No workers needed yet.</p>'; return; }
   const card=(r,ri)=>{
     const groups=crewOptions(r, ctx), all=groups.flatMap(g=>g.names);
@@ -1699,12 +1726,18 @@ function renderCrew(){
   $('pane-crew').innerHTML = `<div class="head"><p class="note" style="max-width:60ch"><b>${crewMin}</b>${cap?` of ${cap}`:''} Aniimo slots used${int('reserve')?` (${int('reserve')} kept free)`:''}.${cap&&crewMin>cap?' <b>More than your Home holds.</b>':''} <i class="tip" tabindex="0" data-tip="Climate units, Mines, Wells and leisure spots each keep their own worker. Machines don't run all the time, so they share: each job gets enough workers for its total machine time, plus a little for field work. If plots or machines sit waiting in game, add another worker for that job.">?</i></p>
     <label class="f" style="width:170px"><span>Suggested workers <i class="tip" tabindex="0" data-tip="Lv 3 picks are regular forms you can catch. Lv 4 picks are mostly Prismana forms, which are rare. Level changes machine and Mine speed (Lv 3 does 120 work a minute at a Mine, Lv 4 does 150).">?</i></span><select id="crewLvl"><option value="3"${lv===3?' selected':''}>Lv 3 · easier to get</option><option value="4"${lv===4?' selected':''}>Lv 4 · Prismana</option></select></label></div>
     ${owned.size?`<p class="note"><button type="button" class="linkbtn" id="clearOwned">Clear my ${owned.size} owned</button></p>`:''}
-    <div class="crew">${crewList.map(card).join('')}</div>`;
+    <div class="seg" role="group" aria-label="Show workers"><button type="button" data-cm="job" aria-pressed="${!fewest}">By job</button><button type="button" data-cm="fewest" aria-pressed="${fewest}">Fewest Aniimo</button></div>
+    ${fewest && !team ? '<p class="warn">No mix of the listed Aniimo covers every shared job at the level needed, so this shows workers by job.</p>' : ''}
+    ${team ? `<p class="note">Machines and field work can share one Aniimo when it knows both jobs. ${L.crewMin-crewMin>0?`<b>${L.crewMin-crewMin} fewer</b> than by job.`:'No saving over by job here.'}</p>
+      <div class="crew">${team.map(s=>`<div class="cc" style="--jc:var(${jobVar(s.jobs[0].job)})"><div class="top"><b>${s.name}${owned.has(s.name)?' <span class="pill leaf">yours</span>':''}</b><span class="n">${s.n}</span></div>
+        <div class="oc">${s.jobs.map(j=>jobChip(j.job, ' '+Math.round(100*j.share)+'%')).join('')}</div>${s.n>1?`<div class="for">Work shared between ${s.n}, ${Math.round(100*s.jobs.reduce((t,j)=>t+j.share,0)/s.n)}% busy each</div>`:''}
+        <div class="for">${s.jobs.map(j=>j.does).join(' · ')}</div></div>`).join('')}${fixedRows.map(card).join('')}</div>` : `<div class="crew">${crewList.map(card).join('')}</div>`}`;
   const openSet=L.openCards||(L.openCards=new Set());
   $('pane-crew').querySelectorAll('details.opts').forEach((d,i)=>{ if(openSet.has(i)) d.open=true; d.addEventListener('toggle',()=>{ d.open?openSet.add(i):openSet.delete(i); }); });
   $('pane-crew').querySelectorAll('button.an').forEach(b=>b.onclick=()=>{ const n=b.dataset.an, set=new Set(state.owned||[]);
     set.has(n)?set.delete(n):set.add(n); state.owned=[...set]; save(); renderCrew(); });
   const c=$('clearOwned'); if (c) c.onclick=()=>{ state.owned=[]; save(); renderCrew(); };
+  $('pane-crew').querySelectorAll('[data-cm]').forEach(b=>b.onclick=()=>{ state.crewMode=b.dataset.cm; save(); renderCrew(); });
 }
 function crewRows(best, real, o){
   const rows=[], jobs={E:new Set(),G:new Set(),D:new Set()};
@@ -2699,7 +2732,7 @@ function run(){
   const crew=[], pool=best.workers||{}, pjobs=new Set(Object.keys(pool).filter(j=>pool[j]>0)), pooled={};
   const plural=(nm,n)=>n>1 ? nm+(/(sh|ch|x|s)$/.test(nm)?'es':'s') : nm;
   const P=j=>pooled[j]||(pooled[j]={job:j, n:pool[j], lvl:1, parts:[], busy:(best.poolBusy||{})[j]||0});
-  for (const r of crewRows(best, real, o)){ if (r.field && pjobs.has(r.job)) P(r.job).parts.push(r.does); else crew.push(r); }
+  for (const r of crewRows(best, real, o)){ if (r.field && pjobs.has(r.job)){ const p=P(r.job); p.parts.push(r.does); p.field=true; } else crew.push(r); }
   const count={}, steps={};
   for (const m of chain.machines){ count[m.key]=(count[m.key]||0)+m.need; (steps[m.key]||(steps[m.key]=[])).push(...m.steps.map(s=>s.r)); }
   for (const [k,n] of Object.entries(best.autoMach||{})) count[k]=(count[k]||0)+n;
@@ -2716,7 +2749,7 @@ function run(){
     if (pjobs.has(M.job)){ const p=P(M.job); p.parts.push(n+' '+plural(M.name,n)); p.lvl=Math.max(p.lvl,lv); }
     else crew.push({job:M.job, lvl:lv, n, does:n+' '+plural(M.name,n)}); }
   for (const e of extras){ const M=MACH[e.key]; crew.push({job:M.job, n:1, does:'1 '+M.name, fam:e.r.fam?leisurePick(e.r,ctx).name:'', line:e.r.fam?e.r:null}); }
-  for (const p of Object.values(pooled)) crew.push({job:p.job, lvl:p.lvl, n:p.n, does:p.parts.join(' · '), busy:p.busy, pooled:true});
+  for (const p of Object.values(pooled)) crew.push({job:p.job, lvl:p.lvl, n:p.n, does:p.parts.join(' · '), busy:p.busy, pooled:true, d:p.busy+(p.field?FIELD_SHARE:0)});
   const byJob={}; for (const r of crew){ const k=r.job+'|'+(r.lvl&&r.lvl>1?r.lvl:0)+'|'+(r.fam||'')+(r.pooled?'|pool':'');
     if (byJob[k]){ byJob[k].n+=r.n; byJob[k].does+=', '+r.does; } else byJob[k]={...r}; }
   // Merge repeats like "1 Well, 1 Well" into "2 Wells"
