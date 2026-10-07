@@ -1360,7 +1360,7 @@ function cleanState(raw){
   if (Array.isArray(d.requests)) st.requests=arr(d.requests,60).filter(r=>r&&ids.has(r.id)).map(r=>({id:r.id, plots:Math.round(nb(r.plots,1,40,1))}));
   st.noFill=arr(d.noFill,100).filter(x=>ids.has(x));
   if (Array.isArray(d.products)) st.products=arr(d.products,40).filter(w=>w&&PRODUCT_NAMES.includes(w.n)).map(w=>({n:w.n, amt:nb(w.amt,0,1e6,1), unit:['h','d','p'].includes(w.unit)?w.unit:'h'}));
-  st.crewLvl=d.crewLvl==4?4:3;
+  st.crewLvl=d.crewLvl==4?4:3; st.allMach=!!d.allMach;
   if (typeof d.tab==='string') st.tab=d.tab;
   const pids=new Set(PROC.map(r=>r.id));
   st.avoid=arr(d.avoid,200).filter(x=>pids.has(x));
@@ -1947,7 +1947,7 @@ function homelandSvg(H, land, edge, colorOf){
     for (const q of u.cores) s+=`<rect x="${X(q.x)}" y="${Y(q.y)}" width="${q.s*T}" height="${q.s*T}" fill="var(--unit-${q.unit})"><title>${UNITNAME[q.unit]} · ${SETTING[q.zk]}</title></rect>`; }
   for (const p of H.open) s+=plot(p.x,p.y,p.s,p.p);
   for (const b of H.builds){ const fs=Math.max(7,Math.min(10, b.w*T/5.2)), lbl=b.w*T>=40?b.short:b.short.slice(0,2);
-    s+=`<g><title>${b.name}</title><rect x="${X(b.x)+.8}" y="${Y(b.y)+.8}" width="${b.w*T-1.6}" height="${b.h*T-1.6}" rx="3" fill="color-mix(in srgb,var(${jobVar(b.job)}) 30%,var(--panel))" stroke="var(${jobVar(b.job)})" stroke-width="1.5"/>`;
+    s+=`<g><title>${b.name}</title><rect x="${X(b.x)+.8}" y="${Y(b.y)+.8}" width="${b.w*T-1.6}" height="${b.h*T-1.6}" rx="3" fill="color-mix(in srgb,var(${jobVar(b.job)}) ${b.idle?10:30}%,var(--panel))" stroke="var(${jobVar(b.job)})" stroke-width="1.5"${b.idle?' stroke-dasharray="3 2"':''}/>`;
     s+=`<text x="${X(b.x+b.w/2)}" y="${Y(b.y+b.h/2)+fs/3}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${lbl}</text>`;
     if (b.face) s+=faceMark(b,X,Y,T);
     s+='</g>'; }
@@ -2307,6 +2307,12 @@ function renderHomeMap(seg, style){
   { const hostedN={}; for (const u of real) if (u.guest) hostedN[u.guest.key]=(hostedN[u.guest.key]||0)+1;
     for (const [k,n] of Object.entries(hostedN)){ let left=n; for (let i=things.length-1;i>=0 && left;i--) if (things[i].key===k && things[i].clim){ things.splice(i,1); left--; } } }
   const gs=lastPlan.gs; if (gs && gs.rv){ if (gs.rv.woodChain.length) add('bench', int('benches')); if (gs.rv.oreChain.length) add('kiln', int('kilns')); }
+  // Optionally fill up to every building your RV allows, so the map has room for them all; the extra ones sit idle
+  if (state.allMach){ const rv=int('rv'), have={};
+    for (const t of things) have[t.key]=(have[t.key]||0)+1;
+    for (const u of real) if (u.guest) have[u.guest.key]=(have[u.guest.key]||0)+1;
+    for (const k of Object.keys(MACH)){ const extra=placeAt(k,rv)-(have[k]||0), M=MACH[k], sz=MACH_SIZE[k]; if (!sz) continue;
+      for (let i=0;i<extra;i++) things.push({key:k, name:M.name, short:SHORT[k]||M.name.split(' ')[0], job:M.job, w:sz[0], h:sz[1], idle:true}); } }
   const H=planHomeland(real, open, style, land, edge, things);
   { const shown=new Set(H.placed.map(p=>p.u)); for (const u of real) if (u.guest && !shown.has(u)) H.missed.push({name:MACH[u.guest.key].name}); }
   const picker=`<div class="landpick" role="group" aria-label="Land plots you own">${land.map((v,i)=>`<button type="button" data-plot="${i}" aria-pressed="${v}" aria-label="Plot ${PLOT_NO[i]}">${PLOT_NO[i]}</button>`).join('')}</div>`;
@@ -2319,12 +2325,14 @@ function renderHomeMap(seg, style){
   $('pane-layout').innerHTML=`<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Packed: tightest, shortest walks. Clean grid: tidy blocks with a walkway between them. Square: one compact block, climate units on the corners with their plots round the outside, everything else pulled toward the edges.">?</i></div>
     <div class="mapwrap"><div class="mapside">
       <div><h3>Land you own</h3>${picker}</div>
-      ${H.builds.length?`<div><h3>Buildings</h3><ul class="also">${Object.values(H.builds.reduce((m,b)=>((m[b.name]=m[b.name]||{b,n:0}).n++,m),{})).map(({b,n})=>`<li><span><span class="sw" style="background:var(${jobVar(b.job)})"></span>${b.name}</span><b>${n}</b></li>`).join('')}</ul></div>`:''}
+      <div><h3>Buildings</h3><label class="inline" style="margin:4px 0 6px"><input type="checkbox" id="allMach"${state.allMach?' checked':''}>Place every one my RV allows <i class="tip" tabindex="0" data-tip="Adds every machine, Mine, Well and leisure spot your RV lets you place, even ones the plan doesn't use, so the map keeps room for them. Unused ones are drawn dashed and need no worker.">?</i></label>
+      ${H.builds.length?`<ul class="also">${Object.values(H.builds.reduce((m,b)=>{ const e=m[b.name]||(m[b.name]={b,n:0,idle:0}); e.n++; if (b.idle) e.idle++; return m; },{})).map(({b,n,idle})=>`<li><span><span class="sw" style="background:var(${jobVar(b.job)})"></span>${b.name}</span><b>${n}${idle?` <span class="muted">(${idle} idle)</span>`:''}</b></li>`).join('')}</ul>`:''}</div>
     </div>
     <div class="mapmain">${land.some(Boolean) ? warn.map(w=>`<p class="warn">${esc(w)}</p>`).join('')+homelandSvg(H, land, edge, colorOf) : '<p class="note">Tick the land plots you own to see your map.</p>'}
       <div class="legend">${Object.values(legend).map(p=>`<span><span class="sw" style="background:var(${colorOf(p)})"></span>${p.crop.name}</span>`).join('')}</div>
       ${H.builds.length?`<p class="note">▲ marks each machine's front, where its worker stands. Turn it to match in build mode.${H.builds.some(b=>b.faceBlocked)?' Fronts that touch something still work; the worker just stands inside it.':''}</p>`:''}</div></div>`;
   wireLayoutSeg();
+  $('allMach').onchange=e=>{ state.allMach=e.target.checked; save(); renderLayout(); };
   $('pane-layout').querySelectorAll('.landpick button').forEach(b=>b.onclick=()=>{ const l=landOwned(); l[+b.dataset.plot]=!l[+b.dataset.plot]; state.land=l; save(); renderLayout(); });
 }
 
