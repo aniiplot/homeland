@@ -2163,8 +2163,10 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     const fr=new Uint8Array(MQ*MQ);
     const occ=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (cell[y*MQ+x]||fr[y*MQ+x]) return true; return false; };
     const solidAt=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (cell[y*MQ+x]) return true; return false; };
-    const shared=r=>{ const [x0,y0,x1,y1]=span(r); let n=0; for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) n+=fr[y*MQ+x]; return n; };
-    const fronts=[], reserve=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) fr.fill(1, y*MQ+x0, y*MQ+x1); fronts.push(r); };
+    const shared=r=>{ const [x0,y0,x1,y1]=span(r); let n=0; for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) n+=fr[y*MQ+x]?1:0; return n; };
+    const fronts=[], reserve=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) fr[y*MQ+x]++; fronts.push(r); };
+    const release=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) fr[y*MQ+x]--; const i=fronts.indexOf(r); if (i>=0) fronts.splice(i,1); };
+    const unfill=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) cell.fill(0, y*MQ+x0, y*MQ+x1); const i=all.indexOf(r); if (i>=0) all.splice(i,1); };
     const frontOf=(r,d)=> d==='up'?{x:r.x,y:r.y-1,w:r.w,h:1} : d==='down'?{x:r.x,y:r.y+r.h,w:r.w,h:1} : d==='left'?{x:r.x-1,y:r.y,w:1,h:r.h} : {x:r.x+r.w,y:r.y,w:1,h:r.h};
     // the way a machine at r can face: open ground inside the block, sharing an existing walkway if it can, else toward the middle
     const pickFace=r=>{ let best=null;
@@ -2234,7 +2236,7 @@ function planHomelandSquare(real, openPlots, land, edge, things){
       let inClimate=!!got;
       if (!got && want!=='lamp'){ for (const [x,y] of spots(t.w,t.h)){ const r={x,y,w:t.w,h:t.h}; if (!occ(r) && pickFace(r)){ got=r; break; } } inClimate=false; }
       if (!got){ missed.push(t); continue; }
-      const pf=pickFace(got); fill(got); reserve(pf.f); builds.push({...t, x:got.x, y:got.y, w:got.w, h:got.h, inClimate, face:pf.d}); }
+      const pf=pickFace(got); fill(got); reserve(pf.f); builds.push({...t, x:got.x, y:got.y, w:got.w, h:got.h, inClimate, face:pf.d, fr:pf.f, body:got}); }
     // everything else: first free spot nearest the border, either way round for buildings
     // Within the nearest band to the border that has room, a spot next to the same kind of thing wins (rows of
     // Mines, blocks of one crop), so the outside fills in tidy runs.
@@ -2250,11 +2252,28 @@ function planHomelandSquare(real, openPlots, land, edge, things){
           if (first.t || ++looked>400) break; } }
       return first ? first.r : null; };
     for (const t of plainB){ const g='b:'+t.key, r=putFirst(t.w,t.h,()=>true,g); if (!r) return null;
-      fill(r); (kin[g]||(kin[g]=[])).push(r); const pf=pickFace(r)||r.pf; reserve(pf.f); builds.push({...t, x:r.x, y:r.y, w:r.w, h:r.h, inClimate:null, face:pf.d}); }
+      fill(r); (kin[g]||(kin[g]=[])).push(r); const pf=pickFace(r)||r.pf; reserve(pf.f); builds.push({...t, x:r.x, y:r.y, w:r.w, h:r.h, inClimate:null, face:pf.d, fr:pf.f, body:r}); }
     for (const [list,s] of [[woods,4],[farms,2]]) for (const p of list){ const g='p:'+p.crop.id;
       const r=putFirst(s,s, q=>!(sens(p) && ranges.some(R=>hit(q,R))), g); if (!r)return null;
       fill(r); (kin[g]||(kin[g]=[])).push(r); open.push({x:r.x, y:r.y, s, p}); if (sens(p)) plotsK.push(r); }
-    // fronts face the middle of the block
+    // Pull machines outward: rows can leave a small machine stranded toward the middle when nothing near the edge
+    // lined up with it. Deepest first, each moves to the free spot nearest the edge that sits against something
+    // (a piece, a walkway or the block's edge) and still has a clear front.
+    const depth=r=>Math.min(r.x-X0, r.y-Y0, X1-r.x-r.w, Y1-r.y-r.h);
+    const snug=r=>{ if (Math.abs(r.x-X0)<E||Math.abs(r.y-Y0)<E||Math.abs(r.x+r.w-X1)<E||Math.abs(r.y+r.h-Y1)<E) return true;
+      const g=0.25, ring=[{x:r.x-g,y:r.y,w:g,h:r.h},{x:r.x+r.w,y:r.y,w:g,h:r.h},{x:r.x,y:r.y-g,w:r.w,h:g},{x:r.x,y:r.y+r.h,w:r.w,h:g}];
+      return ring.some(q=>occ(q)); };
+    for (let round=0; round<3; round++){ let moved=false;
+      for (const b of builds.filter(b=>b.inClimate===null && b.body).sort((a,c)=>depth(c.body)-depth(a.body))){
+        const d0=depth(b.body); if (d0<1) continue;
+        unfill(b.body); release(b.fr); let best=null;
+        for (const [w,h] of b.w===b.h?[[b.w,b.h]]:[[b.w,b.h],[b.h,b.w]]) for (const s of spots(w,h)){ if (s[2]>d0-1+E || (best && s[2]>best.s[2]+E)) break;
+          const r={x:s[0],y:s[1],w,h}; if (occ(r) || !snug(r)) continue; const pf=pickFace(r); if (!pf) continue;
+          if (!best || s[2]<best.s[2]-E || (Math.abs(s[2]-best.s[2])<E && s[3]<best.s[3])) best={s,r,pf}; break; }
+        if (best){ const {r,pf}=best; Object.assign(b,{x:r.x,y:r.y,w:r.w,h:r.h,face:pf.d,body:r,fr:pf.f}); moved=true; }
+        fill(b.body); reserve(b.fr); }
+      if (!moved) break; }
+    for (const b of builds){ delete b.body; delete b.fr; }
     return addFacing({placed, open, unplaced:0, openLeft:0, N, builds, missed, ax:X0+W/2, ay:Y0+H/2});
   };
   // sizes from the smallest square that could hold everything, growing toward square
