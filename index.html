@@ -2091,10 +2091,11 @@ function planHomelandSquare(real, openPlots, land, edge, things){
   const woods=[], farms=[];
   for (const p of openPlots.slice().sort((a,b)=>a.crop.id.localeCompare(b.crop.id))) for (let i=0;i<p.plots;i++) (p.crop.kind==='wood'?woods:farms).push(p);
   const climB=things.filter(t=>t.clim), plainB=things.filter(t=>!t.clim).sort((a,b)=>b.w*b.h-a.w*a.h || a.key.localeCompare(b.key));
+  const LANE=Math.max(4, ...things.filter(t=>!t.clim).map(t=>Math.min(t.w,t.h)));   // lane depth for straight rows
   const total=[...units.map(e=>e.area), ...things.map(t=>t.w*t.h), woods.length*16, farms.length*4].reduce((a,b)=>a+b,0);
   const sens=p=>p.crop.temp!==0 || p.crop.light;        // open-ground crops that must stay out of every range
 
-  const attempt=(W,H)=>{
+  const attempt=(W,H,strict)=>{
     const cw=i=>fits[i]?fits[i].f.w:0, ch=i=>fits[i]?fits[i].f.h:0;
     if (cw(0)+cw(1)>W || cw(3)+cw(2)>W || ch(0)+ch(3)>H || ch(1)+ch(2)>H) return null;
     // the block's spot on your land, nearest the middle of it
@@ -2105,7 +2106,23 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     const Q=4, MQ=N*Q, cell=new Uint8Array(MQ*MQ);
     const span=r=>[Math.round(r.x*Q), Math.round(r.y*Q), Math.round((r.x+r.w)*Q), Math.round((r.y+r.h)*Q)];
     const occ=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) for (let x=x0;x<x1;x++) if (cell[y*MQ+x]) return true; return false; };
-    const fill=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) cell.fill(1, y*MQ+x0, y*MQ+x1); };
+    const all=[], kin={};                                // every solid piece; pieces of each kind
+    const fill=r=>{ const [x0,y0,x1,y1]=span(r); for (let y=y0;y<y1;y++) cell.fill(1, y*MQ+x0, y*MQ+x1); all.push(r); };
+    // Straight rows: each side is split into lanes as deep as the deepest machine. A piece's outer edge sits on a lane
+    // line (plots may also stack on the same crop), and it sits against the edge or the piece behind it along the
+    // row (clockwise), so every lane is one gapless row with a straight outer line.
+    const E=1e-6, ovx=(a,b)=>Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)>E, ovy=(a,b)=>Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y)>E;
+    const flush=(r,g)=>{ const cx=r.x+r.w/2-X0, cy=r.y+r.h/2-Y0, d=[cy, W-cx, H-cy, cx], s=d.indexOf(Math.min(...d));
+      const near=(f)=>all.some(f);
+      const off = s===0 ? r.y-Y0 : s===1 ? X1-(r.x+r.w) : s===2 ? Y1-(r.y+r.h) : r.x-X0;
+      const onLane = Math.abs(off-Math.round(off/LANE)*LANE)<E && (r.w<=LANE+E || r.h<=LANE+E);
+      const stack = g && g[0]==='p' && (kin[g]||[]).some(q=> s===0 ? Math.abs(q.y+q.h-r.y)<E && ovx(q,r) : s===1 ? Math.abs(q.x-(r.x+r.w))<E && ovy(q,r)
+                                                    : s===2 ? Math.abs(q.y-(r.y+r.h))<E && ovx(q,r) : Math.abs(q.x+q.w-r.x)<E && ovy(q,r));
+      if (!onLane && !stack) return false;
+      return s===0 ? (Math.abs(r.x-X0)<E || near(q=>Math.abs(q.x+q.w-r.x)<E && ovy(q,r)))
+           : s===1 ? (Math.abs(r.y-Y0)<E || near(q=>Math.abs(q.y+q.h-r.y)<E && ovx(q,r)))
+           : s===2 ? (Math.abs(r.x+r.w-X1)<E || near(q=>Math.abs(q.x-(r.x+r.w))<E && ovy(q,r)))
+           :         (Math.abs(r.y+r.h-Y1)<E || near(q=>Math.abs(q.y-(r.y+r.h))<E && ovx(q,r))); };
     const inside=r=>r.x>=X0-1e-9 && r.y>=Y0-1e-9 && r.x+r.w<=X1+1e-9 && r.y+r.h<=Y1+1e-9;
     const ranges=[], plotsK=[];   // ranges placed; plots that no other range may cover
     const placed=[], open=[], builds=[], missed=[];
@@ -2124,7 +2141,7 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     // corners
     const at=[[X0,Y0],[X1-cw(1),Y0],[X1-cw(2),Y1-ch(2)],[X0,Y1-ch(3)]];
     for (let i=0;i<fits.length;i++){ const F=fits[i], ox=at[i][0]-F.f.x, oy=at[i][1]-F.f.y;
-      if (!unitOK(corners[i].u,F.R,ox,oy)) return null; addUnit(corners[i].u,F.R,ox,oy); }
+      if (!unitOK(corners[i].u,F.R,ox,oy))return null; addUnit(corners[i].u,F.R,ox,oy); }
     // spots for a w x h piece, nearest the border first, then clockwise from the top-left
     const per=r=>{ const cx=r.x+r.w/2-X0, cy=r.y+r.h/2-Y0, d=[cy, W-cx, H-cy, cx], s=d.indexOf(Math.min(...d));
       return s===0 ? cx : s===1 ? W+cy : s===2 ? W+H+(W-cx) : 2*W+H+(H-cy); };
@@ -2137,7 +2154,7 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     for (const e of rest){ let best=null;
       for (const r of e.rots){ const o=r.bb; for (const s of spots(o.w,o.h)){ if (best && !better(s,best.s)) break;
           const ox=s[0]-o.x, oy=s[1]-o.y; if (unitOK(e.u,r.R,ox,oy)){ best={s,R:r.R,ox,oy}; break; } } }
-      if (!best) return null; addUnit(e.u,best.R,best.ox,best.oy); }
+      if (!best)return null; addUnit(e.u,best.R,best.ox,best.oy); }
     // buildings that need a climate: a free spot touching one matching range (most inside it)
     for (const t of climB){ const want=CLIM_ZONE[t.clim], okR=ranges.filter(r=>r.zk===want); let got=null, bo=0;
       for (const [w,h] of t.w===t.h?[[t.w,t.h]]:[[t.w,t.h],[t.h,t.w]]) for (const [x,y] of spots(w,h)){ const r={x,y,w,h};
@@ -2150,19 +2167,19 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     // everything else: first free spot nearest the border, either way round for buildings
     // Within the nearest band to the border that has room, a spot next to the same kind of thing wins (rows of
     // Mines, blocks of one crop), so the outside fills in tidy runs.
-    const kin={}, touches=(r,g)=>(kin[g]||[]).some(q=>hit({x:r.x-0.5,y:r.y-0.5,w:r.w+1,h:r.h+1},q));
+    const touches=(r,g)=>(kin[g]||[]).some(q=>hit({x:r.x-0.5,y:r.y-0.5,w:r.w+1,h:r.h+1},q));
     const putFirst=(w,h,ok,g)=>{ let first=null, nb=null;
       for (const [ww,hh] of w===h?[[w,h]]:[[w,h],[h,w]]){ let looked=0;
         for (const s of spots(ww,hh)){ const band=Math.floor(s[2]/2);
           if (first && band>first.band) break;
-          const r={x:s[0],y:s[1],w:ww,h:hh}; if (occ(r) || !ok(r)) continue;
+          const r={x:s[0],y:s[1],w:ww,h:hh}; if (occ(r) || !ok(r) || (strict && !flush(r,g))) continue;
           const t=touches(r,g);
           if (!first || band<first.band || (band===first.band && !first.t && t)) first={r,band,t};
           if (first.t || ++looked>400) break; } }
       return first ? first.r : null; };
     for (const t of plainB){ const g='b:'+t.key, r=putFirst(t.w,t.h,()=>true,g); if (!r) return null; fill(r); (kin[g]||(kin[g]=[])).push(r); builds.push({...t, x:r.x, y:r.y, w:r.w, h:r.h, inClimate:null}); }
     for (const [list,s] of [[woods,4],[farms,2]]) for (const p of list){ const g='p:'+p.crop.id;
-      const r=putFirst(s,s, q=>!(sens(p) && ranges.some(R=>hit(q,R))), g); if (!r) return null;
+      const r=putFirst(s,s, q=>!(sens(p) && ranges.some(R=>hit(q,R))), g); if (!r)return null;
       fill(r); (kin[g]||(kin[g]=[])).push(r); open.push({x:r.x, y:r.y, s, p}); if (sens(p)) plotsK.push(r); }
     // fronts face the middle of the block
     return addFacing({placed, open, unplaced:0, openLeft:0, N, builds, missed, ax:X0+W/2, ay:Y0+H/2});
@@ -2172,7 +2189,10 @@ function planHomelandSquare(real, openPlots, land, edge, things){
   const sizes=[]; for (let W=minS; W<=N; W++) for (let H=minS; H<=N; H++) if (Math.max(W,H)/Math.min(W,H)<=1.6) sizes.push([W,H, W*H*(1+0.6*Math.abs(W-H)/Math.max(W,H))]);
   sizes.sort((a,b)=>a[2]-b[2]);
   const t0=Date.now();
-  for (const [W,H] of sizes){ if (Date.now()-t0>2500) break; const R=attempt(W,H); if (R) return R; }
+  // straight rows first, letting the block grow up to half again; only then pack it as tight as it goes
+  const minA=sizes.length ? sizes[0][0]*sizes[0][1] : 0;
+  for (const [W,H] of sizes){ if (W*H>minA*1.5 || Date.now()-t0>1800) break; const R=attempt(W,H,true); if (R) return R; }
+  for (const [W,H] of sizes){ if (Date.now()-t0>3500) break; const R=attempt(W,H,false); if (R) return R; }
   const H=planHomelandClean(real, openPlots, land, edge, things); H.squareFallback=true; return H;
 }
 
