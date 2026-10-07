@@ -1256,9 +1256,12 @@ function planBest(requests, fillers, o, lp){
   // The model with every pair layout can also choose none, so when it's solved to the end it's the answer
   if (lp.exact && withPairs){
     const full = plan(requests, fillers, o, lp);
-    if (full.feasible && !full.limited) return full;
+    if (full.feasible && !full.limited && !(full.pairs||[]).length) return full;
+    // A pair has to earn its keep: the solver may stop within a hair of the best, which can leave a pair whose
+    // second unit does nothing. Keep it only when it clearly beats the plan without pairs.
     const base = plan(requests, fillers, {...o, pairs:false}, lp);
-    return full.feasible && full.objective > base.objective + 1e-6 ? full : base;
+    const tol = Math.max(1e-6, 3e-4*Math.abs(base.objective||0));
+    return full.feasible && full.objective > base.objective + tol ? full : base;
   }
   const base = plan(requests, fillers, {...o, pairs:false}, lp);
   if (!withPairs) return base;
@@ -1294,7 +1297,9 @@ function distributePairs(pairs, pool){
   const out=[];
   for (const u of pairs) for (let k=0;k<u.n;k++){
     const t=PAIRS[u.ti], plots=[], free=[];
-    for (const [x,y,s,reg] of t.plots){ const zk=TEMP_ZONE[regionTemp(u.pt,reg)], q=zk && pool[zk] && pool[zk][s===4?'wood':'farm'];
+    // nearest the units first, so a part-filled row or column stays in one piece
+    const near=([x,y,s])=>Math.min(Math.hypot(x+s/2-0.5, y+s/2-0.5), Math.hypot(x+s/2-t.dx-1, y+s/2-1));
+    for (const [x,y,s,reg] of t.plots.slice().sort((a,b)=>near(a)-near(b))){ const zk=TEMP_ZONE[regionTemp(u.pt,reg)], q=zk && pool[zk] && pool[zk][s===4?'wood':'farm'];
       if (q && q.length) plots.push({x,y,s,reg,p:q.shift()}); else free.push({x,y,s,reg,temp:regionTemp(u.pt,reg)}); }
     out.push({pair:true, pt:u.pt, ti:u.ti, dx:t.dx, plots, free});
   }
