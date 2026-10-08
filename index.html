@@ -272,6 +272,10 @@ button.an.on::before{content:"✓ "}
 .mc li{display:flex;justify-content:space-between;gap:8px}
 .mc li > span:last-child{font-family:var(--font-mono);color:var(--muted);white-space:nowrap}
 .mc li.rl{display:block}
+ul.checks{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:3px;font-size:.84rem}
+ul.checks li{display:flex;justify-content:space-between;gap:8px}
+ul.checks li > span:last-child{font-family:var(--font-mono);color:var(--muted)}
+ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.no > span:first-child{color:var(--err-fg)}
 .mc .rl .rn{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .mc .rl .rn > span:last-child{font-family:var(--font-mono);color:var(--muted);white-space:nowrap}
 .mc .rl .rs{font-size:.76rem;color:var(--muted)}
@@ -340,6 +344,7 @@ button.an.on::before{content:"✓ "}
           <summary>More settings</summary>
           <div class="in">
             <div class="toggles">
+              <label class="inline"><input type="checkbox" id="feed" checked>Feed my Aniimo <i class="tip" tabindex="0" data-tip="Every Aniimo at Home eats 10 energy a minute, working or not, and works at 20% speed when the food bowl is empty. The plan sets aside the cheapest food it makes: edible crops or dishes, taken off what it sells. Untick if you feed them from elsewhere.">?</i></label>
               <label class="inline"><input type="checkbox" id="neutralOk" checked>No-climate crops ignore heat &amp; cold <i class="tip" tabindex="0" data-tip="Crops with no temperature need grow at full speed inside a heat or cold range, so they can fill spare space there and keep fields compact. Untick if you see them slow down in game.">?</i></label>
               <label class="inline"><input type="checkbox" id="watering" checked>Watering <span class="fx">+33%</span> <i class="tip" tabindex="0" data-tip="Water workers cut two eighths off each grow, so a 40 minute crop finishes in 30.">?</i></label>
               <label class="inline"><input type="checkbox" id="hauling" checked>Hauling + Storage Unit <i class="tip" tabindex="0" data-tip="Hauling workers move full plots into a Storage Unit, so plots never stop. Untick if you collect by hand.">?</i></label>
@@ -404,6 +409,7 @@ button.an.on::before{content:"✓ "}
           <label class="f" id="haveWBWrap"><span>Loose Wood Blocks</span><input type="number" id="haveWB" min="0" value="0"></label>
           <label class="f" id="haveOreWrap"><span id="haveOreLbl">Ore you have</span><input type="number" id="haveOre" min="0" value="0"></label>
           <label class="f" id="haveSandWrap"><span>Loose Mineral Sand</span><input type="number" id="haveSand" min="0" value="0"></label>
+          <label class="f" id="haveHabWrap"><span>Habitability you have <i class="tip" tabindex="0" data-tip="Shown on your RV screen. Furniture adds to it (bought with Bud Tickets), and so does each Aniimo living at Home. RV 10 and up ask for a minimum.">?</i></span><input type="number" id="haveHab" min="0" step="100" value="0"></label>
         </div>
         <div id="goalCustom" class="grid" hidden>
           <label class="f"><span>Home Coin needed</span><input type="number" id="needCoin" min="0" step="1000" value="1000000"></label>
@@ -706,6 +712,12 @@ const PROC = [
 // Game data from Shinumino's Aniimo Homeland Planner (MIT licence, game build 3634150), checked against Wikily.
 const EMODE_S = [54,54,54,54,108,54,54,54,54,108,108,108,108,108,162,108,162,108,162,162,162,108,108,108,378,378,162,108,108,162,162,162,162,162,162,162,108,108,162,162,162,216,162,270,108,162,108,108,54,108,54,54,108,54,162,216,216,108,54,54,54,54,54,54,108,54,54,54,54,54,54,270,54,108,108,162,108,162,108,108,108,162,108,108,162,54,108,54,108,108,108,162,108,216,108,108,108,108,108,108,108,162,162,108,108,108,108,108,108,108,54,108,216,108,108,162,108,108,54,108,108,108,162,108,108,162,216,54,216,108,108,108,108,162,54,54,54,54,54,162,27,27,27,27,27,27,27,27,1200,2400,3600,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,900,1800,1800,1800,1800,1800,0,0,0,0,0,0,0,0,0,0,0];
 PROC.forEach((r,i)=>{ if (EMODE_S[i]) r.es=EMODE_S[i]; });
+// Food: energy per item (every Aniimo at Home eats 10 a minute; an unfed one works at 20% speed). Game data via
+// Shinumino's planner (MIT), checked against Wikily. Crops not listed (Lemon, Chestnut, woods...) can't be eaten.
+const FOOD_E = {"Premium Berry Chocolate Coconut Pudding":142560,"Berry Chocolate Coconut Pudding":126360,"Cranberry Chocolate":90420,"Strawberry Candy":65050,"Walnut Cake":50910,"Premium Jello":47440,"Rose Shortbread":46200,"Soy Sauce Fried Rice":45650,"Cherry Blossom Rice Ball":45650,"Caramel Nut Chips":45570,"Grape Candy":45570,"Apple Candy":45360,"Tanghulu":45280,"Soy Sauce Tofu":45280,"Sugar-Roasted Chestnuts":45280,"Moondew Radish Slices":45280,"Jello":42690,"Rich Grape Compote":42690,"Strawberry Cream Puff":42200,"Maple Candy Roasted Potatoes":39600,"Umbral Hot Pot":38810,"Steamed Vermicelli Roll":33940,"Apple Tart":30800,"Lavender Cookies":30240,"Ginseng Chestnut Cake":29700,"Maple Candy Star":28460,"Flower Bread":28080,"Bread":26740,"Premium Bread":26740,"Roasted Soybeans":26230,"Roasted Waxing Moon Pepper":26040,"Coconut Milk":24110,"Rice Drink":23760,"Creamy Potato Soup":23470,"Premium Potato Soup":23470,"Dried Bean Curd":15400,"Tofu":13110,"Dried Ginseng":13020,"Ginseng Powder":12730,"Dried Grapes":12500,"Refined Flour":12200,"Cocoa Powder":12060,"Dried Cranberries":12060,"Coconut Oil":10980,"Shredded Coconut":10000,"Wheatmeal":9370,"Dried Strawberries":9060,"Milled Rice":7870,"Dried Lemon Slices":6560,"Potato Chips":6370,"Energy Bites":1000,"Ginseng":3620,"Sugarcane":1800,"Cranberry":1450,"Moondew Radish":1350,"Waxing Moon Pepper":1350,"Grapes":1210,"Strawberry":950,"Soybean":680,"Captain Spud":600,"Rice":360,"Potato":220,"Wheat":140};
+const EAT_PER_H = 600;
+// Habitability an RV upgrade asks for (from RV 10). Besides it, reaching RV N needs every plot, Mine and Well RV N-1 allows.
+const HAB_NEED = {10:13000, 11:13500, 12:14000, 13:14500, 14:15000, 15:15500, 16:16000, 17:17000, 18:18000, 19:19000, 20:20000};
 // Crackle Generators: output by level (Power Module level n allows generator Lv n), how many you can place, and the
 // Lightning job they need. A generator's output scales with its worker: (ATK[worker Lv] - DEF[needed Lv]) / workload.
 const GEN = {w:[0,600,800,1000,1200,1500], need:[0,1,2,3,3,3], wl:[0,60,60,75,90,105], rv:[0,12,14,16,18,20]};
@@ -1240,6 +1252,19 @@ function plan(requests, fillers, o, lp){
       if (C['gd_'+e.r.n] && e.r.p>0) v['gd_'+e.r.n]=-(coin/e.r.p);
       V['ee_'+ei]=v; model.ints['ee_'+ei]=1; eVars.push({name:'ee_'+ei, key:e.key, extra:{...e, coinOut:coin, perHour:e.perHour*f, coin:e.coin*f, e:true}}); });
   }
+  // Food: every Aniimo the plan places eats 600 energy an hour. Feed them the cheapest way from what the plan grows
+  // (edible crops, taken off what's sold) and the dishes it makes (taken off sales). Going hungry costs heavily.
+  const foodVars=[];
+  if (o.feed && SL){
+    C.food={min:EAT_PER_H*(o.fixedAniimo||0)};
+    for (const [nm,v] of Object.entries(V)) if (nm!=='slk' && v.slots) v.food=(v.food||0)-EAT_PER_H*v.slots;
+    allItems.forEach((it,k)=>{ const e=FOOD_E[it]; if (!e) return; const src=CROPS.find(c=>itemOf(c)===it), pr=src?src.price:0;
+      const v={food:e, ['dem_'+k]:-1}; addCoin(v,-pr); V['fd_'+k]=v; foodVars.push({name:'fd_'+k, item:it, e, price:pr}); });
+    for (const av of autoVars){ const e=FOOD_E[av.a.n]; if (!e) continue; const nm='fz_'+av.name, pr=av.a.r.p||0;
+      C['fzc_'+av.name]={max:0}; V[av.name]['fzc_'+av.name]=-1;
+      const v={food:e, ['fzc_'+av.name]:1}; addCoin(v,-pr); V[nm]=v; foodVars.push({name:nm, item:av.a.n, e, price:pr}); }
+    V.fslk={obj:-1e3, food:1};
+  }
   // A requested plot must always outweigh anything a single plot could add elsewhere
   const M = 1e5 + 10*maxObj;
   // Shortfall on an item's crops costs more than any plot could earn elsewhere, but stays on the same scale as plot
@@ -1304,10 +1329,13 @@ function plan(requests, fillers, o, lp){
   const eMines = eVars.filter(v=>v.mine).map(v=>({...v.mine, count:val(v.name)})).filter(x=>x.count>0);
   const mines = [...mineVars.map(mv=>({...mv.m, count:val(mv.name)})).filter(x=>x.count>0), ...eMines];
   const mineCoin = mines.reduce((s,m)=>s+m.count*m.coin,0), sandRate = mines.reduce((s,m)=>s+m.count*m.sand,0);
-  const coinRate = out.reduce((s,p)=>s+p.plots*p.coin, 0) - consumed + mineCoin + (o.extraCoin||0) + guestCoin + autoCoin + extrasCoin;
+  const food = foodVars.map(f=>({item:f.item, perHour:res[f.name]||0, e:f.e, price:f.price})).filter(f=>f.perHour>1e-6);
+  const srcNames=new Set([...foodVars.map(f=>f.name),'fslk']);
+  const foodCoin = food.reduce((t,f)=>t+f.perHour*f.price,0), foodNeed = o.feed && SL ? Math.max(0, C.food.min - Object.entries(V).reduce((t,[nm,v])=>t+(v.food && !srcNames.has(nm) ? v.food*(res[nm]||0) : 0),0)) : 0;
+  const coinRate = out.reduce((s,p)=>s+p.plots*p.coin, 0) - consumed + mineCoin + (o.extraCoin||0) + guestCoin + autoCoin + extrasCoin - foodCoin;
   const woodRate = out.reduce((s,p)=>s+p.plots*p.wood, 0);
   return {feasible: res.feasible!==false, raw: res, counts, pairs, pairSlots, hosted, placed: out, coinRate, woodRate, sandRate, mines, mineCoin, made, shortfall, consumed, mode, objective: res.result, model,
-    auto, autoMach, autoMachR, autoCoin, autoUse, goodsUse, extraCount, extrasCoin, workers, poolBusy, power, limited:!!res.limited};
+    auto, autoMach, autoMachR, autoCoin, autoUse, goodsUse, extraCount, extrasCoin, workers, poolBusy, power, food, foodCoin, foodNeed, foodShort:res.fslk||0, limited:!!res.limited};
 }
 
 // Spread one zone's plots over its units so every unit's layout really fits.
@@ -1480,8 +1508,8 @@ const moduleAt = (k,rv) => { let l=0; MODULE_RV[k].forEach((r,i)=>{ if(i&&rv>=r)
 const ORE_TIER = {'Mineral Sand':1,'Coarse-Sifted Ore':8,'Sintered Ore Brick':64,'Refined Ore':512,'Microcrystalline Ore Plate':2048};
 const FRONTIER_CLEAN = {"small": [{"w": 0, "f": 24, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2], [4, 4]], "wood": []}, {"w": 1, "f": 23, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[4, 4]]}, {"w": 2, "f": 22, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, 4], [4, 4]]}, {"w": 3, "f": 21, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, 4]]}, {"w": 4, "f": 20, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, 4]]}, {"w": 5, "f": 18, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 6, "f": 16, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 7, "f": 14, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 8, "f": 12, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -2], [0, 2], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, -6], [0, 4], [4, -6], [4, -2], [4, 4]]}], "cool": [{"w": 0, "f": 32, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-5, 5], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": []}, {"w": 1, "f": 31, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, 5]]}, {"w": 2, "f": 30, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, -7], [-7, 5]]}, {"w": 3, "f": 29, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, 5]]}, {"w": 4, "f": 28, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, -7], [5, 5]]}, {"w": 5, "f": 26, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 5]]}, {"w": 6, "f": 24, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 7, "f": 22, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 8, "f": 20, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 9, "f": 18, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 10, "f": 16, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 11, "f": 14, "farm": [[-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 12, "f": 12, "farm": [[-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, -7], [-3, 5], [1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}]};
 const FORM_IDS = ['rv','farmPlots','woodPlots','farmLvl','woodLvl','eco','heat','cool','lamp','mines','kilns','benches','useHeat','useCool','useLamp','extras','pairs','neutralOk','freeze',
-  'watering','hauling','persona','events','autoProd','switchRec','power','gens','usePower','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
-  'needCoin','needWood','needSand','kitchen','crafting','detector','reserve'];
+  'watering','hauling','persona','events','autoProd','switchRec','power','gens','usePower','feed','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
+  'needCoin','needWood','needSand','haveHab','kitchen','crafting','detector','reserve'];
 const DEFAULT_STATE = {requests:[{id:'ginseng',plots:10},{id:'grapes',plots:6},{id:'chestnut',plots:4}], custom:[], noFill:[],
   products:[{n:'Tanghulu',amt:4,unit:'h'},{n:'Dried Ginseng',amt:5,unit:'h'}], crewLvl:3, tab:'plant'};
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
@@ -1543,6 +1571,7 @@ const DEFAULTS = {hours:'0', capSmall:'24', capCool:'32', session:'8', rv:'12'};
 function readForm(){ const o={}; for (const k of FORM_IDS){ const el=$(k); o[k]= el.type==='checkbox'?el.checked:el.value; } return o; }
 // Saves from before a setting existed: give it the default it would have had
 function migrateForm(f){ const rv=Math.max(1,Math.min(20,parseInt(f&&f.rv)||12));
+  if (f && !('feed' in f)) $('feed').checked=true;
   if (f && !('power' in f)){ $('power').value=String(powerAt(rv)); $('gens').value=String(genCount(rv)); $('usePower').checked=true; } }
 function writeForm(o){ for (let [k,v] of Object.entries(o||{})){ if (!FORM_IDS.includes(k)) continue; const el=$(k); if(!el) continue; if (k==='rv') v=Math.max(1,Math.min(20,parseInt(v)||12));
   if (el.type==='checkbox') el.checked=!!v; else { const was=el.value; el.value=String(v); if (el.tagName==='SELECT' && el.selectedIndex<0) el.value=DEFAULTS[k]||was; } } }
@@ -1605,7 +1634,7 @@ function opts(){
     checkHours:parseFloat($('hours').value)||0, farmStorage:5*fl, woodStorage:4*(wl+1), woodValue:num('woodValue',0,100000),
     capSmall:int('capSmall')||24, capCool:int('capCool')||32, fill:$('fill').checked,
     pairs:$('pairs').checked, neutralOk:$('neutralOk').checked,
-    powerLvl:$('usePower').checked?int('power'):0, gens:int('gens'),
+    powerLvl:$('usePower').checked?int('power'):0, gens:int('gens'), feed:$('feed').checked,
   };
 }
 
@@ -1824,6 +1853,16 @@ function renderGoalInputs(){
         '. The plan grows the Wood Blocks, mines the Mineral Sand and counts the Bench and Kiln time to process them.'; }
   }
   $('goalNote').textContent=note;
+}
+// What else the next RV asks for: every plot, Mine and Well your RV allows now, and Habitability from RV 10
+function rvChecks(next, best, chain, extras){
+  const rv=next-1, P=best.power||{};
+  const wells=((chain.machines.find(m=>m.key==='well')||{}).need||0)+extras.filter(e=>e.key==='well').length+(P.eExtras||[]).filter(e=>e.key==='well').reduce((t,e)=>t+e.count,0)+((best.autoMach||{}).well||0)+((P.eMachK||{}).well||0);
+  const rows=[['Farmland plots', int('farmPlots'), farmCap(rv)], ['Woodland plots', int('woodPlots'), woodCap(rv)], ['Mines', int('mines'), placeAt('mine',rv)], ['Wells', wells, placeAt('well',rv), 'the plan places']];
+  if (HAB_NEED[next]) rows.push(['Habitability', num('haveHab',0,1e9), HAB_NEED[next], 'you have']);
+  return `<ul class="checks">${rows.filter(r=>r[2]>0).map(([lbl,have,need,how])=>{ const ok=have>=need;
+    return `<li class="${ok?'ok':'no'}"><span>${ok?'✓':'✗'} ${lbl}</span><span>${fmt(have)} / ${fmt(need)}${how&&!ok?` <small>(${how})</small>`:''}</span></li>`; }).join('')}</ul>
+    ${HAB_NEED[next] && num('haveHab',0,1e9)<HAB_NEED[next] ? '<p class="note">Raise Habitability with furniture bought with Bud Tickets; each Aniimo living at Home adds some too.</p>' : ''}`;
 }
 function etaText(hrs){ if(!isFinite(hrs)) return 'never'; if(hrs<=0) return 'ready'; const t=Math.max(1,Math.round(hrs*60)), d=Math.floor(t/1440), h=Math.floor((t%1440)/60), m=t%60; return (d?d+'d ':'')+h+'h '+m+'m'; }
 
@@ -2890,6 +2929,7 @@ function prepare(){
     const room=cap-fixed, unitsMines=o.heat+o.cool+o.lamp+o.mines;
     // Climate units and Mines always get their worker (as before); the rest share what's left
     o.slots = room>=unitsMines+minPool ? {room, units:true} : {room:Math.max(0,room-unitsMines), units:false};
+    o.fixedAniimo = fixed + (o.slots.units ? 0 : unitsMines);
   } else o.slots=null;
   return {o, warnings, reqs, fillers, reqFarm, reqWood, ctx, chain, chainMines, gs};
 }
@@ -2957,7 +2997,7 @@ function run(){
     const total=Math.max(0,...rows.map(r=>r.hrs));
     const maxH=Math.max(...rows.map(r=>isFinite(r.hrs)?r.hrs:0), 1e-9);
     goalHtml=`<div class="card"><div class="head"><h3>${gs.rv?'Time to afford RV '+gs.rv.next:'Time to reach your target'}</h3><i class="tip" tabindex="0" data-tip="Each bar is one thing the upgrade asks for and how long this plan takes to get it. Wood and ore bars include gathering the raw Wood Blocks or Mineral Sand and the Bench or Kiln time to process them, whichever is longer. Hover a bar for the details. The slowest bar decides when you're done.">?</i></div>
-      <div class="bars">${rows.map(r=>`<div class="bar${r.hrs===total&&total>0?' slow':''}" title="${r.sub}"><span>${r.label}</span><span class="track"><span class="fill" style="display:block;width:${isFinite(r.hrs)?Math.max(2,100*r.hrs/maxH):100}%"></span></span><span class="t">${etaText(r.hrs)}</span></div>`).join('')}</div></div>`;
+      <div class="bars">${rows.map(r=>`<div class="bar${r.hrs===total&&total>0?' slow':''}" title="${r.sub}"><span>${r.label}</span><span class="track"><span class="fill" style="display:block;width:${isFinite(r.hrs)?Math.max(2,100*r.hrs/maxH):100}%"></span></span><span class="t">${etaText(r.hrs)}</span></div>`).join('')}</div>${gs.rv?rvChecks(gs.rv.next, best, chain, extras):''}</div>`;
     lastPlan.eta=total;
   }
 
@@ -3030,6 +3070,8 @@ function run(){
     for (const m of kinds.values()) for (const [rid,l] of m.lines){ const a=(PWR.eMachR||{})[rid]||0, c=(PWR.eChainR||{})[rid]||0; l.n+=a; l.e=a+c; l.f=o.eF[rid]||1; }
     for (const e of PWR.eExtras||[]){ const m=K(e.key); m.need+=e.count; m.e=(m.e||0)+e.count; m.maxLvl=Math.max(m.maxLvl, e.r.l||0);
       m.lines.set(e.r.id+'|E',{r:e.r, perHour:e.perHour*e.count, busy:e.count, n:e.count, e:e.count, f:1, coin:e.coin*e.count, feeds:new Set(), extra:true}); } }
+  // dishes set aside as food aren't sold
+  for (const f of best.food||[]) for (const m of kinds.values()) for (const l of m.lines.values()) if (l.r.n===f.item && l.coin>0){ l.coin=Math.max(0,l.coin-f.perHour*(l.r.p||0)); l.feeds.add('the food bowl'); }
   // Wells and leisure spots: no land, no ingredients, one Aniimo each, always running
   const CLIM={cool:'Faster inside a Cooling Unit range', warm:'Faster inside a Heat Furnace range', light:'Must sit inside a Sunlamp range'};
   { const g={}; for (const e of extras){ const k=e.key+'|'+e.r.id; (g[k]=g[k]||{...e,n:0}).n++; }
@@ -3059,7 +3101,7 @@ function run(){
       const shown=segs.length<=10 ? segs : [segs.reduce((t,x)=>t+x,0)/segs.length];
       const meter=`<div class="meter" style="--jc:${jc}">${shown.map(x=>`<i style="width:${x*100/shown.length}%"></i>`).join('')}</div>`;
       const li=l=>{ const n=l.n, e=l.e||0, capH=(n-e)+e*(l.f||1), pct=Math.round(100*l.busy/Math.max(e?1e-9:1, one||l.extra?(e?capH:n):m.need));
-        const sub=[one||l.extra ? `${n} machine${n>1?'s':''}`+(e?` (${e===n?(n>1?'all ':''):e+' '}on E-mode)`:'') : '', l.extra||!l.r.i.length ? `${l.r.q} a batch` : '', (one||l.extra) ? pct+'% busy' : '', l.coin>0 ? fmt(l.coin)+' coin/h' : (l.feeds.size ? 'for '+[...l.feeds].join(', ') : '')].filter(Boolean).join(' · ');
+        const sub=[one||l.extra ? `${n} machine${n>1?'s':''}`+(e?` (${e===n?(n>1?'all ':''):e+' '}on E-mode)`:'') : '', l.extra||!l.r.i.length ? `${l.r.q} a batch` : '', (one||l.extra) ? pct+'% busy' : '', l.coin>0 ? fmt(l.coin)+' coin/h'+(l.feeds.has('the food bowl')?' · some for the food bowl':'') : (l.feeds.size ? 'for '+[...l.feeds].join(', ') : '')].filter(Boolean).join(' · ');
         return `<li class="rl"><div class="rn">${l.extra?`<span>${l.r.n}</span>`:recipeCtl(l.r, ctx, l.item)}<span>${fmtN(l.perHour)}/h</span></div>${sub?`<div class="rs">${sub}</div>`:''}</li>`; };
       const busyAll=ls.reduce((t,l)=>t+l.busy,0);
       return `<div class="mc${over?' over':''}" style="--jc:${jc}">${head}${meter}${one?'':`<p class="note">${Math.round(100*busyAll/Math.max(1,m.need))}% busy${m.need>1?' on average across '+m.need:''}${m.e?` · ${m.e} on E-mode`:''}</p>`}<ul>${ls.map(li).join('')}</ul>${m.notes.map(t=>`<p class="note">${t}.</p>`).join('')}${over?`<p class="note">Needs more than RV ${rvL} allows.</p>`:''}</div>`; }).join('')}</div>`;
@@ -3259,7 +3301,12 @@ function sellHtml(hrs){
   const takeG=(it,n)=>{ const u=Math.min(n, gLeft[it]||0); gLeft[it]=(gLeft[it]||0)-u; return n-u; };
   for (const m of best.mines){ const n=takeG(m.name, m.count*m.coin/m.r.p); if (n<=1e-6) continue; sell.push({name:m.name, kind:'Mine', n, coin:n*m.r.p}); }
   const ex={}; for (const e of extras){ const k=e.r.n; (ex[k]=ex[k]||{name:k, kind:MACH[e.key].name, n:0, coin:0}); ex[k].n+=e.perHour; ex[k].coin+=e.coin; }
+  for (const e of ((best.power||{}).eExtras||[])){ const k=e.r.n; (ex[k]=ex[k]||{name:k, kind:MACH[e.key].name, n:0, coin:0}); ex[k].n+=e.perHour*e.count; ex[k].coin+=e.coin*e.count; }
   for (const r of Object.values(ex)){ const left=takeG(r.name, r.n); if (left<=1e-6) continue; r.coin*=left/r.n; r.n=left; sell.push(r); }
+  // food for the Aniimo comes off what's sold and goes in the food bowl
+  for (const f of best.food||[]){ const r=sell.find(x=>x.name===f.item); if (r){ const u=Math.min(r.n, f.perHour); r.coin*= (r.n-u)/r.n; r.n-=u; }
+    keep.push({name:f.item+' (food bowl)', n:f.perHour}); }
+  for (let i=sell.length-1;i>=0;i--) if (sell[i].n<=1e-6) sell.splice(i,1);
   if (best.woodRate>0) keep.push({name:'Wood Block', n:best.woodRate});
   if (best.sandRate>0) keep.push({name:'Mineral Sand', n:best.sandRate});
   sell.sort((a,b)=>b.coin-a.coin);
