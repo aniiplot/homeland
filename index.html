@@ -131,8 +131,6 @@ dialog#eventDlg::backdrop{background:rgba(0,0,0,.5)}
 .themepick .ic{width:14px;height:14px;border-radius:50%;background:linear-gradient(90deg,var(--leaf) 50%,var(--accent) 50%)}
 .masthead .meta{font-family:var(--font-mono);font-size:.75rem;color:var(--muted);text-align:right}
 /* Two columns */
-.cols{display:grid;grid-template-columns:minmax(0,1fr);gap:18px;align-items:start}
-@media (min-width:1060px){ .cols{grid-template-columns:minmax(0,1fr) 420px} .results{grid-column:1;grid-row:1} .setup{grid-column:2;grid-row:1;position:sticky;top:env(safe-area-inset-top,0px);max-height:100vh;overflow:auto;padding-bottom:90px} }
 .setup{display:grid;gap:12px;min-width:0}
 .results{display:grid;gap:14px;min-width:0}
 /* Step cards */
@@ -177,7 +175,7 @@ details[open] > summary::before{content:"▾"}
 details > .in{display:grid;gap:10px;margin-top:10px}
 .chips{display:flex;flex-wrap:wrap;gap:6px 14px}
 /* Update bar: only shows when there are changes to apply */
-.updatebar{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:15;width:min(560px,calc(100% - 32px));background:var(--panel);color:var(--ink);border:2px solid var(--leaf);border-radius:14px;padding:10px 10px 10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);
+.updatebar{position:fixed;left:50%;bottom:calc(14px + env(safe-area-inset-bottom,0px));z-index:22;width:min(560px,calc(100% - 32px));background:var(--panel);color:var(--ink);border:2px solid var(--leaf);border-radius:14px;padding:10px 10px 10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.25);
   transform:translate(-50%,calc(100% + 30px));opacity:0;visibility:hidden;transition:transform .22s ease,opacity .22s ease,visibility 0s linear .22s}
 .updatebar.dirty{transform:translate(-50%,0);opacity:1;visibility:visible;transition:transform .22s ease,opacity .22s ease}
 .updatebar .state{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:8px}
@@ -290,18 +288,8 @@ table.bestrv th.cur,table.bestrv td.cur{color:var(--accent);font-weight:700} .mg
 body.quick .adv{display:none!important}
 .modebar{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap}
 .modebar .note{margin:0;flex:1 1 200px}
-.mbar{display:none}
-@media (max-width:1059px){
-  .mbar{display:flex;position:sticky;top:0;z-index:12;justify-content:space-between;align-items:center;gap:10px;padding:8px 8px 8px 14px;margin:0 0 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-weight:700;font-size:.9rem}
-  body:not(.setup-open) .setup{display:none}
-  #setup,#pane-data,#summary,.tabs{scroll-margin-top:60px}
-}
-p.about{margin:12px 0 0;text-align:right}
 @media (max-width:520px){
   .tiles{grid-template-columns:1fr 1fr}
-  .tabs{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
-  .tabs::-webkit-scrollbar{display:none}
-  .tabs [role=tab]{flex:0 0 auto}
 }
 .roster summary{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .roster .radd{display:flex;gap:6px;margin:10px 0}
@@ -328,25 +316,167 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.unk > span:fi
 .sc .sub{grid-column:2 / -1;font-size:.76rem;color:var(--muted);display:flex;justify-content:space-between;gap:6px}
 @media (max-width:520px){ .bar{grid-template-columns:78px minmax(0,1fr) 80px} }
 @media (prefers-reduced-motion:reduce){ *{transition:none!important} }
+
+/* ===== Map-first layout: icon rail, header with the key numbers, map in the middle, checklist on the right,
+   setup in a drawer ===== */
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+.app{display:grid;grid-template-columns:84px minmax(0,1fr) 380px;grid-template-rows:auto 1fr;min-height:100vh}
+.rail{grid-row:1/-1;position:sticky;top:0;height:100vh;display:flex;flex-direction:column;align-items:center;gap:4px;padding:14px 0;background:var(--panel);border-right:1px solid var(--line);z-index:21}
+.rail .logo{font-family:var(--font-display);font-weight:800;font-size:1.25rem;color:var(--accent);margin:0 0 10px}
+.rail .tabs{display:flex;flex-direction:column;gap:4px;border:0;flex-wrap:nowrap}
+.rail [role=tab],.railbtn{display:grid;justify-items:center;gap:3px;width:70px;padding:8px 2px;border:1px solid transparent;border-radius:12px;background:none;color:var(--muted);font-size:.7rem;font-weight:700;line-height:1.1}
+.rail [role=tab]:hover,.railbtn:hover{color:var(--ink);background:var(--sunk)}
+.rail [role=tab][aria-selected=true]{color:var(--ink);background:var(--sunk);border-color:var(--line)}
+.rail [role=tab][aria-selected=true] .ri{stroke:var(--leaf)}
+.rail [role=tab] .cnt{margin:0;font-size:.62rem}
+.ri{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.railbtn{margin-bottom:8px;border-color:var(--line)}
+#tab-over{display:none}
+.hdr{grid-column:2/-1;position:sticky;top:0;z-index:4;display:flex;align-items:center;gap:14px 22px;flex-wrap:nowrap;padding:12px 22px;background:var(--bg);border-bottom:1px solid var(--line)}
+.hdr .ttl{display:grid;gap:4px;min-width:0}
+.hdr h1{font-family:var(--font-display);font-weight:800;font-size:1.15rem;margin:0;line-height:1;white-space:nowrap}
+.hdr h1 span{color:var(--accent)}
+.hdr .ctx{justify-self:start;background:var(--sunk);border:1px solid var(--line);border-radius:999px;padding:3px 11px;font-size:.8rem;font-weight:700;color:var(--ink)}
+.hdr-r{display:flex;align-items:center;gap:10px;margin-left:auto}
+.hdr .themepick .tl{display:none}
+.kpis{flex:1;min-width:0}
+.kpis .tiles{display:flex;gap:0 20px;flex-wrap:wrap;margin:0;max-height:46px;overflow:hidden}
+.kpis .tile{background:none;border:0;padding:0;min-width:0;border-radius:0}
+.kpis .tile b{font-size:1.1rem}
+.kpis .tile span{font-size:.68rem}
+.kpis .tile.hero{background:none;color:var(--accent)}
+.kpis .tile.hero b{font-size:1.45rem;color:var(--accent)}
+.kpis .tile.hero span{color:var(--muted)}
+.kpis .tile.goal b{color:var(--gold)}
+.main{grid-column:2;padding:18px 22px 110px;display:grid;gap:14px;align-content:start;min-width:0}
+.main>.panel{padding-top:0}
+.side{grid-column:3;border-left:1px solid var(--line);background:var(--panel);padding:18px 18px 110px;min-width:0}
+@media (min-width:1181px){ .side{position:sticky;top:var(--hdr-h,82px);align-self:start;max-height:calc(100vh - var(--hdr-h,82px));overflow:auto;padding-bottom:90px;min-height:calc(100vh - var(--hdr-h,82px))} }
+.side .panel{padding-top:0}
+#pane-over[hidden]{display:grid!important}
+.side .tiles{display:none}
+/* checklist */
+.todo{background:none;border:0;padding:0}
+.todo h3{display:flex;justify-content:space-between;align-items:baseline;margin:6px 0 8px}
+.todo h3 small{font-family:var(--font-mono);font-size:.78rem;color:var(--muted);font-weight:500}
+.prog{height:8px;border-radius:99px;background:var(--sunk);border:1px solid var(--line);overflow:hidden;margin:0 0 10px}
+.prog i{display:block;height:100%;background:var(--leaf);transition:width .2s}
+.todo ul{list-style:none;margin:0;padding:0}
+.todo li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;padding:10px 0;border-top:1px solid var(--line)}
+.todo li:first-child{border-top:0}
+.todo li input{margin-top:3px;width:18px;height:18px}
+.todo li b{display:block}
+.todo li .v{color:var(--muted);font-size:.88rem}
+.todo li.done b{text-decoration:line-through;color:var(--muted)}
+.todo li .linkbtn{font-size:.82rem}
+.tg{margin:6px 0 4px}
+.tgh{display:flex;justify-content:space-between;align-items:baseline;font-size:.78rem;color:var(--muted);margin:12px 0 0;font-weight:700}
+.tgh .linkbtn{font-size:.78rem;font-weight:400}
+/* setup drawer */
+.drawer{position:fixed;top:0;bottom:0;left:84px;width:min(460px,calc(100vw - 84px));z-index:20;background:var(--bg);border-right:1px solid var(--line);box-shadow:20px 0 40px rgba(0,0,0,.35);overflow:auto;padding:0 16px 110px;transform:translateX(calc(-100% - 90px));visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
+body.setup-open .drawer{transform:none;visibility:visible;transition:transform .22s ease}
+.dhead{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:14px 0 10px;background:var(--bg);margin-bottom:4px}
+.dhead h2{font-family:var(--font-display);font-size:1.2rem;margin:0}
+.dfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.scrim{position:fixed;inset:0;z-index:19;background:rgba(0,0,0,.45)}
+body:not(.setup-open) .scrim{display:none}
+.drawer .step{scroll-margin-top:60px}
+@media (prefers-reduced-motion:reduce){ .drawer{transition:none} }
+/* narrower screens: checklist moves under the map */
+@media (max-width:1180px){
+  .app{grid-template-columns:84px minmax(0,1fr)}
+  .side{grid-column:2;border-left:0;border-top:1px solid var(--line);padding:18px 22px 110px}
+  .main{padding-bottom:18px}
+}
+/* phones: the rail becomes a bottom bar and the checklist is its own view */
+@media (max-width:720px){
+  .app{display:block;padding-bottom:64px}
+  .rail{position:fixed;top:auto;bottom:0;left:0;right:0;height:auto;flex-direction:row;padding:4px 4px calc(4px + env(safe-area-inset-bottom,0px));border-right:0;border-top:1px solid var(--line);z-index:21}
+  .rail .logo{display:none}
+  .rail .tabs{flex-direction:row;flex:1;justify-content:space-around;overflow-x:auto;scrollbar-width:none}
+  .rail .tabs::-webkit-scrollbar{display:none}
+  .rail [role=tab],.railbtn{width:auto;min-width:54px;flex:0 0 auto;padding:6px 4px;font-size:.62rem}
+  .railbtn{margin:0}
+  #tab-over{display:grid}
+  #tab-data,#tab-orders{display:none}
+  .hdr{position:static;padding:10px 14px;gap:8px 12px;flex-wrap:wrap}
+  #mbarBtn{display:none}
+  .hdr .eventbtn{font-size:.78rem;padding:4px 10px}
+  .hdr .eventbtn :is(.d,.days,small){display:none}
+  .rail [role=tab],.railbtn{min-width:46px}
+  .rail [role=tab] .cnt{display:none}
+  .hdr h1{font-size:1rem}
+  .hdr .themepick{display:none}
+  .kpis{order:3;flex-basis:100%}
+  .kpis .tile:nth-child(n+5){display:none}
+  .main{padding:12px 14px 20px}
+  .side{display:none;padding:12px 14px 20px}
+  body.view-over .side{display:block}
+  body.view-over .main>.panel{display:none}
+  .drawer{left:0;width:100vw;padding-bottom:140px}
+  .updatebar{bottom:calc(70px + env(safe-area-inset-bottom,0px))}
+}
 </style>
 <script>window.SKINS={"aurora": ["dark", "Aurora"], "midnight": ["dark", "Midnight"], "lagoon": ["dark", "Lagoon"], "ember": ["dark", "Ember"], "paper": ["light", "Paper"], "daylight": ["light", "Daylight"]};(function(){ var k='aurora'; try{ k=localStorage.getItem('hfp-skin')||'aurora'; }catch(e){} if(!SKINS[k]) k='aurora';
   document.documentElement.setAttribute('data-skin', k); document.documentElement.setAttribute('data-theme', SKINS[k][0]); })();</script>
 
 </head><body>
-<div class="wrap">
-  <header class="masthead">
-    <div>
-      <h1>Homeland <span>Field</span> Planner</h1>
-      <p>Plan your fields, machines and Aniimo for any goal.</p>
+<div class="app">
+  <nav class="rail" aria-label="Planner">
+    <span class="logo" aria-hidden="true">HF</span>
+    <button type="button" class="railbtn" id="railSetup" aria-controls="setup"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span class="rl">Setup</span></button>
+    <div class="tabs" role="tablist" aria-label="Plan views" aria-orientation="vertical">
+      <button type="button" role="tab" id="tab-layout" aria-controls="pane-layout" aria-selected="false"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg><span class="rl">Map</span></button>
+      <button type="button" role="tab" id="tab-over" aria-controls="pane-over" aria-selected="false"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="M8 12.5l3 3 5-6"/></svg><span class="rl">Checklist</span></button>
+      <button type="button" role="tab" id="tab-plant" aria-controls="pane-plant" aria-selected="false"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 12c0-4 3-7 8-7 0 5-3 7-8 7z"/><path d="M12 14c0-3-2.5-5.5-7-5.5 0 4 2.5 5.5 7 5.5z"/></svg><span class="rl">Fields</span></button>
+      <button type="button" role="tab" id="tab-mach" aria-controls="pane-mach" aria-selected="false"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg><span class="rl">Machines</span></button>
+      <button type="button" role="tab" id="tab-crew" aria-controls="pane-crew" aria-selected="false"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><circle cx="7" cy="9" r="2"/><circle cx="12" cy="6.5" r="2"/><circle cx="17" cy="9" r="2"/><path d="M7 18c0-3 2.2-5 5-5s5 2 5 5c0 1.5-2 2-5 2s-5-.5-5-2z"/></svg><span class="rl">Aniimo</span></button>
+      <button type="button" role="tab" id="tab-shop" aria-controls="pane-shop" aria-selected="false"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1.2 12H6.2z"/><path d="M9 8V6a3 3 0 0 1 6 0v2"/></svg><span class="rl">Shopping</span></button>
+      <button type="button" role="tab" id="tab-orders" aria-controls="pane-orders" aria-selected="false"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h4"/></svg><span class="rl">Orders</span></button>
+      <button type="button" role="tab" id="tab-data" aria-controls="pane-data" aria-selected="false"><svg class="ri" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.5"/></svg><span class="rl">About</span></button>
     </div>
-    <div class="mhr"><button type="button" class="eventbtn" id="eventBtn" hidden></button><label class="themepick"><span class="ic" aria-hidden="true"></span><span>Theme</span><select id="skin" aria-label="Theme"></select></label>
-</div>
+  </nav>
+  <header class="hdr">
+    <div class="ttl"><h1>Homeland <span>Field</span> Planner</h1><button type="button" class="ctx" id="mbarText" aria-controls="setup"></button></div>
+    <div id="kpis" class="kpis" aria-live="polite"></div>
+    <div class="hdr-r"><button type="button" class="eventbtn" id="eventBtn" hidden></button><button type="button" class="primary" id="mbarBtn" aria-controls="setup" aria-expanded="false">Edit setup</button></div>
   </header>
-
-  <div class="mbar" id="mbar"><span id="mbarText"></span><button type="button" id="mbarBtn" aria-controls="setup" aria-expanded="false">Edit setup</button></div>
-  <div class="cols">
-    <!-- ================= SETUP ================= -->
-    <div class="setup" id="setup">
+  <main class="main" aria-labelledby="h-plan">
+    <h2 id="h-plan" class="sr">Your plan</h2>
+    <div class="stale" id="stale" hidden style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>You changed the setup. These results are from before.</span><button type="button" class="primary" id="runBtn2">Update plan</button></div>
+        <div class="panel" role="tabpanel" id="pane-plant" aria-labelledby="tab-plant" hidden></div>
+        <div class="panel" role="tabpanel" id="pane-layout" aria-labelledby="tab-layout" hidden></div>
+        <div class="panel" role="tabpanel" id="pane-mach" aria-labelledby="tab-mach" hidden></div>
+        <div class="panel" role="tabpanel" id="pane-crew" aria-labelledby="tab-crew" hidden></div>
+        <div class="panel" role="tabpanel" id="pane-shop" aria-labelledby="tab-shop" hidden>
+          <div class="head"><h3>Seeds to buy <span class="note" style="font-weight:400">(big number = seeds)</span></h3><label class="f" style="width:110px"><span>For</span><select id="session"></select></label></div>
+          <div id="shop"></div>
+        </div>
+        <div class="panel" role="tabpanel" id="pane-orders" aria-labelledby="tab-orders" hidden>
+          <div class="head"><h3>Daily Orders</h3><i class="tip" tabindex="0" data-tip="Copy each order from the board: what it asks for, how many, and the Home Coin it pays. New orders arrive at 04:00 and 16:00; 4% pay double and 1% pay five times (AniimoTools).">?</i></div>
+          <div id="orderRows" class="rows"></div>
+          <div class="btnrow"><button type="button" id="addOrder">+ Add order</button></div>
+          <div id="orderOut"></div>
+        </div>
+        <div class="panel" role="tabpanel" id="pane-data" aria-labelledby="tab-data" hidden>
+          <div class="head"><h2 id="aboutHead" tabindex="-1" style="margin:0">About the numbers and sources</h2><button type="button" class="linkbtn" data-goto="layout">Back to the map</button></div>
+          <div id="bestRv"></div>
+          <h3>Crops</h3>
+          <div class="tablewrap" id="dataTable"></div>
+          <p id="solverNote" class="note" hidden>Your browser couldn't run the fast solver, so very large setups may come out close to best rather than exact.</p>
+          <ul class="src">
+            <li><a href="https://aniimotools.dev/systems/homeland/stations/" target="_blank" rel="noopener">AniimoTools stations</a> · <a href="https://aniimoguide.com/homeland/recipes" target="_blank" rel="noopener">AniimoGuide recipes</a> · <a href="https://wikily.gg/aniimo/homeland-furniture" target="_blank" rel="noopener">Wikily</a> · <a href="https://aniimo.gg/homeland/object/woodland-level-1/" target="_blank" rel="noopener">Aniimo.gg</a> · <a href="https://ae-bii.github.io/aniimax/" target="_blank" rel="noopener">Aniimax</a> · <a href="https://www.aniimoverse.com/guides/homeland" target="_blank" rel="noopener">AniimoVerse</a> · <a href="https://metaforge.app/aniimo/database/shops/seed-shop" target="_blank" rel="noopener">MetaForge</a></li>
+            <li>E-mode times, generator output and power draw: <a href="https://github.com/Shinumino/aniimo-homeland-planner" target="_blank" rel="noopener">Shinumino's Aniimo Homeland Planner</a> (MIT licence, Copyright (c) 2026 Shinumino), checked against <a href="https://wikily.gg/aniimo/homeland-crafting" target="_blank" rel="noopener">Wikily</a>.</li>
+          </ul>
+        </div>
+  </main>
+  <aside class="side">
+    <div class="panel" role="tabpanel" id="pane-over" aria-labelledby="tab-over"><div id="summary"><p class="note">Working out your plan…</p></div><div id="todo"></div></div>
+  </aside>
+</div>
+<div class="scrim" id="scrim" hidden></div>
+<div class="setup drawer" id="setup" role="dialog" aria-modal="false" aria-labelledby="setupHead">
+  <div class="dhead"><h2 id="setupHead">Your setup</h2><button type="button" class="icon" id="setupClose" aria-label="Close setup">✕</button></div>
       <div class="modebar"><div class="seg" role="group" aria-label="How much to set up"><button type="button" data-mode="quick">Quick</button><button type="button" data-mode="custom">Custom</button></div>
         <p class="note" id="modeNote"></p></div>
 
@@ -477,53 +607,7 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.unk > span:fi
       </details>
 
 
-    </div>
-
-    <!-- ================= RESULTS ================= -->
-    <div class="results" aria-labelledby="h-plan">
-      <h2 id="h-plan" style="position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)">Your plan</h2>
-      <div class="stale" id="stale" hidden style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap"><span>You changed the setup. These results are from before.</span><button type="button" class="primary" id="runBtn2">Update plan</button></div>
-      <div class="card">
-        <div class="tabs" role="tablist" aria-label="Plan details">
-          <button type="button" role="tab" id="tab-over" aria-controls="pane-over" aria-selected="true">Overview</button>
-          <button type="button" role="tab" id="tab-plant" aria-controls="pane-plant" aria-selected="false">Fields</button>
-          <button type="button" role="tab" id="tab-layout" aria-controls="pane-layout" aria-selected="false">Layout</button>
-          <button type="button" role="tab" id="tab-mach" aria-controls="pane-mach" aria-selected="false">Machines</button>
-          <button type="button" role="tab" id="tab-crew" aria-controls="pane-crew" aria-selected="false">Aniimo</button>
-          <button type="button" role="tab" id="tab-shop" aria-controls="pane-shop" aria-selected="false">Shopping</button>
-          <button type="button" role="tab" id="tab-orders" aria-controls="pane-orders" aria-selected="false">Orders</button>
-          <button type="button" role="tab" id="tab-data" aria-controls="pane-data" aria-selected="false" hidden>About</button>
-        </div>
-        <div class="panel" role="tabpanel" id="pane-over" aria-labelledby="tab-over"><div id="summary"><p class="note">Working out your plan…</p></div><div id="todo"></div></div>
-        <div class="panel" role="tabpanel" id="pane-plant" aria-labelledby="tab-plant" hidden></div>
-        <div class="panel" role="tabpanel" id="pane-layout" aria-labelledby="tab-layout" hidden></div>
-        <div class="panel" role="tabpanel" id="pane-mach" aria-labelledby="tab-mach" hidden></div>
-        <div class="panel" role="tabpanel" id="pane-crew" aria-labelledby="tab-crew" hidden></div>
-        <div class="panel" role="tabpanel" id="pane-shop" aria-labelledby="tab-shop" hidden>
-          <div class="head"><h3>Seeds to buy <span class="note" style="font-weight:400">(big number = seeds)</span></h3><label class="f" style="width:110px"><span>For</span><select id="session"></select></label></div>
-          <div id="shop"></div>
-        </div>
-        <div class="panel" role="tabpanel" id="pane-orders" aria-labelledby="tab-orders" hidden>
-          <div class="head"><h3>Daily Orders</h3><i class="tip" tabindex="0" data-tip="Copy each order from the board: what it asks for, how many, and the Home Coin it pays. New orders arrive at 04:00 and 16:00; 4% pay double and 1% pay five times (AniimoTools).">?</i></div>
-          <div id="orderRows" class="rows"></div>
-          <div class="btnrow"><button type="button" id="addOrder">+ Add order</button></div>
-          <div id="orderOut"></div>
-        </div>
-        <div class="panel" role="tabpanel" id="pane-data" aria-labelledby="tab-data" hidden>
-          <div class="head"><h2 id="aboutHead" tabindex="-1" style="margin:0">About the numbers and sources</h2><button type="button" class="linkbtn" data-goto="over">Back to Overview</button></div>
-          <div id="bestRv"></div>
-          <h3>Crops</h3>
-          <div class="tablewrap" id="dataTable"></div>
-          <p id="solverNote" class="note" hidden>Your browser couldn't run the fast solver, so very large setups may come out close to best rather than exact.</p>
-          <ul class="src">
-            <li><a href="https://aniimotools.dev/systems/homeland/stations/" target="_blank" rel="noopener">AniimoTools stations</a> · <a href="https://aniimoguide.com/homeland/recipes" target="_blank" rel="noopener">AniimoGuide recipes</a> · <a href="https://wikily.gg/aniimo/homeland-furniture" target="_blank" rel="noopener">Wikily</a> · <a href="https://aniimo.gg/homeland/object/woodland-level-1/" target="_blank" rel="noopener">Aniimo.gg</a> · <a href="https://ae-bii.github.io/aniimax/" target="_blank" rel="noopener">Aniimax</a> · <a href="https://www.aniimoverse.com/guides/homeland" target="_blank" rel="noopener">AniimoVerse</a> · <a href="https://metaforge.app/aniimo/database/shops/seed-shop" target="_blank" rel="noopener">MetaForge</a></li>
-            <li>E-mode times, generator output and power draw: <a href="https://github.com/Shinumino/aniimo-homeland-planner" target="_blank" rel="noopener">Shinumino's Aniimo Homeland Planner</a> (MIT licence, Copyright (c) 2026 Shinumino), checked against <a href="https://wikily.gg/aniimo/homeland-crafting" target="_blank" rel="noopener">Wikily</a>.</li>
-          </ul>
-        </div>
-        <p class="about"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button></p>
-      </div>
-    </div>
-  </div>
+  <div class="dfoot"><label class="themepick"><span class="ic" aria-hidden="true"></span><span>Theme</span><select id="skin" aria-label="Theme"></select></label><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button></div>
 </div>
 <div class="updatebar" id="updateBar">
         <span class="state" id="updState" aria-live="polite">Plan is up to date</span>
@@ -1602,7 +1686,7 @@ const FORM_IDS = ['rv','farmPlots','woodPlots','farmLvl','woodLvl','eco','heat',
   'watering','hauling','persona','events','slotCost','autoProd','switchRec','power','gens','usePower','feed','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
   'needCoin','needWood','needSand','haveHab','kitchen','crafting','detector','reserve'];
 const DEFAULT_STATE = {requests:[{id:'ginseng',plots:10},{id:'grapes',plots:6},{id:'chestnut',plots:4}], custom:[], noFill:[],
-  products:[], crewLvl:3, tab:'over', mode:'quick'};
+  products:[], crewLvl:3, tab:'layout', layoutView:'map', mode:'quick'};
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 // Text that ends up in the page: escape it, and keep names people type (or load from a code) to plain words
 const esc = t => String(t??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1624,6 +1708,7 @@ function cleanState(raw){
   if (Array.isArray(d.products)) st.products=arr(d.products,40).filter(w=>w&&PRODUCT_NAMES.includes(w.n)).map(w=>({n:w.n, amt:nb(w.amt,0,1e6,1), unit:['h','d','p'].includes(w.unit)?w.unit:'h'}));
   st.crewLvl=d.crewLvl==4?4:3; st.allMach=!!d.allMach;
   if (typeof d.tab==='string') st.tab=d.tab;
+  st.done={}; if (d.done&&typeof d.done==='object') for (const k of Object.keys(d.done).slice(0,300)) if (typeof k==='string' && k.length<200) st.done[k]=1;
   const pids=new Set(PROC.map(r=>r.id));
   st.avoid=arr(d.avoid,200).filter(x=>pids.has(x));
   st.recipeFor={}; if (d.recipeFor&&typeof d.recipeFor==='object') for (const [n,id] of Object.entries(d.recipeFor)) if (PROC.some(r=>r.id===id&&r.n===n)) st.recipeFor[n]=id;
@@ -1997,32 +2082,43 @@ function statusHtml(best, gs){
   return `<div class="status"><span class="conf${cf.ok?' ok':''}">${cf.ok?'✓ ':''}${cf.text} <i class="tip" tabindex="0" data-tip="${esc(cf.tip)}">?</i></span>
     ${top?`<span class="cmp">Best at RV ${rv} with everything maxed and no food &amp; goods picked: <b>${fmtK(top)}</b> coin an hour${coinGoal&&pct<98?`. This plan makes ${pct}% of that`:''}. <button type="button" class="linkbtn" data-goto="data">Every level</button></span>`:''}</div>`;
 }
-// The Overview's to-do list: what to place, plant, build and feed, each linking to its tab
+// The checklist: everything to place, plant, build, assign and feed, ticked off as you go (remembered in this browser
+// until that line of the plan changes)
 function renderTodo(){
   const L=lastPlan; if (!L || !L.best) return; const {best, real, o}=L, P=best.power;
   const plural=(nm,n)=>n+' '+(n>1 ? nm.replace(/(sh|ch|x|s)$/,'$1e')+'s' : nm);
-  const list=(arr,max=6)=>arr.slice(0,max).join(', ')+(arr.length>max?`, and ${arr.length-max} more`:'');
-  const rows=[];
+  const short=(arr,max=3)=>arr.slice(0,max).join(', ')+(arr.length>max?` +${arr.length-max}`:'');
+  const G=[];
   // climate units
-  const u={}; let pairs=0; for (const x of real||[]){ if (x.pair){ pairs++; continue; } const k=UNITNAME[x.zone.unit]+(x.zone.key==='lamp'?'':' on '+SETTING[x.zone.key]); u[k]=(u[k]||0)+1; }
-  const units=Object.entries(u).map(([k,n])=>n+' '+k.replace(/^(Heat Furnace|Cooling Unit)/,m=>n>1?m+'s':m).replace(/^Sunlamp/,n>1?'Sunlamps':'Sunlamp'));
-  if (pairs) units.push(pairs+' overlap pair'+(pairs>1?'s':''));
-  if (units.length) rows.push(['Climate units', list(units), 'layout']);
-  // crops
-  const c={}; for (const p of best.placed) c[p.crop.name]=(c[p.crop.name]||0)+p.plots;
-  const crops=Object.entries(c).sort((a,b)=>b[1]-a[1]).map(([n,k])=>k+' '+n);
-  if (crops.length) rows.push(['Plant', list(crops), 'plant']);
-  // machines
-  const mc=(L.machCards||[]).filter(m=>!m.power && !m.forRv && m.need>0);
-  const mach=mc.filter(m=>m.key!=='mine').sort((a,b)=>b.need-a.need).map(m=>plural(MACH[m.key].name, m.need));
-  const mines=mc.find(m=>m.key==='mine');
-  const rvM=(L.machCards||[]).filter(m=>m.forRv && m.need>0).map(m=>plural(MACH[m.key].name, m.need)+' for the RV upgrade');
-  if (mach.length || mines || rvM.length) rows.push(['Build', list([...(mines?[plural('Mine', mines.need)+(mines.e?` (${mines.e} on E-mode)`:'')]:[]), ...mach, ...rvM],8), 'mach']);
-  if (P && P.gens) rows.push(['Power', `${plural('Crackle Generator', P.gens)}, ${fmt(P.used)} of ${fmt(P.cap)} W in use. Machines on E-mode need no Aniimo.`, 'mach']);
+  { const u={}; let pairs=0; for (const x of real||[]){ if (x.pair){ pairs++; continue; } const k=UNITNAME[x.zone.unit]+(x.zone.key==='lamp'?'':' on '+SETTING[x.zone.key]); u[k]=(u[k]||0)+1; }
+    const items=Object.entries(u).map(([k,n])=>({t:n+' '+k.replace(/^(Heat Furnace|Cooling Unit)/,m=>n>1?m+'s':m).replace(/^Sunlamp/,n>1?'Sunlamps':'Sunlamp')}));
+    if (pairs) items.push({t:pairs+' overlap pair'+(pairs>1?'s':''), s:'A Heat Furnace and Cooling Unit with ranges overlapping'});
+    if (items.length) G.push({g:'Place climate units', tab:'layout', items}); }
+  // crops, by where they grow
+  { const c=new Map(); for (const p of best.placed){ const where=p.zone.key==='open'?'Open ground':UNITNAME[p.zone.unit]+(p.zone.key==='lamp'||!SETTING[p.zone.key]?'':' on '+SETTING[p.zone.key]);
+      const k=p.crop.name+'|'+where, e=c.get(k)||{n:p.crop.name, where, plots:0}; e.plots+=p.plots; c.set(k,e); }
+    const items=[...c.values()].sort((a,b)=>b.plots-a.plots).map(e=>({t:e.plots+' '+e.n, s:e.where}));
+    if (items.length) G.push({g:'Plant', tab:'plant', items}); }
+  // buildings
+  { const mc=(L.machCards||[]).filter(m=>!m.power && m.need>0), items=[];
+    for (const m of mc.sort((a,b)=>(a.key==='mine'?-1:0)-(b.key==='mine'?-1:0) || b.need-a.need)){
+      const recs=m.forRv ? ['for the RV upgrade'] : [...new Set([...(m.lines||new Map()).values()].map(l=>l.r.n))];
+      items.push({t:plural(MACH[m.key].name, m.need), s:[short(recs), m.e?`${m.e} on E-mode`:''].filter(Boolean).join(' · ')}); }
+    if (P && P.gens) items.push({t:plural('Crackle Generator', P.gens), s:`${fmt(P.used)} of ${fmt(P.cap)} W in use`});
+    if (items.length) G.push({g:'Build', tab:'mach', items}); }
+  // Aniimo by job
   if (L.crewMin){ const g=new Map(); for (const r of L.crewList){ const k=r.job+(r.lvl>1?' Lv '+r.lvl+'+':''); g.set(k,(g.get(k)||0)+r.n); }
-    rows.push(['Aniimo', `${L.crewMin}${L.cap?' of '+L.cap:''} slots: ${list([...g].sort((a,b)=>b[1]-a[1]).map(([k,n])=>n+' '+k),6)}`, 'crew']); }
-  if (o.feed && best.foodNeed>0) rows.push(['Food bowl', best.food.length ? `${list(best.food.map(f=>fmtN(f.perHour)+' '+f.item+' an hour'))}, ${fmt(best.foodNeed)} energy for your Aniimo.` : 'Nothing the plan makes is edible: stock the food bowl yourself.', 'shop']);
-  $('todo').innerHTML = rows.length ? `<div class="card todo"><h3>What to set up</h3><dl>${rows.map(([k,v,t])=>`<dt>${k}</dt><dd>${v} <button type="button" class="linkbtn" data-goto="${t}">Details</button></dd>`).join('')}</dl></div>` : '';
+    G.push({g:`Aniimo (${L.crewMin}${L.cap?' of '+L.cap:''} slots)`, key:'Aniimo', tab:'crew', items:[...g].sort((a,b)=>b[1]-a[1]).map(([k,n])=>({t:n+' '+k}))}); }
+  if (o.feed && best.foodNeed>0) G.push({g:'Food bowl', tab:'shop', items: best.food.length ? best.food.map(f=>({t:fmtN(f.perHour)+' '+f.item+' an hour', s:fmt(best.foodNeed)+' energy for your Aniimo'})) : [{t:'Stock the food bowl yourself', s:'Nothing the plan makes is edible'}]});
+  const done=state.done||(state.done={}), keyOf=(g,it)=>(g.key||g.g)+'|'+it.t, all=G.flatMap(g=>g.items.map(it=>keyOf(g,it)));
+  for (const k of Object.keys(done)) if (!all.includes(k)) delete done[k];      // forget lines the plan no longer has
+  const n=all.filter(k=>done[k]).length;
+  $('todo').innerHTML = G.length ? `<div class="todo"><h3>Your checklist <small>${n} / ${all.length}</small></h3><div class="prog" role="progressbar" aria-label="Checklist" aria-valuemin="0" aria-valuemax="${all.length}" aria-valuenow="${n}"><i style="width:${all.length?100*n/all.length:0}%"></i></div>
+    ${G.map(g=>`<div class="tg"><div class="tgh"><span>${esc(g.g)}</span><button type="button" class="linkbtn" data-goto="${g.tab}">Details</button></div><ul>${g.items.map(it=>{ const k=keyOf(g,it), on=!!done[k];
+      return `<li class="${on?'done':''}"><input type="checkbox" data-done="${esc(k)}"${on?' checked':''} aria-label="${esc(it.t)}"><div><b>${esc(it.t)}</b>${it.s?`<span class="v">${esc(it.s)}</span>`:''}</div></li>`; }).join('')}</ul></div>`).join('')}
+    ${n?'<button type="button" class="linkbtn" id="todoClear">Untick everything</button>':''}</div>` : '';
+  $('todo').querySelectorAll('[data-done]').forEach(cb=>cb.onchange=()=>{ if (cb.checked) done[cb.dataset.done]=1; else delete done[cb.dataset.done]; save(); renderTodo(); });
+  if ($('todoClear')) $('todoClear').onclick=()=>{ state.done={}; save(); renderTodo(); };
 }
 function confidence(best){
   if (!best.exact) return {ok:false, text:'Close to best', tip:'Your browser couldn\'t run the fast solver, so this comes from a simpler one and may be a little short of the best.'};
@@ -2780,7 +2876,7 @@ function renderLayout(){
     const sens=open.some(p=>p.crop.temp!==0);
     cards.push(`<div class="ucard"><div class="top"><b>Open ground</b><i class="tip" tabindex="0" data-tip="${sens?'Keep these outside every dashed range. Crops that want heat or cold grow slower here, already counted in their speed.':'These crops ignore heat, cold and light, so they can go anywhere.'}">?</i></div><div class="legend" style="display:grid;gap:4px">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
   }
-  const view=state.layoutView==='map'?'map':'units';
+  const view=state.layoutView==='units'?'units':'map';
   // Clean vs Packed only differs for full units; part-filled units always use their tightest layout
   const same=u=>JSON.stringify(unitPoints(u.zone.geo,u.w,u.farm.length,'clean',u.host))===JSON.stringify(unitPoints(u.zone.geo,u.w,u.farm.length,'packed',u.host));
   const anyFull=view==='map' || real.some(u=>!u.pair && !same(u));
@@ -3238,15 +3334,16 @@ function run(){
   let sum='';
   if (distErr) sum+=`<p class="err">Some plots couldn't be drawn in the Layout tab. Your totals still count them.</p>`;
   for (const w of warnings) sum+=`<p class="warn">${esc(w)}</p>`;
-  sum+=`<div class="tiles">
-    ${gs.need?`<div class="tile goal"><b>${etaText(lastPlan.eta)}</b><span>${gs.rv?'to afford RV '+gs.rv.next:'to reach target'}</span></div>`:''}
-    ${$('goalMode').value==='wood'?`<div class="tile hero"><b>${fmt(best.woodRate)}</b><span>wood / hour</span></div>`:''}
-    <div class="tile${$('goalMode').value==='wood'?'':' hero'}"><b>${fmt(best.coinRate)}</b><span>coin / hour</span></div>
+  const wg=$('goalMode').value==='wood';
+  $('kpis').innerHTML=`<div class="tiles">
+    <div class="tile hero"><b>${fmt(wg?best.woodRate:best.coinRate)}</b><span>${wg?'wood':'coin'} / hour</span></div>
+    ${gs.need?`<div class="tile goal"><b>${etaText(lastPlan.eta)}</b><span>${gs.rv?'to RV '+gs.rv.next:'to target'}</span></div>`:''}
+    <div class="tile"><b>${fmt(wg?best.coinRate:best.woodRate)}</b><span>${wg?'coin':'wood'} / hour</span></div>
+    ${best.sandRate?`<div class="tile"><b>${fmt(best.sandRate)}</b><span>sand / hour</span></div>`:''}
     <div class="tile"><b>${fmt(best.coinRate*24)}</b><span>coin / day</span></div>
-    ${$('goalMode').value==='wood'?'':`<div class="tile"><b>${fmt(best.woodRate)}</b><span>wood / hour</span></div>`}
-    ${best.sandRate?`<div class="tile"><b>${fmt(best.sandRate)}</b><span>mineral sand / hour</span></div>`:''}
     ${itemsWorth>0?`<div class="tile"><b>${fmt(itemsWorth)}</b><span>products sold / hour</span></div>`:''}
-  </div>${statusHtml(best, gs)}${goalHtml}`;
+  </div>`;
+  sum+=`${statusHtml(best, gs)}${goalHtml}`;
   $('summary').innerHTML=sum;
 
   // ----- Plant tab -----
@@ -3576,15 +3673,24 @@ function refreshInputs(){ renderOrders(); renderRequests(); renderProducts(); re
 
 // ---------- Tabs ----------
 const TABS=['over','plant','layout','mach','crew','shop','orders','data'];
-function selectTab(t){ for (const k of TABS){ const on=k===t; $('tab-'+k).setAttribute('aria-selected',on); $('tab-'+k).tabIndex=on?0:-1; $('pane-'+k).hidden=!on; } state.tab=t; save(); if (t==='layout' && lastPlan && lastPlan.layoutStale) renderLayout(); }
-for (const k of TABS) $('tab-'+k).onclick=()=>selectTab(k);
+const isPhone=()=>matchMedia('(max-width:720px)').matches;
+// the checklist column sticks just under the header, whatever height the header wraps to
+const setHdrH=()=>document.documentElement.style.setProperty('--hdr-h', document.querySelector('.hdr').offsetHeight+'px');
+new ResizeObserver(setHdrH).observe(document.querySelector('.hdr'));
+// The checklist sits beside the map on wider screens, so only phones show it as a view of its own
+function selectTab(t){ if (t==='over' && !isPhone()) t='layout'; document.body.classList.toggle('view-over', t==='over');
+  for (const k of TABS){ const on=k===t; $('tab-'+k).setAttribute('aria-selected',on); $('tab-'+k).tabIndex=on?0:-1; $('pane-'+k).hidden=!on; } state.tab=t; save(); if (t==='layout' && lastPlan && lastPlan.layoutStale) renderLayout(); }
+for (const k of TABS) $('tab-'+k).onclick=()=>{ setSetup(false,false); selectTab(k); };
 document.querySelector('[role=tablist]').addEventListener('keydown',e=>{ const i=TABS.indexOf(state.tab);
-  const T=TABS.filter(k=>!$('tab-'+k).hidden), j=Math.max(0,T.indexOf(state.tab));
-  if (e.key==='ArrowRight'||e.key==='ArrowLeft'){ const n=T[(j+(e.key==='ArrowRight'?1:T.length-1))%T.length]; selectTab(n); $('tab-'+n).focus(); e.preventDefault(); } });
+  const T=TABS.filter(k=>$('tab-'+k).offsetParent!==null), j=Math.max(0,T.indexOf(state.tab));
+  const fwd=e.key==='ArrowRight'||e.key==='ArrowDown', back=e.key==='ArrowLeft'||e.key==='ArrowUp';
+  if (fwd||back){ const n=T[(j+(fwd?1:T.length-1))%T.length]; selectTab(n); $('tab-'+n).focus(); e.preventDefault(); } });
 document.addEventListener('click',e=>{ const b=e.target.closest('[data-goto]'); if (!b) return; const t=b.dataset.goto; selectTab(t);
-  if (t==='data'){ $('pane-data').scrollIntoView({block:'start'}); $('aboutHead').focus({preventScroll:true}); }
+  if (document.body.classList.contains('setup-open')) setSetup(false,false);
+  if (t==='data'){ window.scrollTo({top:0}); $('aboutHead').focus({preventScroll:true}); }
   else { const tb=$('tab-'+t); tb.scrollIntoView({block:'nearest'}); tb.focus({preventScroll:true}); } });
-$('aboutBtn').onclick=()=>{ selectTab('data'); $('pane-data').scrollIntoView({block:'start'}); $('aboutHead').focus({preventScroll:true}); };
+$('aboutBtn').onclick=()=>{ setSetup(false,false); selectTab('data'); window.scrollTo({top:0}); $('aboutHead').focus({preventScroll:true}); };
+matchMedia('(max-width:720px)').addEventListener('change',()=>{ if (state.tab==='over' && !isPhone()) selectTab('layout'); });
 
 // ---------- Share codes ----------
 const encode=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
@@ -3648,16 +3754,23 @@ function applyMode(){ const m=state.mode==='custom'?'custom':'quick'; document.b
 function updateMbar(){ const g=$('goalMode'); $('mbarText').textContent=`RV ${int('rv')} · ${g.options[g.selectedIndex]?g.options[g.selectedIndex].text:''}`; }
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ if (state.mode===b.dataset.mode) return; state.mode=b.dataset.mode;
   if (state.mode==='quick'){ quickDefaults(); maxAll(); state.land=null; refreshInputs(); markDirty(); } applyMode(); save(); });
-$('mbarBtn').onclick=()=>{ const open=!document.body.classList.contains('setup-open'); document.body.classList.toggle('setup-open',open);
-  $('mbarBtn').setAttribute('aria-expanded',String(open)); $('mbarBtn').textContent=open?'Hide setup':'Edit setup'; if (open) $('setup').scrollIntoView({block:'start'}); };
+// The setup lives in a drawer: open it from the rail, the header button or the RV chip; Esc, ✕ or the shade close it
+function setSetup(open, focus=true){ document.body.classList.toggle('setup-open',open); $('scrim').hidden=!open;
+  for (const id of ['mbarBtn','railSetup','mbarText']) $(id).setAttribute('aria-expanded',String(open));
+  $('mbarBtn').textContent=open?'Close setup':'Edit setup';
+  if (open && focus) setTimeout(()=>$('setupClose').focus({preventScroll:true}),0);
+  if (!open && focus && document.activeElement && $('setup').contains(document.activeElement)) $('mbarBtn').focus({preventScroll:true}); }
+const toggleSetup=()=>setSetup(!document.body.classList.contains('setup-open'));
+$('mbarBtn').onclick=toggleSetup; $('railSetup').onclick=toggleSetup; $('mbarText').onclick=()=>setSetup(true);
+$('setupClose').onclick=()=>setSetup(false); $('scrim').onclick=()=>setSetup(false);
+document.addEventListener('keydown',e=>{ if (e.key==='Escape' && document.body.classList.contains('setup-open') && !document.querySelector('dialog[open]')) setSetup(false); });
 const stepRv=d=>{ const el=$('rv'), v=Math.max(1,Math.min(20,int('rv')+d)); if (v===int('rv')) return; el.value=String(v); el.dispatchEvent(new Event('change',{bubbles:true})); };
 $('rvDown').onclick=()=>stepRv(-1); $('rvUp').onclick=()=>stepRv(1);
 $('addOrder').onclick=()=>{ (state.orders||(state.orders=[])).push({n:'',q:1,r:0}); save(); renderOrders(); const i=state.orders.length-1; setTimeout(()=>$('ord-n-'+i)&&$('ord-n-'+i).focus(),0); };
 $('maxAll').onclick=()=>{ maxAll(); state.land=null; refreshInputs(); markDirty(); };
 // On a phone, Update plan also folds the setup away and jumps to the results
-function runFromSetup(){ run(); const mb=$('mbar'); if (mb && getComputedStyle(mb).display!=='none' && document.body.classList.contains('setup-open')){
-  document.body.classList.remove('setup-open'); $('mbarBtn').setAttribute('aria-expanded','false'); $('mbarBtn').textContent='Edit setup';
-  const r=$('summary')||document.querySelector('.tabs'); if (r) window.scrollTo({top:Math.max(0,r.getBoundingClientRect().top+window.scrollY-mb.offsetHeight-14)}); } }
+// Update plan also closes the drawer so the new plan is in view
+function runFromSetup(){ run(); if (document.body.classList.contains('setup-open')){ setSetup(false); window.scrollTo({top:0}); } }
 $('runBtn').onclick=runFromSetup;
 for (const [k,[mode,label]] of Object.entries(SKINS)){ const op=document.createElement('option'); op.value=k; op.textContent=label+' · '+mode; $('skin').appendChild(op); }
 $('skin').value=document.documentElement.getAttribute('data-skin');
@@ -3674,8 +3787,8 @@ $('addAll').onclick=()=>{ const o=opts(); for (const id of MUTATES){ const c=cro
     if (c.light && o.lamp===0) continue; if (plotRoom(-1).left[kindOf(id)]<1) break; state.requests.push({id,plots:1}); }
   renderRequests(); markDirty(); };
 refreshInputs();
-selectTab(TABS.includes(state.tab)?state.tab:'over');
-if (!restored){ document.body.classList.add('setup-open'); $('mbarBtn').textContent='Hide setup'; $('mbarBtn').setAttribute('aria-expanded','true'); }   // first visit on a phone: start with the setup open
+selectTab(TABS.includes(state.tab)?state.tab:'layout');
+if (!restored) setSetup(true, false);   // first visit: start with the setup open
 applyMode();
 if (Date.now()>EVENT.end) $('events').checked=false;
 startSolver().then(()=>run());
