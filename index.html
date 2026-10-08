@@ -1032,7 +1032,7 @@ function plan(requests, fillers, o, lp){
   const guestVars=[];
   (o.guests||[]).forEach((g,gi)=>{ if (!active.some(z=>z.key===g.zone)) return;
     const z=ZONES.find(q=>q.key===g.zone), u=UNIT[z.geo], capF=Math.min(u.F0, z.geo==='cool'?o.capCool:o.capSmall);
-    const name='g_'+gi, v={obj: mode==='coin' ? g.bonus : TIE*g.bonus, ['host_'+g.zone]:1, ['slot_'+g.zone]:1, ['mix_'+g.zone]:2, ['wmax_'+g.zone]:1, ['fcap_'+g.zone]:Math.max(0,capF-(u.F0-1))};
+    const name='g_'+gi, v={obj: (mode==='coin'||o.coinFirst) ? g.bonus : TIE*g.bonus, ['host_'+g.zone]:1, ['slot_'+g.zone]:1, ['mix_'+g.zone]:2, ['wmax_'+g.zone]:1, ['fcap_'+g.zone]:Math.max(0,capF-(u.F0-1))};
     if (mode==='target' && NC) v.tCoin=-g.bonus;
     if (o.minCoin!==undefined) v.lexCoin=g.bonus;
     if (g.src) v['gk_'+g.key]=1;                     // only for an extra the plan actually places
@@ -1076,9 +1076,10 @@ function plan(requests, fillers, o, lp){
   allItems.forEach((it,k)=>{ C['dem_'+k]={min:demand[it]||0}; V['u_'+k]={obj:-1, ['dem_'+k]:1};
     const src = CROPS.find(c=>itemOf(c)===it); if (src) consumed += (demand[it]||0)*src.price; });
   // Coin from a variable, in whatever way the goal counts coin
-  const addCoin = (v, c) => { v.obj=(v.obj||0)+(mode==='coin' ? c : TIE*c); if (mode==='target' && NC) v.tCoin=(v.tCoin||0)-c; if (o.minCoin!==undefined) v.lexCoin=(v.lexCoin||0)+c; };
+  const addCoin = (v, c) => { v.obj=(v.obj||0)+((mode==='coin'||o.coinFirst) ? c : TIE*c); if (mode==='target' && NC) v.tCoin=(v.tCoin||0)-c; if (o.minCoin!==undefined) v.lexCoin=(v.lexCoin||0)+c; };
 
-  if (mode==='target'){ V.r={obj:1};
+  // Second pass (coinFirst): hold the speed the first pass reached and make the most Home Coin
+  if (mode==='target'){ V.r={obj:o.coinFirst?0:1}; if (o.minR!==undefined){ C.lexR={min:o.minR}; V.r.lexR=1; }
     if (NC){ C.tCoin={max:-consumed+(o.extraCoin||0)}; V.r.tCoin=NC/NORM; }
     if (NW){ C.tWood={max:0}; V.r.tWood=NW/NORM; }
     if (NS){ C.tSand={max:0}; V.r.tSand=NS/NORM; } }
@@ -1091,7 +1092,7 @@ function plan(requests, fillers, o, lp){
   if (o.mines>0 && o.mineOpts && o.mineOpts.length){
     C.mineTotal={max:o.mines};
     o.mineOpts.forEach((m,k)=>{
-      let obj = mode==='coin' ? m.coin : mode==='sand' ? m.sand + TIE*m.coin : TIE*m.coin;
+      let obj = (mode==='coin'||o.coinFirst) ? m.coin : mode==='sand' ? m.sand + TIE*m.coin : TIE*m.coin;
       const v={obj, mineTotal:1}; if (SL && SL.units) v.slots=1;
       if (o.minCoin!==undefined) v.lexCoin=m.coin; if (o.minSand!==undefined) v.lexSand=m.sand;
       if (mode==='target'){ if (NC) v.tCoin=-m.coin; if (NS) v.tSand=-m.sand; }
@@ -1109,11 +1110,11 @@ function plan(requests, fillers, o, lp){
       if (pv.eff<=0) continue;
       const coin = coinOf(c,pv), wood = woodOf(c,pv);
       let obj;
-      if (mode==='coin') obj = pv.value;
+      if (mode==='coin' || o.coinFirst) obj = pv.value;
       else if (mode==='wood') obj = wood + TIE*coin;
       else if (mode==='sand') obj = TIE*(coin + wood);
       else obj = TIE*(coin + wood);
-      if (obj<=0) continue;
+      if (obj<=0 && !(o.coinFirst && wood>0)) continue;
       const name = 'x_'+ci+'_'+zk, v = {obj};
       v[c.kind==='wood'?'woodTotal':'farmTotal'] = 1;
       if (zk!=='open'){
@@ -1673,7 +1674,18 @@ function procNeed(tier, amount, haveTier, ctx, kind){
   return {chain, raw:need};
 }
 const RANK_NAME={coin:'Home Coin', wood:'Wood Blocks', sand:'Mineral Sand'};
-function solveFor(reqs, fillers, o, gs){ return gs.ranked ? planRanked(reqs, fillers, o, SOLVER, gs.ranked) : planBest(reqs, fillers, o, SOLVER); }
+// Goals other than coin count Home Coin second. A tiny tie-break weight can sit inside the solver's tolerance and
+// leave ground unused, so solve again holding what the first pass reached and make the most Home Coin.
+let LEX2=true;
+function solveFor(reqs, fillers, o, gs){
+  if (gs.ranked) return planRanked(reqs, fillers, o, SOLVER, gs.ranked);
+  const first=planBest(reqs, fillers, o, SOLVER);
+  if (!LEX2 || !first || !first.feasible) return first;
+  const m=(o.goal||{}).mode; let second=null;
+  if (m==='target' && first.raw && first.raw.r>0) second=planBest(reqs, fillers, {...o, minR:first.raw.r*(1-1e-6), coinFirst:true}, SOLVER);
+  else if (m==='wood') second=planBest(reqs, fillers, {...o, goal:{mode:'coin'}, minWood:Math.max(0, first.woodRate*(1-1e-6)-1e-9)}, SOLVER);
+  return second && second.feasible && second.coinRate > first.coinRate + 1e-6 ? second : first;
+}
 function rankOrder(){ const r=(state.rank||[]).filter(k=>RANK_NAME[k]); for (const k of ['wood','sand','coin']) if (!r.includes(k)) r.push(k); return r; }
 function renderRank(){
   const box=$('rankList'); if (!box) return; const r=rankOrder();
@@ -2985,7 +2997,7 @@ function planScore(){
 }
 function improvements(){
   const rv=int('rv'), form=readForm(), keep={crewLvl:state.crewLvl, land:state.land}, out=[];
-  const gap0=LP.gap; LP.gap=1e-3;                    // ranking upgrades doesn't need the last 0.1%
+  const gap0=LP.gap, lex0=LEX2; LP.gap=1e-3; LEX2=false;   // ranking upgrades doesn't need the last 0.1%
   try {
   const base=planScore();
   const restore=()=>{ writeForm(form); state.crewLvl=keep.crewLvl; state.land=keep.land; };
@@ -3016,7 +3028,7 @@ function improvements(){
   if (rv<20){ try { $('rv').value=String(rv+1); buildSelects(); maxAll(); state.land=null; const r=planScore(); if (r.v-base.v>1e-6) out.push({label:'Reach RV '+(rv+1)+' and max it', gain:r.v-base.v, after:r.v, rv:true}); } catch(e){} finally { restore(); buildSelects(); writeForm(form); } }
   out.sort((a,b)=>b.gain-a.gain);
   return {base, list:out};
-  } finally { LP.gap=gap0; }
+  } finally { LP.gap=gap0; LEX2=lex0; }
 }
 function renderImprove(){
   const box=$('improveBox'); if (!box) return;
