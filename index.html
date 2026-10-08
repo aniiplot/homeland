@@ -2415,17 +2415,17 @@ function renderLayout(){
   if ($('pane-layout').hidden){ lastPlan.layoutStale=true; return; }   // drawn when you open the tab
   lastPlan.layoutStale=false;
   const {real, best, o, colorOf}=lastPlan, style=['packed','square'].includes(state.layoutStyle)?state.layoutStyle:'clean';
-  const cards=[]; const cnt={heat:0,cool:0,lamp:0};
+  const cards=[]; const cnt={heat:0,cool:0,lamp:0}, lastOf={};
   let pn=0;
   for (const u of real){
     const t={}; for (const p of [...u.wood,...u.farm]){ t[p.crop.id]=t[p.crop.id]||{p,n:0}; t[p.crop.id].n++; }
-    if (u.pair){ cnt.heat++; cnt.cool++; pn++;
+    if (u.pair){ cnt.heat++; cnt.cool++; pn++; lastOf.heat=lastOf.cool=cards.length;
       const ice=u.pt.c==='freeze';
       cards.push(`<div class="ucard pair"><div class="top"><b><span class="dot" style="background:var(--unit-heat)"></span><span class="dot" style="background:var(--unit-cool)"></span>Overlap pair ${pn}</b><span>${jobChip('Fire')}${jobChip('Ice', ice?' Lv 2':'')}</span></div>
         <div class="zones"><span class="pill">Furnace · ${SETTING[u.pt.h]}</span><span class="pill">Cooling · ${SETTING[u.pt.c]}</span><span class="pill hot">Overlap · ${TEMP_NAME[Math.max(-2,Math.min(2,u.pt.ht+u.pt.ct))]}</span></div>
         ${clusterSvg(u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
       continue; }
-    cnt[u.zone.unit]++;
+    cnt[u.zone.unit]++; lastOf[u.zone.unit]=cards.length;
     cards.push(`<div class="ucard"><div class="top"><b><span class="dot" style="background:var(--unit-${u.zone.unit})"></span>${UNITNAME[u.zone.unit]} ${cnt[u.zone.unit]}</b><span><span class="pill">${SETTING[u.zone.key]}</span>${jobChip(WORKER[u.zone.key].replace(' Lv 2',''), WORKER[u.zone.key].includes('Lv 2')?' Lv 2':'')}</span></div>${fieldSvg(u.zone,u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
   }
   const open=lastPlan.openPlots||[];
@@ -2436,16 +2436,48 @@ function renderLayout(){
   }
   const view=state.layoutView==='map'?'map':'units';
   // Clean vs Packed only differs for full units; part-filled units always use their tightest layout
-  const anyFull=view==='map' || real.some(u=>!u.pair && !(COMPACT[u.zone.geo]||{})[u.w+','+u.farm.length]);
+  const same=u=>JSON.stringify(unitPoints(u.zone.geo,u.w,u.farm.length,'clean',u.host))===JSON.stringify(unitPoints(u.zone.geo,u.w,u.farm.length,'packed',u.host));
+  const anyFull=view==='map' || real.some(u=>!u.pair && !same(u));
   const seg=`<div class="seg" role="group" aria-label="Layout view"><button type="button" data-view="units" aria-pressed="${view==='units'}">Each unit</button><button type="button" data-view="map" aria-pressed="${view==='map'}">Homeland map</button></div>
-    <div class="seg" role="group" aria-label="Layout style"${anyFull?'':' title="No unit is full, so every unit already uses its tightest layout. Clean and Packed only differ for full units."'}><button type="button" data-style="clean" aria-pressed="${style==='clean'}"${anyFull?'':' disabled'}>Clean grid</button><button type="button" data-style="packed" aria-pressed="${style==='packed'}"${anyFull?'':' disabled'}>Packed</button><button type="button" data-style="square" aria-pressed="${style==='square'}"${view==='map'?'':' hidden'}>Square</button></div>${anyFull?'':'<span class="note">Clean and Packed only differ for full units.</span>'}`;
+    <div class="seg" role="group" aria-label="Layout style"${anyFull?'':' title="Clean grid and Packed come out the same for these units."'}><button type="button" data-style="clean" aria-pressed="${style==='clean'}"${anyFull?'':' disabled'}>Clean grid</button><button type="button" data-style="packed" aria-pressed="${style==='packed'}"${anyFull?'':' disabled'}>Packed</button><button type="button" data-style="square" aria-pressed="${style==='square'}"${view==='map'?'':' hidden'}>Square</button></div>${anyFull?'':'<span class="note">Clean grid and Packed come out the same here.</span>'}`;
   if (view==='map'){ renderHomeMap(seg, style); return; }
+  // what the last unit of each kind adds (worked out after drawing, once per plan)
+  const wk={}; for (const [k,i] of Object.entries(lastOf)) (wk[i]||(wk[i]=[])).push(k);
+  for (const [i,ks] of Object.entries(wk)) cards[i]=cards[i].replace(/<\/div>$/, ks.map(k=>`<p class="note worth" data-worth="${k}">Working out what this one adds…</p>`).join('')+'</div>');
   let lh = cards.length ? `<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Both fit exactly the same number of plots around every unit, so your coin and wood don't change. Clean grid lines every plot up on one 2-tile grid; Packed staggers them wherever they fit.">?</i></div>
     <div class="fields">${cards.join('')}</div>` : '<p class="note">Nothing to lay out yet.</p>';
   const spare=[]; if(o.heat-cnt.heat>0) spare.push((o.heat-cnt.heat)+' Heat Furnace'); if(o.cool-cnt.cool>0) spare.push((o.cool-cnt.cool)+' Cooling Unit'); if(o.lamp-cnt.lamp>0) spare.push((o.lamp-cnt.lamp)+' Sunlamp');
   if (spare.length) lh+=`<p class="note">Not needed: ${spare.join(', ')}.</p>`;
   $('pane-layout').innerHTML=lh;
   wireLayoutSeg();
+  if (document.querySelector('[data-worth]')) setTimeout(()=>{ const w=unitWorth(); if (w) fillWorth(w); }, 30);
+}
+// What each kind of climate unit adds: plan again with one fewer of it (its Aniimo free for other work)
+function unitWorth(){
+  if (!lastPlan || !lastPlan.real) return null;
+  if (lastPlan.worth) return lastPlan.worth;
+  const used={heat:0,cool:0,lamp:0}; for (const u of lastPlan.real){ if (u.pair){ used.heat++; used.cool++; } else used[u.zone.unit]++; }
+  const form=readForm(), keep={crewLvl:state.crewLvl, land:state.land}, out={};
+  const etaOf=(b,n)=>n ? Math.max(n.coin>0?n.coin/b.coinRate:0, n.wood>0?n.wood/b.woodRate:0, n.sand>0?n.sand/b.sandRate:0) : null;
+  const need=lastPlan.gs.need, base={coin:lastPlan.best.coinRate, eta:etaOf(lastPlan.best, need)};
+  try {
+    for (const k of ['heat','cool','lamp']) if (used[k]>0){
+      $(k).value=String(used[k]-1);
+      const P=prepare(), b=solveFor(P.reqs, P.fillers, P.o, P.gs);
+      out[k]={coin:base.coin-b.coinRate, eta: base.eta!==null ? etaOf(b,need)-base.eta : null, n:used[k]};
+      writeForm(form); state.crewLvl=keep.crewLvl; state.land=keep.land;
+    }
+  } catch(e){ return null; }
+  finally { writeForm(form); state.crewLvl=keep.crewLvl; state.land=keep.land; }
+  return lastPlan.worth=out;
+}
+function fillWorth(w){
+  const NAME={heat:'Heat Furnace', cool:'Cooling Unit', lamp:'Sunlamp'};
+  document.querySelectorAll('[data-worth]').forEach(el=>{ const k=el.dataset.worth, x=w[k]; if (!x){ el.remove(); return; }
+    const parts=[(x.coin>=0?'−':'+')+fmt(Math.abs(x.coin))+' coin/h'];
+    if (x.eta!==null && lastPlan.gs.rv) parts.push(Math.abs(x.eta)<1/60 ? 'same time to RV '+lastPlan.gs.rv.next : (x.eta>0?'+':'−')+etaText(Math.abs(x.eta))+' to RV '+lastPlan.gs.rv.next);
+    el.innerHTML=`<b>Without ${x.n>1?'this '+NAME[k]:'it'}:</b> ${parts.join(', ')}`+(x.n>1&&x.coin>=0?` <span title="Removing any one ${NAME[k]} gives this; the plan reshuffles the rest.">(any one of your ${x.n})</span>`:'');
+    el.title='The plan worked out again with one fewer '+NAME[k]+', its Aniimo free for other work.'; });
 }
 function wireLayoutSeg(){
   $('pane-layout').querySelectorAll('.seg button').forEach(b=>b.onclick=()=>{ if (b.dataset.style) state.layoutStyle=b.dataset.style; if (b.dataset.view) state.layoutView=b.dataset.view; save(); renderLayout(); });
