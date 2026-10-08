@@ -272,6 +272,15 @@ button.an.on::before{content:"✓ "}
 .mc li{display:flex;justify-content:space-between;gap:8px}
 .mc li > span:last-child{font-family:var(--font-mono);color:var(--muted);white-space:nowrap}
 .mc li.rl{display:block}
+.roster summary{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
+.roster .radd{display:flex;gap:6px;margin:10px 0}
+.roster .radd input{flex:1;min-width:0}
+table.rost input[type=number]{width:64px}
+table.rost td,table.rost th{padding:4px 6px}
+.pm{font-family:var(--font-mono);font-size:.74rem;padding:0 4px;border-radius:4px;border:1px solid var(--line);color:var(--muted)}
+.pm.ok{border-color:var(--leaf);color:var(--leaf)}
+.warnmark{color:var(--err-fg);font-weight:700}
+.note.ok{color:var(--leaf)}
 ul.checks{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:3px;font-size:.84rem}
 ul.checks li{display:flex;justify-content:space-between;gap:8px}
 ul.checks li > span:last-child{font-family:var(--font-mono);color:var(--muted)}
@@ -423,7 +432,7 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.no > span:fir
         <summary>Save, share or start over</summary>
         <div class="in">
           <p class="note">Saves in this browser only. Use a code to move it or share it.</p>
-          <div class="actions"><button type="button" id="copyCode">Copy setup code</button><span class="note" id="copyMsg" aria-live="polite"></span></div>
+          <div class="actions"><button type="button" id="copyCode">Copy setup code</button><button type="button" id="saveFile">Save as file</button><button type="button" id="loadFileBtn">Load a file</button><input type="file" id="loadFile" accept=".json,application/json" hidden><span class="note" id="copyMsg" aria-live="polite"></span></div>
           <label class="f"><span>Paste a code</span><textarea id="codeIn"></textarea></label>
           <div class="actions"><button type="button" id="loadCode">Load code</button><button type="button" id="resetAll">Start over</button><span class="note" id="loadMsg" aria-live="polite"></span></div>
         </div>
@@ -716,6 +725,9 @@ PROC.forEach((r,i)=>{ if (EMODE_S[i]) r.es=EMODE_S[i]; });
 // Shinumino's planner (MIT), checked against Wikily. Crops not listed (Lemon, Chestnut, woods...) can't be eaten.
 const FOOD_E = {"Premium Berry Chocolate Coconut Pudding":142560,"Berry Chocolate Coconut Pudding":126360,"Cranberry Chocolate":90420,"Strawberry Candy":65050,"Walnut Cake":50910,"Premium Jello":47440,"Rose Shortbread":46200,"Soy Sauce Fried Rice":45650,"Cherry Blossom Rice Ball":45650,"Caramel Nut Chips":45570,"Grape Candy":45570,"Apple Candy":45360,"Tanghulu":45280,"Soy Sauce Tofu":45280,"Sugar-Roasted Chestnuts":45280,"Moondew Radish Slices":45280,"Jello":42690,"Rich Grape Compote":42690,"Strawberry Cream Puff":42200,"Maple Candy Roasted Potatoes":39600,"Umbral Hot Pot":38810,"Steamed Vermicelli Roll":33940,"Apple Tart":30800,"Lavender Cookies":30240,"Ginseng Chestnut Cake":29700,"Maple Candy Star":28460,"Flower Bread":28080,"Bread":26740,"Premium Bread":26740,"Roasted Soybeans":26230,"Roasted Waxing Moon Pepper":26040,"Coconut Milk":24110,"Rice Drink":23760,"Creamy Potato Soup":23470,"Premium Potato Soup":23470,"Dried Bean Curd":15400,"Tofu":13110,"Dried Ginseng":13020,"Ginseng Powder":12730,"Dried Grapes":12500,"Refined Flour":12200,"Cocoa Powder":12060,"Dried Cranberries":12060,"Coconut Oil":10980,"Shredded Coconut":10000,"Wheatmeal":9370,"Dried Strawberries":9060,"Milled Rice":7870,"Dried Lemon Slices":6560,"Potato Chips":6370,"Energy Bites":1000,"Ginseng":3620,"Sugarcane":1800,"Cranberry":1450,"Moondew Radish":1350,"Waxing Moon Pepper":1350,"Grapes":1210,"Strawberry":950,"Soybean":680,"Captain Spud":600,"Rice":360,"Potato":220,"Wheat":140};
 const EAT_PER_H = 600;
+// The planner's best Home Coin an hour at each RV level: everything that level allows, Lv 3 workers, no item list,
+// E-mode and food on, no event crops (worked out with a 20-second limit per level).
+const BEST_RV = {1:400,2:1133,3:3198,4:5724,5:11972,6:14672,7:25701,8:38905,9:46686,10:53889,11:77553,12:111618,13:130656,14:156420,15:185698,16:233200,17:308045,18:375236,19:420912,20:420894};
 // Habitability an RV upgrade asks for (from RV 10). Besides it, reaching RV N needs every plot, Mine and Well RV N-1 allows.
 const HAB_NEED = {10:13000, 11:13500, 12:14000, 13:14500, 14:15000, 15:15500, 16:16000, 17:17000, 18:18000, 19:19000, 20:20000};
 // Crackle Generators: output by level (Power Module level n allows generator Lv n), how many you can place, and the
@@ -1335,7 +1347,7 @@ function plan(requests, fillers, o, lp){
   const coinRate = out.reduce((s,p)=>s+p.plots*p.coin, 0) - consumed + mineCoin + (o.extraCoin||0) + guestCoin + autoCoin + extrasCoin - foodCoin;
   const woodRate = out.reduce((s,p)=>s+p.plots*p.wood, 0);
   return {feasible: res.feasible!==false, raw: res, counts, pairs, pairSlots, hosted, placed: out, coinRate, woodRate, sandRate, mines, mineCoin, made, shortfall, consumed, mode, objective: res.result, model,
-    auto, autoMach, autoMachR, autoCoin, autoUse, goodsUse, extraCount, extrasCoin, workers, poolBusy, power, food, foodCoin, foodNeed, foodShort:res.fslk||0, limited:!!res.limited};
+    auto, autoMach, autoMachR, autoCoin, autoUse, goodsUse, extraCount, extrasCoin, workers, poolBusy, power, food, foodCoin, foodNeed, foodShort:res.fslk||0, limited:!!res.limited, exact:!!lp.exact, shortlisted:!!(o.oneRecipe && o.shortlisted && (o.auto||[]).length)};
 }
 
 // Spread one zone's plots over its units so every unit's layout really fits.
@@ -1539,6 +1551,11 @@ function cleanState(raw){
   st.rank=arr(d.rank,3).filter(k=>['coin','wood','sand'].includes(k));
   st.land=Array.isArray(d.land)&&d.land.length===16 ? d.land.map(Boolean) : null;
   st.owned=arr(d.owned,300).filter(x=>typeof x==='string').map(x=>cleanName(x,40));
+  { const known=new Set(ALL_ANIIMO()), seen=new Set();
+    st.roster=arr(d.roster,300).filter(e=>e&&typeof e==='object'&&known.has(e.n)&&!seen.has(e.n)&&seen.add(e.n)).map(e=>{ const c=Math.round(nb(e.c,1,20,1));
+      return {n:e.n, c, p:PERSONALITIES.includes(e.p)?e.p:'', away:Math.round(nb(e.away,0,c,0))}; });
+    if (!Array.isArray(d.roster)) for (const n of st.owned) if (known.has(n) && !seen.has(n)){ seen.add(n); st.roster.push({n, c:1, p:'', away:0}); }
+    st.owned=[]; }
   st.orders=arr(d.orders,50).filter(x=>x&&typeof x==='object').map(x=>({n:cleanName(x.n,60), q:nb(x.q,0,1e7,1), r:nb(x.r,0,1e10,0)}));
   if (d.event&&typeof d.event==='object') st.event={day:String(d.event.day||'').slice(0,12), done:arr(d.event.done,10).filter(x=>typeof x==='string'), points:nb(d.event.points,0,1e7,0)};
   for (const k of ['layoutStyle','layoutView','cmpKey','crewMode']) if (typeof d[k]==='string' && /^[a-z]{1,10}$/.test(d[k])) st[k]=d[k];
@@ -1864,6 +1881,13 @@ function rvChecks(next, best, chain, extras){
     return `<li class="${ok?'ok':'no'}"><span>${ok?'✓':'✗'} ${lbl}</span><span>${fmt(have)} / ${fmt(need)}${how&&!ok?` <small>(${how})</small>`:''}</span></li>`; }).join('')}</ul>
     ${HAB_NEED[next] && num('haveHab',0,1e9)<HAB_NEED[next] ? '<p class="note">Raise Habitability with furniture bought with Bud Tickets; each Aniimo living at Home adds some too.</p>' : ''}`;
 }
+// How sure the plan is: proven best, best of a shortlist, or stopped early
+function confidence(best){
+  if (!best.exact) return {ok:false, text:'Close to best', tip:'Your browser couldn\'t run the fast solver, so this comes from a simpler one and may be a little short of the best.'};
+  if (best.limited) return {ok:false, text:'Close to best', tip:'The solver stopped at its time limit with a very good plan, but couldn\'t prove nothing beats it.'};
+  if (best.shortlisted) return {ok:true, text:'Best of the shortlist', tip:'With one recipe per machine the planner first shortlists the products worth making, then finds the best plan among them. Checked against the full list, it\'s usually within 1%.'};
+  return {ok:true, text:'Proven best', tip:'Nothing else within your settings earns more: the solver proved it.'};
+}
 function etaText(hrs){ if(!isFinite(hrs)) return 'never'; if(hrs<=0) return 'ready'; const t=Math.max(1,Math.round(hrs*60)), d=Math.floor(t/1440), h=Math.floor((t%1440)/60), m=t%60; return (d?d+'d ':'')+h+'h '+m+'m'; }
 
 // ---------- Workers ----------
@@ -1916,6 +1940,14 @@ function crewOptions(r, ctx){
   return g;
 }
 const slug = n => n.replace(/ Prismana$/,'').toLowerCase().replace(/[^a-z0-9]+/g,'-');
+// Personality: one letter from each pair (E/I, S/N, T/F, J/P). An Aniimo whose letter matches a facility's works it 20%
+// faster (game data via Shinumino's planner, aniimax and AniimoTools agree). Some forms always have certain letters.
+const PERSONA = {bench:'E', keg:'E', dewy:'I', perfume:'I', claw:'S', kiln:'S', stove:'N', dryer:'N', windmill:'N', mill:'T', pot:'T',
+  well:'F', loom:'F', hammock:'F', table:'J', nimbus:'J', sand:'J', mine:'P', jar:'P'};
+const FIXED_LETTERS = {'Nighttime Piopiota':'EP', 'Nighttime Panpanta':'IJ', 'Geoclaw':'T', 'Melloblum':'F'};
+const PERSONALITIES = ['E','I'].flatMap(a=>['S','N'].flatMap(b=>['T','F'].flatMap(c=>['J','P'].map(d=>a+b+c+d))));
+const ALL_ANIIMO = () => [...new Set([...Object.values(AN_OPTS).flatMap(o=>Object.entries(o).filter(([k])=>k!=='note').flatMap(([,v])=>v)),
+  ...Object.values(LEISURE_LINE).flatMap(l=>l.map(([n])=>n)), ...Object.keys(FIXED_LETTERS)])].sort();
 // ---------- Fewest Aniimo ----------
 // Which jobs each Aniimo can do, and at what level (from the suggested-worker lists above). At the Lv 3 setting,
 // Lv 4 and Prismana entries are left out.
@@ -1941,7 +1973,19 @@ function fewestCrew(req, lv, owned){
 
 function renderCrew(){
   const L=lastPlan; if (!L || !L.crewList) return;
-  const {crewList, cap, ctx}=L, lv=state.crewLvl===4?4:3, owned=new Set(state.owned||[]), fewest=state.crewMode==='fewest';
+  const {crewList, cap, ctx}=L, lv=state.crewLvl===4?4:3, fewest=state.crewMode==='fewest';
+  // Your Aniimo: copies minus those away, and their personalities
+  const roster=state.roster||[], avail0={}; for (const e of roster) avail0[e.n]=(avail0[e.n]||0)+Math.max(0,e.c-(e.away||0));
+  const owned=new Set(Object.keys(avail0).filter(n=>avail0[n]>0)), persOf=n=>((roster.find(x=>x.n===n)||{}).p||'');
+  const lettersOf=r=>[...new Set((r.keys||[]).map(k=>PERSONA[k]).filter(Boolean))];
+  // Put your own Aniimo on the jobs, scarcest job first, matching personality first; each copy used once
+  const assign=new Map();
+  { const avail={...avail0};
+    const order=crewList.map(r=>({r, opts:crewOptions(r,ctx).flatMap(g=>g.names.map(n=>({n,l:g.lvl})))})).sort((a,b)=>a.opts.filter(x=>owned.has(x.n)).length-b.opts.filter(x=>owned.has(x.n)).length);
+    for (const {r,opts} of order){ const Ls=lettersOf(r); let need=r.n; const got=[];
+      const seen=new Set(), cands=opts.filter(x=>avail[x.n]>0 && !seen.has(x.n) && seen.add(x.n)).map(x=>({...x, m:Ls.filter(c=>persOf(x.n).includes(c)).length})).sort((a,b)=>b.m-a.m || b.l-a.l);
+      for (const c of cands){ if (!need) break; const k=Math.min(need, avail[c.n]); if (k<=0) continue; avail[c.n]-=k; need-=k; got.push({n:c.n, k, m:c.m, p:persOf(c.n)}); }
+      assign.set(r,{got, short:need, letters:Ls}); } }
   // Fewest Aniimo: one Aniimo can split its time across jobs it knows, so shared work may need fewer of them
   const pooledRows=crewList.filter(r=>r.pooled), fixedRows=crewList.filter(r=>!r.pooled);
   const team=fewest ? fewestCrew(pooledRows.map(r=>({job:r.job, lvl:r.lvl||1, d:Math.max(r.d||0, 0.01), does:r.does})), lv, owned) : null;
@@ -1950,19 +1994,21 @@ function renderCrew(){
   const card=(r,ri)=>{
     const groups=crewOptions(r, ctx), all=groups.flatMap(g=>g.names);
     const pickable=g=>lv===4 || !/Prismana/.test(g.names.join()) || g.lvl<4;
-    const mine=groups.flatMap(g=>g.names.filter(n=>owned.has(n)).map(n=>({n,l:g.lvl})));
+    const A=assign.get(r)||{got:[],short:r.n,letters:[]};
     const top=groups.find(g=>lv===4 || g.lvl<=3) || groups[0];   // Lv 3 setting suggests Lv 3 forms, which are easier to get
     const best=top ? top.names.filter(n=>lv===4 || !/Prismana/.test(n)).slice(0,2) : [];
-    const head = mine.length ? `<div class="pick ok">✓ Use your <b>${mine.slice(0,r.n).map(x=>x.n).join(', ')}</b>${mine.length<r.n?` <span class="muted">· ${r.n-mine.length} more needed</span>`:''}</div>`
-                             : `<div class="pick">Best: <b>${best.join(' or ')||'any '+r.job+' Aniimo'}</b></div>`;
+    const head = A.got.length ? `<div class="pick ok">✓ Your <b>${A.got.map(g=>g.n+(g.k>1?' ×'+g.k:'')+(g.p&&A.letters.length?(g.m?' <span class="pm ok" title="Personality matches: 20% faster">'+g.p+'</span>':' <span class="pm" title="Personality doesn\'t match">'+g.p+'</span>'):'')).join(', ')}</b>${A.short?` <span class="muted">· ${A.short} more needed. Best: ${best.join(' or ')||'any '+r.job+' Aniimo'}</span>`:''}</div>`
+                             : `<div class="pick">${roster.length?'<span class="muted">None of yours. </span>':''}Best: <b>${best.join(' or ')||'any '+r.job+' Aniimo'}</b></div>`;
+    const pl=(r.keys||[]).filter(k=>PERSONA[k]);
+    const pers = pl.length ? `<div class="for">Fastest personality: ${[...new Set(pl.map(k=>PERSONA[k]))].map(c=>`<b>${c}</b> (${pl.filter(k=>PERSONA[k]===c).map(k=>MACH[k].name).join(', ')})`).join(', ')}</div>` : '';
     const chips=groups.map(g=>`<div class="og"><span class="ol">${g.label}</span><div class="oc">${g.names.map(n=>`<button type="button" class="an${owned.has(n)?' on':''}" data-an="${n}" aria-pressed="${owned.has(n)}">${n}</button>`).join('')}</div></div>`).join('');
     const note=(AN_OPTS[r.job]||{}).note;
-    return `<div class="cc" style="--jc:var(${jobVar(r.job)})"><div class="top">${jobChip(r.job, r.lvl>1?' Lv '+r.lvl+'+':'')}<span class="n">${r.n}</span></div><div class="for">${r.does}</div>${r.busy>0.005?`<div class="for"><b>${Math.round(100*r.busy/Math.max(1,r.n))}%</b> busy on machines${r.n>1?' each':''}</div>`:''}${head}
-      ${groups.length?`<details class="opts"${mine.length?'':''}><summary>${all.length} option${all.length>1?'s':''} · tap the ones you own</summary>${chips}${note?`<p class="muted">${note}</p>`:''}</details>`:''}</div>`;
+    return `<div class="cc" style="--jc:var(${jobVar(r.job)})"><div class="top">${jobChip(r.job, r.lvl>1?' Lv '+r.lvl+'+':'')}<span class="n">${r.n}</span></div><div class="for">${r.does}</div>${r.busy>0.005?`<div class="for"><b>${Math.round(100*r.busy/Math.max(1,r.n))}%</b> busy on machines${r.n>1?' each':''}</div>`:''}${head}${pers}
+      ${groups.length?`<details class="opts"><summary>${all.length} option${all.length>1?'s':''} · tap the ones you own</summary>${chips}${note?`<p class="muted">${note}</p>`:''}</details>`:''}</div>`;
   };
   $('pane-crew').innerHTML = `<div class="head"><p class="note" style="max-width:60ch"><b>${crewMin}</b>${cap?` of ${cap}`:''} Aniimo slots used${int('reserve')?` (${int('reserve')} kept free)`:''}.${cap&&crewMin>cap?' <b>More than your Home holds.</b>':''} <i class="tip" tabindex="0" data-tip="Climate units, Mines, Wells and leisure spots each keep their own worker. Machines don't run all the time, so they share: each job gets enough workers for its total machine time, plus a little for field work. If plots or machines sit waiting in game, add another worker for that job.">?</i></p>
     <label class="f" style="width:170px"><span>Suggested workers <i class="tip" tabindex="0" data-tip="Lv 3 picks are regular forms you can catch. Lv 4 picks are mostly Prismana forms, which are rare. Level changes machine and Mine speed (Lv 3 does 120 work a minute at a Mine, Lv 4 does 150).">?</i></span><select id="crewLvl"><option value="3"${lv===3?' selected':''}>Lv 3 · easier to get</option><option value="4"${lv===4?' selected':''}>Lv 4 · Prismana</option></select></label></div>
-    ${owned.size?`<p class="note"><button type="button" class="linkbtn" id="clearOwned">Clear my ${owned.size} owned</button></p>`:''}
+    ${rosterHtml(roster, crewList, assign)}
     <div class="seg" role="group" aria-label="Show workers"><button type="button" data-cm="job" aria-pressed="${!fewest}">By job</button><button type="button" data-cm="fewest" aria-pressed="${fewest}">Fewest Aniimo</button></div>
     ${fewest && !team ? '<p class="warn">No mix of the listed Aniimo covers every shared job at the level needed, so this shows workers by job.</p>' : ''}
     ${team ? `<p class="note">Machines and field work can share one Aniimo when it knows both jobs. ${L.crewMin-crewMin>0?`<b>${L.crewMin-crewMin} fewer</b> than by job.`:'No saving over by job here.'}</p>
@@ -1971,10 +2017,38 @@ function renderCrew(){
         <div class="for">${s.jobs.map(j=>j.does).join(' · ')}</div></div>`).join('')}${fixedRows.map(card).join('')}</div>` : `<div class="crew">${crewList.map(card).join('')}</div>`}`;
   const openSet=L.openCards||(L.openCards=new Set());
   $('pane-crew').querySelectorAll('details.opts').forEach((d,i)=>{ if(openSet.has(i)) d.open=true; d.addEventListener('toggle',()=>{ d.open?openSet.add(i):openSet.delete(i); }); });
-  $('pane-crew').querySelectorAll('button.an').forEach(b=>b.onclick=()=>{ const n=b.dataset.an, set=new Set(state.owned||[]);
-    set.has(n)?set.delete(n):set.add(n); state.owned=[...set]; save(); renderCrew(); });
-  const c=$('clearOwned'); if (c) c.onclick=()=>{ state.owned=[]; save(); renderCrew(); };
+  $('pane-crew').querySelectorAll('button.an').forEach(b=>b.onclick=()=>{ const n=b.dataset.an, R=state.roster||(state.roster=[]), i=R.findIndex(x=>x.n===n);
+    if (i>=0) R.splice(i,1); else R.push({n, c:1, p:'', away:0}); save(); renderCrew(); });
+  wireRoster();
   $('pane-crew').querySelectorAll('[data-cm]').forEach(b=>b.onclick=()=>{ state.crewMode=b.dataset.cm; save(); renderCrew(); });
+}
+// My Aniimo: what you have (copies, personality, how many are away), used to pick your crew
+function rosterHtml(roster, crewList, assign){
+  const names=ALL_ANIIMO(), short=crewList.map(r=>({r, s:(assign.get(r)||{}).short||0})).filter(x=>x.s>0);
+  const rows=roster.map((e,i)=>{ const fx=FIXED_LETTERS[e.n], clash=fx && e.p && [...fx].some(c=>!e.p.includes(c));
+    return `<tr><td>${esc(e.n)}${fx?` <span class="pill" title="Always has ${fx.split('').join(' and ')}">${fx}</span>`:''}</td>
+      <td><input type="number" min="1" max="20" value="${e.c}" data-ri="${i}" data-rf="c" aria-label="Copies of ${esc(e.n)}"></td>
+      <td><select data-ri="${i}" data-rf="p" aria-label="Personality of ${esc(e.n)}"><option value="">Not set</option>${PERSONALITIES.map(x=>`<option${e.p===x?' selected':''}>${x}</option>`).join('')}</select>${clash?' <span class="warnmark" title="This Aniimo always has '+fx+'">!</span>':''}</td>
+      <td><input type="number" min="0" max="${e.c}" value="${e.away||0}" data-ri="${i}" data-rf="away" aria-label="${esc(e.n)} away"></td>
+      <td><button type="button" class="icon xs" data-rdel="${i}" aria-label="Remove ${esc(e.n)}">✕</button></td></tr>`; }).join('');
+  return `<details class="card roster"${roster.length?'':' open'}><summary><b>My Aniimo</b> <span class="note">${roster.length?roster.reduce((t,e)=>t+e.c,0)+' Aniimo, '+roster.length+' kinds':'add the ones you have to plan your crew from them'}</span></summary>
+    <div class="radd"><input list="anList" id="rosterName" placeholder="Add an Aniimo…" aria-label="Aniimo name"><button type="button" id="rosterAdd">Add</button>
+      <datalist id="anList">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
+    ${roster.length?`<div class="tablewrap"><table class="rost"><thead><tr><th>Aniimo</th><th>Copies</th><th>Personality</th><th>Away</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
+    <p class="note">You can also tap names on the job cards. A matching personality letter makes an Aniimo 20% faster at that facility (each card shows which letter). Away ones (on trips) aren't used.</p>
+    ${roster.length && short.length ? `<p class="warn">Still needed: ${short.map(x=>`${x.s} ${x.r.job}${x.r.lvl>1?' Lv '+x.r.lvl+'+':''}`).join(', ')}.</p>` : ''}
+    ${roster.length && !short.length ? '<p class="note ok">Your Aniimo cover every job.</p>' : ''}
+  </details>`;
+}
+function wireRoster(){
+  const R=()=>state.roster||(state.roster=[]), names=new Set(ALL_ANIIMO());
+  const add=()=>{ const v=cleanName($('rosterName').value,40), n=[...names].find(x=>x.toLowerCase()===v.toLowerCase()); if (!n){ $('rosterName').setCustomValidity('Pick a name from the list'); $('rosterName').reportValidity(); return; }
+    const e=R().find(x=>x.n===n); if (e) e.c=Math.min(20,e.c+1); else R().push({n, c:1, p:FIXED_LETTERS[n]&&FIXED_LETTERS[n].length===4?FIXED_LETTERS[n]:'', away:0}); save(); renderCrew(); };
+  if ($('rosterAdd')){ $('rosterAdd').onclick=add; $('rosterName').onkeydown=e=>{ if (e.key==='Enter'){ e.preventDefault(); add(); } }; $('rosterName').oninput=e=>e.target.setCustomValidity(''); }
+  document.querySelectorAll('[data-ri]').forEach(el=>el.onchange=()=>{ const e=R()[+el.dataset.ri]; if (!e) return; const f=el.dataset.rf;
+    if (f==='p') e.p=PERSONALITIES.includes(el.value)?el.value:''; else { const v=Math.round(+el.value||0); if (f==='c') e.c=Math.max(1,Math.min(20,v)); else e.away=Math.max(0,Math.min(e.c,v)); }
+    save(); renderCrew(); });
+  document.querySelectorAll('[data-rdel]').forEach(b=>b.onclick=()=>{ R().splice(+b.dataset.rdel,1); save(); renderCrew(); });
 }
 function crewRows(best, real, o){
   const rows=[], jobs={E:new Set(),G:new Set(),D:new Set()};
@@ -3118,7 +3192,7 @@ function run(){
   // Machines that don't run all the time share one pool of workers per job; everything else keeps its own worker
   const crew=[], pool=best.workers||{}, pjobs=new Set(Object.keys(pool).filter(j=>pool[j]>0)), pooled={};
   const plural=(nm,n)=>n>1 ? nm+(/(sh|ch|x|s)$/.test(nm)?'es':'s') : nm;
-  const P=j=>pooled[j]||(pooled[j]={job:j, n:pool[j], lvl:1, parts:[], busy:(best.poolBusy||{})[j]||0});
+  const P=j=>pooled[j]||(pooled[j]={job:j, n:pool[j], lvl:1, parts:[], keys:[], busy:(best.poolBusy||{})[j]||0});
   for (const r of crewRows(best, real, o)){ if (r.field && pjobs.has(r.job)){ const p=P(r.job); p.parts.push(r.does); p.field=true; } else crew.push(r); }
   const count={}, steps={};
   for (const m of chain.machines){ count[m.key]=(count[m.key]||0)+m.need; (steps[m.key]||(steps[m.key]=[])).push(...m.steps.map(s=>s.r)); }
@@ -3128,20 +3202,21 @@ function run(){
   if (PWR) for (const [k,n] of Object.entries(PWR.eChainK||{})) count[k]=Math.max(0,(count[k]||0)-n);
   const lvlOf=k=>Math.max(1,...(steps[k]||[]).map(r=>r.j));
   for (const [k,n] of Object.entries(count)){ const M=MACH[k];
-    if (POOLED(k) && pjobs.has(M.job)){ const p=P(M.job); p.parts.push(n+' '+plural(M.name,n)); p.lvl=Math.max(p.lvl,lvlOf(k)); continue; }
+    if (!n) continue;
+    if (POOLED(k) && pjobs.has(M.job)){ const p=P(M.job); p.parts.push(n+' '+plural(M.name,n)); p.keys.push(k); p.lvl=Math.max(p.lvl,lvlOf(k)); continue; }
     const fr=(steps[k]||[]).find(r=>r.fam);
-    crew.push({job:M.job, lvl:lvlOf(k), n, does:n+' '+plural(M.name,n), fam:fr?(leisurePick(fr,ctx)?.name||fr.fam):'', line:fr||null}); }
+    crew.push({job:M.job, lvl:lvlOf(k), n, keys:[k], does:n+' '+plural(M.name,n), fam:fr?(leisurePick(fr,ctx)?.name||fr.fam):'', line:fr||null}); }
   const mineCount=best.mines.filter(m=>!m.e).reduce((s,m)=>s+m.count,0);
   if (PWR && PWR.gens) crew.push({job:'Lightning', lvl:GEN.need[PWR.lvl], n:PWR.gens, does:PWR.gens+' Crackle Generator'+(PWR.gens>1?'s':'')});
-  if (mineCount) crew.push({job:'Earth', n:mineCount, does:mineCount+' Mine'+(mineCount>1?'s':'')});
+  if (mineCount) crew.push({job:'Earth', n:mineCount, keys:['mine'], does:mineCount+' Mine'+(mineCount>1?'s':'')});
   if (gs.rv) for (const [key,stages,id] of [['bench',gs.rv.woodChain,'benches'],['kiln',gs.rv.oreChain,'kilns']]){ const n=int(id); if (!stages.length || !n) continue;
     const M=MACH[key], lv=Math.max(...stages.map(s=>s.r.j));
-    if (pjobs.has(M.job)){ const p=P(M.job); p.parts.push(n+' '+plural(M.name,n)); p.lvl=Math.max(p.lvl,lv); }
-    else crew.push({job:M.job, lvl:lv, n, does:n+' '+plural(M.name,n)}); }
-  for (const e of extras){ const M=MACH[e.key]; crew.push({job:M.job, n:1, does:'1 '+M.name, fam:e.r.fam?leisurePick(e.r,ctx).name:'', line:e.r.fam?e.r:null}); }
-  for (const p of Object.values(pooled)) crew.push({job:p.job, lvl:p.lvl, n:p.n, does:p.parts.join(' · '), busy:p.busy, pooled:true, d:p.busy+(p.field?FIELD_SHARE:0)});
+    if (pjobs.has(M.job)){ const p=P(M.job); p.parts.push(n+' '+plural(M.name,n)); p.keys.push(key); p.lvl=Math.max(p.lvl,lv); }
+    else crew.push({job:M.job, lvl:lv, n, keys:[key], does:n+' '+plural(M.name,n)}); }
+  for (const e of extras){ const M=MACH[e.key]; crew.push({job:M.job, n:1, keys:[e.key], does:'1 '+M.name, fam:e.r.fam?leisurePick(e.r,ctx).name:'', line:e.r.fam?e.r:null}); }
+  for (const p of Object.values(pooled)) crew.push({job:p.job, lvl:p.lvl, n:p.n, keys:p.keys, does:p.parts.join(' · '), busy:p.busy, pooled:true, d:p.busy+(p.field?FIELD_SHARE:0)});
   const byJob={}; for (const r of crew){ const k=r.job+'|'+(r.lvl&&r.lvl>1?r.lvl:0)+'|'+(r.fam||'')+(r.pooled?'|pool':'');
-    if (byJob[k]){ byJob[k].n+=r.n; byJob[k].does+=', '+r.does; } else byJob[k]={...r}; }
+    if (byJob[k]){ byJob[k].n+=r.n; byJob[k].does+=', '+r.does; byJob[k].keys=[...new Set([...(byJob[k].keys||[]),...(r.keys||[])])]; } else byJob[k]={...r, keys:[...(r.keys||[])]}; }
   // Merge repeats like "1 Well, 1 Well" into "2 Wells"
   for (const r of Object.values(byJob)){ if (r.pooled) continue;
     const parts=[], idx={};
@@ -3341,12 +3416,23 @@ $('copyCode').onclick=()=>{
   const fallback=()=>{ $('codeIn').select(); $('copyMsg').textContent='Select the code below and copy it.'; };
   try{ navigator.clipboard.writeText(code).then(()=>{ $('copyMsg').textContent='Copied.'; }, fallback); }catch(e){ fallback(); }
 };
+// A saved setup (from a code or a file): checked and rebuilt from known values before use
+function loadSetup(d){ if(!d||typeof d!=='object'||!d.form||!d.state||typeof d.form!=='object') throw 0;
+  state=cleanState(d.state);
+  $('rv').value=String(Math.max(1,Math.min(20,parseInt(d.form.rv)||12))); buildSelects(); writeForm(d.form); migrateForm(d.form); refreshInputs(); run(); }
 $('loadCode').onclick=()=>{
-  try{ const d=decode($('codeIn').value); if(!d||!d.form||!d.state) throw 0;
-    state=cleanState(d.state);
-    $('rv').value=String(Math.max(1,Math.min(20,parseInt(d.form.rv)||12))); buildSelects(); writeForm(d.form); migrateForm(d.form); refreshInputs(); run(); $('loadMsg').textContent='Loaded.'; }
+  try{ loadSetup(decode($('codeIn').value)); $('loadMsg').textContent='Loaded.'; }
   catch(e){ $('loadMsg').textContent="That code didn't work. Copy the whole code and try again."; }
 };
+$('saveFile').onclick=()=>{
+  const blob=new Blob([JSON.stringify({app:'homeland-field-planner', v:6, saved:new Date().toISOString(), form:readForm(), state},null,1)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`homeland-rv${int('rv')}.json`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+  $('copyMsg').textContent='Saved.'; };
+$('loadFileBtn').onclick=()=>$('loadFile').click();
+$('loadFile').onchange=e=>{ const f=e.target.files&&e.target.files[0]; if (!f) return;
+  if (f.size>2e6){ $('copyMsg').textContent='That file is too big to be a setup.'; return; }
+  f.text().then(t=>{ try{ loadSetup(JSON.parse(t)); $('copyMsg').textContent='Loaded '+f.name.replace(/[<>&"']/g,'')+'.'; } catch(err){ $('copyMsg').textContent="That file isn't a setup from this planner."; } })
+   .finally(()=>{ e.target.value=''; }); };
 $('resetAll').onclick=()=>{ state=JSON.parse(JSON.stringify(DEFAULT_STATE)); $('rv').value='12'; maxAll(); refreshInputs(); run(); selectTab('plant'); $('loadMsg').textContent='Back to the example.'; };
 
 // ---------- Start ----------
