@@ -277,6 +277,10 @@ button.an.on::before{content:"✓ "}
 .mc ul{list-style:none;margin:0;padding:0;display:grid;gap:3px;font-size:.84rem}
 .mc li{display:flex;justify-content:space-between;gap:8px}
 .mc li > span:last-child{font-family:var(--font-mono);color:var(--muted);white-space:nowrap}
+.mc li.rl{display:block}
+.mc .rl .rn{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
+.mc .rl .rn > span:last-child{font-family:var(--font-mono);color:var(--muted);white-space:nowrap}
+.mc .rl .rs{font-size:.76rem;color:var(--muted)}
 .shop{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px}
 .sc{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:4px 10px;align-items:center;border:1px solid var(--line);border-radius:10px;padding:10px 12px;background:var(--panel)}
 .sc .sw{width:12px;height:12px;margin:0}
@@ -374,7 +378,7 @@ button.an.on::before{content:"✓ "}
           <button type="button" id="addProd">+ Add item</button>
         </header>
         <div class="rows" id="prodRows"></div>
-        <div class="toggles"><label class="inline"><input type="checkbox" id="autoProd" checked>Make more products for coin <i class="tip" tabindex="0" data-tip="Machines and Aniimo slots you have spare turn crops into whatever sells for the most, whatever your goal. Your items above always come first. Untick to sell crops as they are.">?</i></label><label class="inline"><input type="checkbox" id="switchRec">Machines switch recipes <i class="tip" tabindex="0" data-tip="Off: each machine sticks to one recipe, so every recipe gets machines of its own and only the best ones are picked. On: one machine takes turns on several recipes, which means switching them by hand as you go.">?</i></label></div>
+        <div class="toggles"><label class="inline"><input type="checkbox" id="autoProd" checked>Craft products from crops <i class="tip" tabindex="0" data-tip="The plan picks which products to make from your crops, alongside your items above, using the machines and Aniimo your RV allows, for the most coin whatever your goal. Your items always come first. Untick to sell crops as they are.">?</i></label><label class="inline"><input type="checkbox" id="switchRec">Machines switch recipes <i class="tip" tabindex="0" data-tip="Off: each machine sticks to one recipe, so every recipe gets machines of its own and only the best ones are picked. On: one machine takes turns on several recipes, which means switching them by hand as you go.">?</i></label></div>
         <details>
           <summary>RV modules for special recipes <i class="tip" tabindex="0" data-tip="Premium, Advanced and Quick recipes unlock with these RV modules. Max for RV sets them to the highest your RV allows; lower them if you haven't upgraded yet.">?</i></summary>
           <div class="in"><div class="grid">
@@ -989,7 +993,9 @@ function plan(requests, fillers, o, lp){
     const r = plan(requests, fillers, {...o, oneRecipe:false, shortlisted:true, spare:o.spareK||{}, auto}, lp);
     // a machine of its own for every new recipe used (never more than you can place: at most that many were kept)
     const per={}; for (const a of r.auto||[]) for (const st of a.steps){ const k=st.r.m; if (((o.chainRec||{})[k]||new Set()).has(st.r.id)) continue; (per[k]||(per[k]=new Set())).add(st.r.id); }
-    r.autoMach={...(r.autoMach||{})}; for (const [k,set] of Object.entries(per)) r.autoMach[k]=Math.max(r.autoMach[k]||0, set.size);
+    const busyR={}; for (const a of r.auto||[]) for (const st of a.steps) busyR[st.r.id]=(busyR[st.r.id]||0)+st.busy*a.perHour;
+    r.autoMach={...(r.autoMach||{})}; r.autoMachR={};
+    for (const [k,set] of Object.entries(per)){ let t=0; for (const rid of set){ r.autoMachR[rid]=Math.max(1,Math.ceil(busyR[rid]-1e-9)); t+=r.autoMachR[rid]; } r.autoMach[k]=Math.max(r.autoMach[k]||0, t); }
     return r;
   }
   if (o.oneRecipe && (o.auto||[]).length && !o.shortlisted && !o.lpOnly){
@@ -1142,7 +1148,7 @@ function plan(requests, fillers, o, lp){
     for (const [rid,r] of recs){ const k=r.m; if (!C['mc_'+k]) continue;
       C['mr_'+rid]={max:(o.spareR||{})[rid]||0};
       const v={obj:-EPS, ['mc_'+k]:1, ['mr_'+rid]:-1}; if (SL && !POOLED(k)) v.slots=1;
-      V['n_'+rid]=v; model.ints['n_'+rid]=1; machVars.push({name:'n_'+rid, key:k}); }
+      V['n_'+rid]=v; model.ints['n_'+rid]=1; machVars.push({name:'n_'+rid, key:k, rid}); }
   }
   else for (const k of autoKeys){ if (!C['mc_'+k]) continue;
     C['mt_'+k]={max:(o.spare||{})[k]||0};
@@ -1206,7 +1212,7 @@ function plan(requests, fillers, o, lp){
     }
   }
   const auto = autoVars.map(x=>({...x.a, perHour:res[x.name]||0})).filter(x=>x.perHour>1e-6);
-  const autoMach = {}; for (const mv of machVars){ const n=val(mv.name); if (n) autoMach[mv.key]=(autoMach[mv.key]||0)+n; }
+  const autoMach = {}, autoMachR = {}; for (const mv of machVars){ const n=val(mv.name); if (n){ autoMach[mv.key]=(autoMach[mv.key]||0)+n; if (mv.rid) autoMachR[mv.rid]=n; } }
   const extraCount = {}; for (const ev of extraVars) extraCount[ev.e.key]=val(ev.name);
   const autoCoin = auto.reduce((t,a)=>t+a.perHour*a.profit,0);
   const extrasCoin = extraVars.reduce((t,ev)=>t+extraCount[ev.e.key]*ev.e.coinOut,0);
@@ -1222,7 +1228,7 @@ function plan(requests, fillers, o, lp){
   const coinRate = out.reduce((s,p)=>s+p.plots*p.coin, 0) - consumed + mineCoin + (o.extraCoin||0) + guestCoin + autoCoin + extrasCoin;
   const woodRate = out.reduce((s,p)=>s+p.plots*p.wood, 0);
   return {feasible: res.feasible!==false, raw: res, counts, pairs, pairSlots, hosted, placed: out, coinRate, woodRate, sandRate, mines, mineCoin, made, shortfall, consumed, mode, objective: res.result, model,
-    auto, autoMach, autoCoin, autoUse, goodsUse, extraCount, extrasCoin, workers, poolBusy, limited:!!res.limited};
+    auto, autoMach, autoMachR, autoCoin, autoUse, goodsUse, extraCount, extrasCoin, workers, poolBusy, limited:!!res.limited};
 }
 
 // Spread one zone's plots over its units so every unit's layout really fits.
@@ -2876,46 +2882,45 @@ function run(){
 
   // ----- Machines tab -----
   let mh='';
-  // Your items' machines plus the planner's product picks: one card per machine, with how busy they keep it
-  const machRows=chain.machines.map(m=>({...m, autoLines:[]}));
-  for (const a of best.auto||[]){ const seen=new Set();
-    for (const st of a.steps){ const k=st.r.m; let row=machRows.find(m=>m.key===k&&!m.forRv);
-      if (!row){ row={key:k, need:0, can:placeAt(k,int('rv')), busy:0, maxLvl:0, steps:[], autoLines:[]}; machRows.push(row); }
-      if (!seen.has(k)){ row.busy+=a.mh[k]*a.perHour; seen.add(k); }
-      row.maxLvl=Math.max(row.maxLvl, st.r.l); row.autoLines.push({r:st.r, perHour:st.perHour*a.perHour}); } }
-  for (const [k,n] of Object.entries(best.autoMach||{})){ const row=machRows.find(m=>m.key===k); if (row) row.need+=n; }
-  for (const m of machRows) if (m.autoLines.length){ const g={}; for (const l of m.autoLines){ (g[l.r.id]||(g[l.r.id]={r:l.r, perHour:0})).perHour+=l.perHour; } m.autoLines=Object.values(g); }
-  if (gs.rv) for (const [key,stages] of [['bench',gs.rv.woodChain],['kiln',gs.rv.oreChain]]) if (stages.length){
-    const count=int(key==='bench'?'benches':'kilns');
-    machRows.push({key, need:count, can:placeAt(key,int('rv')), busy:NaN, maxLvl:Math.max(...stages.map(s=>s.r.l)), steps:stages.map(s=>({r:s.r, perHour:NaN, total:s.batches})), forRv:true});
-  }
-  if (machRows.length){
-    mh+=`<div class="mach">${machRows.map(m=>{ const M=MACH[m.key], over=m.need>m.can, jc=`var(${jobVar(M.job)})`;
-      const busy=isNaN(m.busy)?null:m.busy, slots=m.need<=10?Math.max(m.need,1):1, part=k=>m.need<=10?Math.max(0,Math.min(1,busy-k)):Math.min(1,busy/m.need);
-      const meter = busy===null ? '' : `<div class="meter" title="${Math.round(busy*100)}% of one ${M.name}'s time" style="--jc:${jc}">${Array.from({length:slots},(_,k)=>`<i style="width:${part(k)*100/slots}%"></i>`).join('')}</div>`;
-      const lines = m.forRv ? m.steps.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.total)} total</span></li>`) : [...m.steps.map(s=>`<li><span>${recipeCtl(s.r, ctx)}</span><span>${fmt(s.perHour)}/h</span></li>`),
-        ...(m.autoLines||[]).map(l=>`<li><span>${l.r.n}</span><span>${fmtN(l.perHour)}/h</span></li>`)];
-      return `<div class="mc${over?' over':''}"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>need / can place</div></div>${meter}${busy===null?`<p class="note">For RV ${gs.rv.next}</p>`:`<p class="note">${Math.round(100*busy/Math.max(1,m.need))}% busy${m.need>1?' on average across '+m.need:''}</p>`}<ul>${lines.join('')}</ul></div>`; }).join('')}</div>`;
+  // One card per kind of machine, with every recipe it runs: your items, the products the plan picks for your crops,
+  // and Wells and leisure spots, all planned together. Each machine sticks to one recipe unless switching is on.
+  const one=!!o.oneRecipe, rvL=int('rv'), kinds=new Map(), sold=new Set(wants(ctx,o).map(w=>w.recipe.n));
+  const K=k=>{ if (!kinds.has(k)) kinds.set(k,{key:k, can:placeAt(k,rvL), need:0, lines:new Map(), maxLvl:0, notes:[]}); return kinds.get(k); };
+  const L=(k,r)=>{ const m=K(k); m.maxLvl=Math.max(m.maxLvl,r.l||0); if (!m.lines.has(r.id)) m.lines.set(r.id,{r, perHour:0, busy:0, n:0, coin:0, feeds:new Set(), item:false}); return m.lines.get(r.id); };
+  for (const m of chain.machines){ K(m.key).need+=m.need;
+    for (const st of m.steps){ const l=L(m.key, st.r); l.perHour+=st.perHour; l.busy+=st.busy; l.item=true; if (one) l.n+=st.need;
+      if (sold.has(st.r.n)) l.coin+=st.perHour*(st.r.p||0); else l.feeds.add('your items'); } }
+  for (const a of best.auto||[]) for (const st of a.steps){ const l=L(st.r.m, st.r); l.perHour+=st.perHour*a.perHour; l.busy+=st.busy*a.perHour;
+    if (st.r.n===a.n) l.coin+=a.perHour*(a.r.p||0); else l.feeds.add(a.n); }
+  for (const [k,n] of Object.entries(best.autoMach||{})) K(k).need+=n;
+  for (const [rid,n] of Object.entries(best.autoMachR||{})) for (const m of kinds.values()){ const l=m.lines.get(rid); if (l) l.n+=n; }
+  // Wells and leisure spots: no land, no ingredients, one Aniimo each, always running
+  const CLIM={cool:'Faster inside a Cooling Unit range', warm:'Faster inside a Heat Furnace range', light:'Must sit inside a Sunlamp range'};
+  { const g={}; for (const e of extras){ const k=e.key+'|'+e.r.id; (g[k]=g[k]||{...e,n:0}).n++; }
+    for (const e of Object.values(g)){ const m=K(e.key), l=L(e.key, e.r); m.need+=e.n; l.n+=e.n; l.busy+=e.n; l.perHour+=e.perHour*e.n; l.coin+=e.coin*e.n; l.extra=true;
+      const note=(e.r.fam?famText(e.r, ctx):'Any Water Aniimo')+(e.r.clim?'. '+CLIM[e.r.clim]:''); if (!m.notes.includes(note)) m.notes.push(note); } }
+  const cards=[...kinds.values()].filter(m=>m.lines.size);
+  if (gs.rv) for (const [key,stages] of [['bench',gs.rv.woodChain],['kiln',gs.rv.oreChain]]) if (stages.length)
+    cards.push({key, need:int(key==='bench'?'benches':'kilns'), can:placeAt(key,rvL), maxLvl:Math.max(...stages.map(s=>s.r.l)), forRv:stages, notes:[]});
+  if (cards.length){
+    mh+=`<p class="note">Everything your plan makes, machine by machine. ${one?'Each machine sticks to one recipe, so every recipe gets machines of its own (tick <b>Machines switch recipes</b> in step 3 if you swap them by hand).':'Machines take turns on their recipes (switching is on in step 3).'} Coin is what the goods sell for.</p>`;
+    mh+=`<div class="mach">${cards.map(m=>{ const M=MACH[m.key], over=m.need>m.can, jc=`var(${jobVar(M.job)})`;
+      const head=`<div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div>`;
+      if (m.forRv) return `<div class="mc"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div><p class="note">For RV ${gs.rv.next}</p><ul>${m.forRv.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.batches)} total</span></li>`).join('')}</ul></div>`;
+      const ls=[...m.lines.values()].sort((a,b)=>(b.coin-a.coin)||(b.perHour-a.perHour));
+      // one bar per machine, filled by how busy that machine is
+      let segs=[];
+      if (one || ls.every(l=>l.extra)) for (const l of ls){ const n=Math.max(1,l.n); for (let k=0;k<n;k++) segs.push(Math.max(0,Math.min(1,l.busy-k))); }
+      else { const b=ls.reduce((t,l)=>t+l.busy,0), n=Math.max(1,m.need); for (let k=0;k<n;k++) segs.push(Math.max(0,Math.min(1,b-k))); }
+      const shown=segs.length<=10 ? segs : [segs.reduce((t,x)=>t+x,0)/segs.length];
+      const meter=`<div class="meter" style="--jc:${jc}">${shown.map(x=>`<i style="width:${x*100/shown.length}%"></i>`).join('')}</div>`;
+      const li=l=>{ const n=l.n, pct=Math.round(100*l.busy/Math.max(1,one||l.extra?n:m.need));
+        const sub=[one||l.extra ? `${n} machine${n>1?'s':''}` : '', l.extra||!l.r.i.length ? `${l.r.q} a batch` : '', (one||l.extra) ? pct+'% busy' : '', l.coin>0 ? fmt(l.coin)+' coin/h' : (l.feeds.size ? 'for '+[...l.feeds].join(', ') : '')].filter(Boolean).join(' · ');
+        return `<li class="rl"><div class="rn">${l.extra?`<span>${l.r.n}</span>`:recipeCtl(l.r, ctx, l.item)}<span>${fmtN(l.perHour)}/h</span></div>${sub?`<div class="rs">${sub}</div>`:''}</li>`; };
+      const busyAll=ls.reduce((t,l)=>t+l.busy,0);
+      return `<div class="mc${over?' over':''}" style="--jc:${jc}">${head}${meter}${one?'':`<p class="note">${Math.round(100*busyAll/Math.max(1,m.need))}% busy${m.need>1?' on average across '+m.need:''}</p>`}<ul>${ls.map(li).join('')}</ul>${m.notes.map(t=>`<p class="note">${t}.</p>`).join('')}${over?`<p class="note">Needs more than RV ${rvL} allows.</p>`:''}</div>`; }).join('')}</div>`;
   } else mh='<p class="note">No machines needed. Add food or goods in step 3, or plan for an RV upgrade, to see machines here.</p>';
-  if (extras.length || extrasCut){
-    const g={}; for (const e of extras){ const k=e.key+'|'+e.r.id; (g[k]=g[k]||{...e,n:0}).n++; }
-    const CLIM={cool:'Faster inside a Cooling Unit range', warm:'Faster inside a Heat Furnace range', light:'Must sit inside a Sunlamp range'};
-    mh+=`<div class="head" style="margin-top:18px"><h3>Recommended extras</h3><i class="tip" tabindex="0" data-tip="Wells and leisure spots need no land and no ingredients: place one, give it one Aniimo and it makes goods to sell. These fill the Aniimo slots your plan leaves free, highest coin first, with Wells and Sandcastles kept first if slots run short. Any your recipes already use show under the machines above. Their coin is already in your totals. Untick Leisure &amp; Wells in step 1 to leave them out.">?</i></div>`;
-    if (extras.length) mh+=`<div class="mach">${Object.values(g).map(e=>{ const M=MACH[e.key];
-      return `<div class="mc extra" style="--jc:var(${jobVar(M.job)})"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${e.r.l}</span> ${jobChip(M.job)}</div><div class="cnt"><b>${e.n}</b><br>to place</div></div>
-        <ul><li><span>${e.r.n}</span><span>${fmtN(e.perHour*e.n)}/h</span></li><li><span>Coin</span><span>${fmt(e.coin*e.n)}/h</span></li></ul>
-        <p class="note">${e.r.fam?famText(e.r, ctx):'Any Water Aniimo'}${e.r.clim?'. '+CLIM[e.r.clim]:''}.</p></div>`; }).join('')}</div>`;
-    if (extrasCut>0) mh+=`<p class="note">${extrasCut} more could go in, but the plan gets more from those Aniimo slots and buildings elsewhere.</p>`;
-  }
-  const au=(best.auto||[]).slice().sort((a,b)=>b.perHour*b.profit-a.perHour*a.profit);
-  if (au.length){
-    const addM=Object.entries(best.autoMach||{}).map(([k,n])=>`${n} more ${MACH[k].name}${n>1?(/(sh|ch|x|s)$/.test(MACH[k].name)?'es':'s'):''}`);
-    mh+=`<div class="head" style="margin-top:18px"><h3>More products for coin</h3><i class="tip" tabindex="0" data-tip="With machines and Aniimo slots to spare, these turn crops into goods worth more than the crops. Coin shown is after the crops they use. Untick Make more products for coin in step 3 to sell crops as they are.">?</i></div>
-      <p class="note">${addM.length?'Place '+addM.join(', ')+' for these.':'These use spare time on the machines above.'}</p>
-      <div class="mach">${au.map(a=>{ const M=MACH[a.r.m];
-        return `<div class="mc extra" style="--jc:var(${jobVar(M.job)})"><div class="top"><div><h4>${a.n}</h4><span class="pill">${M.name} Lv ${a.r.l}</span> ${jobChip(M.job)}</div><div class="cnt"><b>${fmtN(a.perHour)}</b><br>an hour</div></div>
-          <ul><li><span>Coin after crops</span><span>${fmt(a.perHour*a.profit)}/h</span></li>${[...Object.entries(a.crops),...Object.entries(a.goods||{})].map(([it,q])=>`<li><span>Uses ${it}</span><span>${fmtN(q*a.perHour)}/h</span></li>`).join('')}</ul></div>`; }).join('')}</div>`;
-  }
+  if (extrasCut>0) mh+=`<p class="note">${extrasCut} more Well${extrasCut>1?'s or leisure spots':' or leisure spot'} could go in, but the plan gets more from those Aniimo slots and buildings elsewhere.</p>`;
   const av=(state.avoid||[]).map(id=>PROC.find(r=>r.id===id)).filter(Boolean);
   if (av.length) mh=`<p class="note">Not using: ${av.map(r=>`<button type="button" class="chipbtn" data-unavoid="${r.id}" title="Use again">${r.n} · ${MACH[r.m].name} Lv ${r.l} ✕</button>`).join(' ')}</p>`+mh;
   $('pane-mach').innerHTML=mh;
@@ -2963,7 +2968,7 @@ function run(){
   const crewList=Object.values(byJob), crewMin=crewList.reduce((s,r)=>s+r.n,0);
   Object.assign(lastPlan,{crewList, crewMin, cap, openCards:new Set()}); renderCrew();
   // tab counts
-  setCount('tab-mach', machRows.length+extras.length+(best.auto||[]).length); setCount('tab-crew', crewMin); setCount('tab-layout', real.length);
+  setCount('tab-mach', cards.filter(c=>!c.forRv).reduce((t,c)=>t+c.need,0)); setCount('tab-crew', crewMin); setCount('tab-layout', real.length);
   renderShop(); renderData(); markClean();
 }
 // Every crop at its best climate, one plot each: sortable reference table
@@ -2980,8 +2985,8 @@ function renderCompare(key){
   wrap.querySelectorAll('button.sort').forEach(b=>b.onclick=()=>renderCompare(b.dataset.k));
 }
 // Recipe name on a machine card, with a picker when other recipes make the same item, and a button to stop using it
-function recipeCtl(r, ctx){
-  const alts=PROC.filter(x=>x.n===r.n && !(ctx.avoid&&ctx.avoid.has(x.id)));
+function recipeCtl(r, ctx, pick=true){
+  const alts=pick ? PROC.filter(x=>x.n===r.n && !(ctx.avoid&&ctx.avoid.has(x.id))) : [];
   const desc=x=>`${MACH[x.m].name} Lv ${x.l} · ${x.i.length?(x.q>1?x.q+' from ':'')+x.i.map(([n,q])=>q+' '+n).join(' + '):x.q+' a batch'}${lockReason(x,ctx)?' 🔒':''}`;
   const sel = alts.length>1 ? `<select data-item="${r.n}" aria-label="Recipe for ${r.n}"><option value="">Best: ${desc(pickRecipe(r.n,{...ctx,choose:{}}))}</option>${alts.map(x=>`<option value="${x.id}"${(ctx.choose||{})[r.n]===x.id?' selected':''}>${desc(x)}</option>`).join('')}</select>` : '';
   return `<span class="rc"><span>${r.n}</span>${sel}<button type="button" class="icon xs" data-avoid="${r.id}" aria-label="Don't use this recipe for ${r.n}" title="Don't use this recipe">✕</button></span>`;
