@@ -254,6 +254,8 @@ a{color:var(--leaf)}
 button.an{font-size:.78rem;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--sunk);color:var(--ink);font-weight:400;line-height:1.3}
 button.an.on{background:color-mix(in srgb,var(--jc) 22%,var(--panel));border-color:var(--jc);font-weight:700}
 button.an.on::before{content:"✓ "}
+button.an.on.away{border-style:dashed;font-weight:400;opacity:.8}
+button.an.on.away::before{content:""}
 .linkbtn{background:none;border:0;padding:0;color:var(--leaf);text-decoration:underline;font:inherit;cursor:pointer}
 .mach{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
 .mc{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel);display:grid;gap:8px;min-width:0}
@@ -292,6 +294,7 @@ body.quick .adv{display:none!important}
 @media (max-width:1059px){
   .mbar{display:flex;position:sticky;top:0;z-index:12;justify-content:space-between;align-items:center;gap:10px;padding:8px 8px 8px 14px;margin:0 0 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);font-weight:700;font-size:.9rem}
   body:not(.setup-open) .setup{display:none}
+  #setup,#pane-data,#summary,.tabs{scroll-margin-top:60px}
 }
 p.about{margin:12px 0 0;text-align:right}
 @media (max-width:520px){
@@ -312,7 +315,7 @@ table.rost td,table.rost th{padding:4px 6px}
 ul.checks{list-style:none;margin:10px 0 0;padding:0;display:grid;gap:3px;font-size:.84rem}
 ul.checks li{display:flex;justify-content:space-between;gap:8px}
 ul.checks li > span:last-child{font-family:var(--font-mono);color:var(--muted)}
-ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.no > span:first-child{color:var(--err-fg)}
+ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.unk > span:first-child{color:var(--muted)} ul.checks li.no > span:first-child{color:var(--err-fg)}
 .mc .rl .rn{display:flex;justify-content:space-between;gap:8px;align-items:baseline}
 .mc .rl .rn > span:last-child{font-family:var(--font-mono);color:var(--muted);white-space:nowrap}
 .mc .rl .rs{font-size:.76rem;color:var(--muted)}
@@ -503,6 +506,7 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.no > span:fir
           <div id="orderOut"></div>
         </div>
         <div class="panel" role="tabpanel" id="pane-data" aria-labelledby="tab-data" hidden>
+          <div class="head"><h2 id="aboutHead" tabindex="-1" style="margin:0">About the numbers and sources</h2><button type="button" class="linkbtn" data-goto="over">Back to Overview</button></div>
           <div id="bestRv"></div>
           <h3>Crops</h3>
           <div class="tablewrap" id="dataTable"></div>
@@ -1039,6 +1043,7 @@ const RV_COST = {
   17:[8630000,'Laminated Beams',630,'Refined Ore',380], 18:[11600000,'Laminated Beams',800,'Refined Ore',520],
   19:[17100000,'Densified Timber Component',400,'Microcrystalline Ore Plate',220], 20:[20800000,'Densified Timber Component',490,'Microcrystalline Ore Plate',270],
 };
+const plMat=(n,x)=>n===1||!/(Block|Component|Brick|Plate)$/.test(x)?x:x+'s';
 const AN_CAP = [0,0,8,11,14,17,20,22,24,26,28,30,32,34,36,38,40,42,43,44,45];
 
 // Coin (Co-op sales minus seeds) and Wood Blocks per plot per hour
@@ -1066,8 +1071,13 @@ function plan(requests, fillers, o, lp){
     // a machine of its own for every new recipe used (never more than you can place: at most that many were kept)
     const per={}; for (const a of r.auto||[]) for (const st of a.steps){ const k=st.r.m; if (((o.chainRec||{})[k]||new Set()).has(st.r.id)) continue; (per[k]||(per[k]=new Set())).add(st.r.id); }
     const busyR={}; for (const a of r.auto||[]) for (const st of a.steps) busyR[st.r.id]=(busyR[st.r.id]||0)+st.busy*a.perHour;
+    const eK=(r.power&&r.power.eMachK)||{}, before={...(r.autoMach||{})};
     r.autoMach={...(r.autoMach||{})}; r.autoMachR={};
-    for (const [k,set] of Object.entries(per)){ let t=0; for (const rid of set){ r.autoMachR[rid]=Math.max(1,Math.ceil(busyR[rid]-1e-9)); t+=r.autoMachR[rid]; } r.autoMach[k]=Math.max(r.autoMach[k]||0, t); }
+    for (const [k,set] of Object.entries(per)){ const room=Math.max(0,((o.machCap||{})[k]||0)-(eK[k]||0)); let t=0;
+      for (const rid of [...set].sort((x,y)=>(busyR[y]||0)-(busyR[x]||0))){ const n=Math.min(Math.max(1,Math.ceil((busyR[rid]||0)-1e-9)), room-t); if (n<=0) break; r.autoMachR[rid]=n; t+=n; }
+      r.autoMach[k]=t; }
+    // machines that keep their own Aniimo (not shared in a pool) eat too
+    if (r.foodNeed) for (const k of Object.keys(r.autoMach)) if (!POOLED(k)) r.foodNeed+=EAT_PER_H*Math.max(0,(r.autoMach[k]||0)-(before[k]||0));
     return r;
   }
   if (o.oneRecipe && (o.auto||[]).length && !o.shortlisted && !o.lpOnly){
@@ -1326,7 +1336,10 @@ function plan(requests, fillers, o, lp){
   if (o.lpOnly) model.ints = {};                     // plain linear relaxation, used only to rank pair layouts
   // one recipe per machine: near-best within a second (checked within 0.2% of the proven best) beats waiting
   const tl0=LP.tl; if (o.oneRecipe && !o.lpOnly && !LP.tl) LP.tl=3;
-  let res; try { res = lp.Solve(model); } finally { LP.tl=tl0; }
+  let res; try { res = lp.Solve(model);
+    // stopped at the limit on a big model (often the first solve, before the browser has warmed up): one longer try
+    if (res && res.limited && o.oneRecipe && !o.lpOnly && !tl0 && lp.exact){ LP.tl=5; const r2=lp.Solve(model); if (r2 && r2.feasible!==false && (r2.result||0) >= (res.result||0)) res=r2; }
+  } finally { LP.tl=tl0; }
   const val = k => Math.round(res[k]||0);
   const counts = {}; for (const z of ZONES) if (z.key!=='open') counts[z.key]=val('n_'+z.key);
   const pairs = pairVars.map(pv=>({pt:pv.pt, ti:pv.ti, n:val(pv.name)})).filter(x=>x.n>0);
@@ -1573,7 +1586,7 @@ const FORM_IDS = ['rv','farmPlots','woodPlots','farmLvl','woodLvl','eco','heat',
   'watering','hauling','persona','events','autoProd','switchRec','power','gens','usePower','feed','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
   'needCoin','needWood','needSand','haveHab','kitchen','crafting','detector','reserve'];
 const DEFAULT_STATE = {requests:[{id:'ginseng',plots:10},{id:'grapes',plots:6},{id:'chestnut',plots:4}], custom:[], noFill:[],
-  products:[{n:'Tanghulu',amt:4,unit:'h'},{n:'Dried Ginseng',amt:5,unit:'h'}], crewLvl:3, tab:'over', mode:'quick'};
+  products:[], crewLvl:3, tab:'over', mode:'quick'};
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 // Text that ends up in the page: escape it, and keep names people type (or load from a code) to plain words
 const esc = t => String(t??'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -1656,6 +1669,10 @@ function available(c){
   if (c.event && !$('events').checked) return {ok:false, why: Date.now()>EVENT.end ? 'the Harvest Moon event, which has ended' : 'Harvest Moon crops switched on'};
   return {ok:true};
 }
+// Settings only Custom shows: Quick and Start over put them back to how the page starts
+const QUICK_RESET = ['usePower','feed','autoProd','switchRec','watering','hauling','persona','neutralOk','freeze','pairs','extras','useHeat','useCool','useLamp','reserve','hours','capSmall','capCool','woodValue'];
+let PRISTINE=null;
+function quickDefaults(){ if (!PRISTINE) return; const f={}; for (const k of QUICK_RESET) if (k in PRISTINE) f[k]=PRISTINE[k]; writeForm(f); }
 function maxAll(){
   const rv=int('rv'); buildSelects();
   $('farmPlots').value=farmCap(rv); $('woodPlots').value=woodCap(rv);
@@ -1808,7 +1825,11 @@ function wantRate(w, r, ctx, o){
   if (w.unit==='p'){ const pp=plotsPerItem(r, ctx, o); return pp&&pp.plots>0 ? (w.amt||0)/pp.plots : 0; }
   return (w.amt||0)/(w.unit==='d'?24:1);
 }
-function wants(ctx, o=opts()){ return (state.products||[]).map(w=>{ const recipe=pickRecipe(w.n, ctx); return {recipe, perHour:recipe?wantRate(w, recipe, ctx, o):0, w}; }).filter(x=>x.recipe && x.perHour>0); }
+// Your items, skipping any your Homeland can't make yet (its machine level or module isn't there)
+function wants(ctx, o=opts()){ return (state.products||[]).map(w=>{ const recipe=pickRecipe(w.n, ctx); return {recipe, perHour:recipe?wantRate(w, recipe, ctx, o):0, w}; })
+  .filter(x=>x.recipe && x.perHour>0 && !lockReason(x.recipe, ctx) && placeAt(x.recipe.m, ctx.rv)>0); }
+function lockedWants(ctx){ return (state.products||[]).map(w=>{ const r=pickRecipe(w.n, ctx); if (!r) return null;
+  const why=lockReason(r, ctx) || (placeAt(r.m, ctx.rv)>0 ? '' : MACH[r.m].name+' (RV '+((MACH[r.m].place.find?MACH[r.m].place[0][0]:3))+')'); return why ? {n:w.n, why} : null; }).filter(Boolean); }
 function renderProducts(){
   const box=$('prodRows'); box.innerHTML='';
   const o=opts(), ctx=chainCtx(o);
@@ -1865,7 +1886,15 @@ const RANK_NAME={coin:'Home Coin', wood:'Wood Blocks', sand:'Mineral Sand'};
 // Goals other than coin count Home Coin second. A tiny tie-break weight can sit inside the solver's tolerance and
 // leave ground unused, so solve again holding what the first pass reached and make the most Home Coin.
 let LEX2=true;
+// The fallback solver handles E-mode only roughly, so it also plans without power and keeps whichever does better
 function solveFor(reqs, fillers, o, gs){
+  if (!SOLVER.exact && o.power){ const a=solveFor0(reqs, fillers, o, gs), b=solveFor0(reqs, fillers, {...o, power:null}, gs);
+    if (!a || !a.feasible) return b; if (!b || !b.feasible) return a;
+    const coin=(o.goal||{}).mode==='coin' || gs.ranked;
+    return (coin ? b.coinRate > a.coinRate + 1e-6 : (b.objective||0) > (a.objective||0) + 1e-6) ? b : a; }
+  return solveFor0(reqs, fillers, o, gs);
+}
+function solveFor0(reqs, fillers, o, gs){
   if (gs.ranked) return planRanked(reqs, fillers, o, SOLVER, gs.ranked);
   const first=planBest(reqs, fillers, o, SOLVER);
   if (!LEX2 || !first || !first.feasible) return first;
@@ -1878,7 +1907,8 @@ function rankOrder(){ const r=(state.rank||[]).filter(k=>RANK_NAME[k]); for (con
 function renderRank(){
   const box=$('rankList'); if (!box) return; const r=rankOrder();
   box.innerHTML=r.map((k,i)=>`<li draggable="true" data-k="${k}"><span class="grip" aria-hidden="true">⠿</span><b>${i+1}</b> ${RANK_NAME[k]}<span class="mv"><button type="button" class="icon xs" data-up="${i}" aria-label="Move ${RANK_NAME[k]} up"${i?'':' disabled'}>↑</button><button type="button" class="icon xs" data-down="${i}" aria-label="Move ${RANK_NAME[k]} down"${i<r.length-1?'':' disabled'}>↓</button></span></li>`).join('');
-  const move=(i,j)=>{ const a=rankOrder(); const [x]=a.splice(i,1); a.splice(j,0,x); state.rank=a; renderRank(); markDirty(); };
+  const move=(i,j)=>{ const a=rankOrder(); const [x]=a.splice(i,1); a.splice(j,0,x); state.rank=a; const up=j<i; renderRank(); markDirty();
+    const btn=box.querySelector(up?`[data-up="${j}"]`:`[data-down="${j}"]`), alt=box.querySelector(up?`[data-down="${j}"]`:`[data-up="${j}"]`); (btn&&!btn.disabled?btn:alt)&&(btn&&!btn.disabled?btn:alt).focus(); };
   box.querySelectorAll('[data-up]').forEach(b=>b.onclick=()=>move(+b.dataset.up, +b.dataset.up-1));
   box.querySelectorAll('[data-down]').forEach(b=>b.onclick=()=>move(+b.dataset.down, +b.dataset.down+1));
   let drag=null;
@@ -1917,8 +1947,10 @@ function renderGoalInputs(){
       $('haveTierLbl').textContent=r.tier+' you have'; $('haveWBWrap').hidden = r.tier==='Wood Block';
       $('haveOreWrap').hidden = !r.ore; $('haveSandWrap').hidden = !r.ore || r.ore==='Mineral Sand';
       if (r.ore) $('haveOreLbl').textContent=r.ore+' you have';
-      note=`RV ${r.next} costs ${fmt(r.coin)} Home Coin, ${fmt(r.amt)} ${r.tier}`+(r.ore?` and ${fmt(r.oreAmt)} ${r.ore}`:'')+
-        '. The plan grows the Wood Blocks, mines the Mineral Sand and counts the Bench and Kiln time to process them.'; }
+      const wb=r.tier!=='Wood Block', ok=r.ore&&r.ore!=='Mineral Sand', noWood=woodCap(int('rv'))===0;
+      note=`RV ${r.next} costs ${fmt(r.coin)} Home Coin, ${fmt(r.amt)} ${plMat(r.amt,r.tier)}`+(r.ore?` and ${fmt(r.oreAmt)} ${plMat(r.oreAmt,r.ore)}`:'')+'. '+
+        (noWood?'Your RV has no Woodland yet, so bring the Wood Blocks from outside your Homeland.'+(r.ore?' The plan mines the Mineral Sand':''):'The plan grows the Wood Blocks'+(r.ore?', mines the Mineral Sand':''))+
+        (wb||ok?` and counts the ${[wb&&'Woodworking Bench',ok&&'Chimney Kiln'].filter(Boolean).join(' and ')} time to process ${wb&&ok?'them':'it'}.`:(noWood&&!r.ore?'':'.')); }
   }
   $('goalNote').textContent=note;
 }
@@ -1928,9 +1960,10 @@ function rvChecks(next, best, chain, extras){
   const wells=((chain.machines.find(m=>m.key==='well')||{}).need||0)+extras.filter(e=>e.key==='well').length+(P.eExtras||[]).filter(e=>e.key==='well').reduce((t,e)=>t+e.count,0)+((best.autoMach||{}).well||0)+((P.eMachK||{}).well||0);
   const rows=[['Farmland plots', int('farmPlots'), farmCap(rv)], ['Woodland plots', int('woodPlots'), woodCap(rv)], ['Mines', int('mines'), placeAt('mine',rv)], ['Wells', wells, placeAt('well',rv), 'the plan places']];
   if (HAB_NEED[next]) rows.push(['Habitability', num('haveHab',0,1e9), HAB_NEED[next], 'you have']);
-  return `<ul class="checks">${rows.filter(r=>r[2]>0).map(([lbl,have,need,how])=>{ const ok=have>=need;
+  return `<ul class="checks">${rows.filter(r=>r[2]>0).map(([lbl,have,need,how])=>{ const ok=have>=need, unk=lbl==='Habitability'&&!(have>0);
+    if (unk) return `<li class="unk"><span>? ${lbl}</span><span>${fmt(need)} needed <small>(enter yours under Goal)</small></span></li>`;
     return `<li class="${ok?'ok':'no'}"><span>${ok?'✓':'✗'} ${lbl}</span><span>${fmt(have)} / ${fmt(need)}${how&&!ok?` <small>(${how})</small>`:''}</span></li>`; }).join('')}</ul>
-    ${HAB_NEED[next] && num('haveHab',0,1e9)<HAB_NEED[next] ? '<p class="note">Raise Habitability with furniture bought with Bud Tickets; each Aniimo living at Home adds some too.</p>' : ''}`;
+    ${HAB_NEED[next] && num('haveHab',0,1e9)>0 && num('haveHab',0,1e9)<HAB_NEED[next] ? '<p class="note">Raise Habitability with furniture bought with Bud Tickets; each Aniimo living at Home adds some too.</p>' : ''}`;
 }
 const fmtK = v => v>=1e6 ? (Math.round(v/1e5)/10)+'M' : v>=1e4 ? Math.round(v/1e3)+'k' : fmt(v);
 // Under the tiles: how sure the plan is, and how it compares with the planner's best at this RV
@@ -1938,7 +1971,7 @@ function statusHtml(best, gs){
   const cf=confidence(best), rv=int('rv'), top=BEST_RV[rv], coinGoal=(gs.goal||{}).mode==='coin' && !gs.ranked;
   const pct=top ? Math.round(100*best.coinRate/top) : 0;
   return `<div class="status"><span class="conf${cf.ok?' ok':''}">${cf.ok?'✓ ':''}${cf.text} <i class="tip" tabindex="0" data-tip="${esc(cf.tip)}">?</i></span>
-    ${top?`<span class="cmp">Best at RV ${rv} with everything maxed and no item list: <b>${fmtK(top)}</b> coin an hour${coinGoal&&pct<98?`. This plan makes ${pct}% of that`:''}. <button type="button" class="linkbtn" data-goto="data">Every level</button></span>`:''}</div>`;
+    ${top?`<span class="cmp">Best at RV ${rv} with everything maxed and no food &amp; goods picked: <b>${fmtK(top)}</b> coin an hour${coinGoal&&pct<98?`. This plan makes ${pct}% of that`:''}. <button type="button" class="linkbtn" data-goto="data">Every level</button></span>`:''}</div>`;
 }
 // The Overview's to-do list: what to place, plant, build and feed, each linking to its tab
 function renderTodo(){
@@ -1959,9 +1992,11 @@ function renderTodo(){
   const mc=(L.machCards||[]).filter(m=>!m.power && !m.forRv && m.need>0);
   const mach=mc.filter(m=>m.key!=='mine').sort((a,b)=>b.need-a.need).map(m=>plural(MACH[m.key].name, m.need));
   const mines=mc.find(m=>m.key==='mine');
-  if (mach.length || mines) rows.push(['Build', list([...(mines?[plural('Mine', mines.need)+(mines.e?` (${mines.e} on E-mode)`:'')]:[]), ...mach]), 'mach']);
+  const rvM=(L.machCards||[]).filter(m=>m.forRv && m.need>0).map(m=>plural(MACH[m.key].name, m.need)+' for the RV upgrade');
+  if (mach.length || mines || rvM.length) rows.push(['Build', list([...(mines?[plural('Mine', mines.need)+(mines.e?` (${mines.e} on E-mode)`:'')]:[]), ...mach, ...rvM],8), 'mach']);
   if (P && P.gens) rows.push(['Power', `${plural('Crackle Generator', P.gens)}, ${fmt(P.used)} of ${fmt(P.cap)} W in use. Machines on E-mode need no Aniimo.`, 'mach']);
-  if (L.crewMin) rows.push(['Aniimo', `${L.crewMin}${L.cap?' of '+L.cap:''} slots: ${list(L.crewList.map(r=>r.n+' '+r.job+(r.lvl>1?' Lv '+r.lvl+'+':'')),5)}`, 'crew']);
+  if (L.crewMin){ const g=new Map(); for (const r of L.crewList){ const k=r.job+(r.lvl>1?' Lv '+r.lvl+'+':''); g.set(k,(g.get(k)||0)+r.n); }
+    rows.push(['Aniimo', `${L.crewMin}${L.cap?' of '+L.cap:''} slots: ${list([...g].sort((a,b)=>b[1]-a[1]).map(([k,n])=>n+' '+k),6)}`, 'crew']); }
   if (o.feed && best.foodNeed>0) rows.push(['Food bowl', best.food.length ? `${list(best.food.map(f=>fmtN(f.perHour)+' '+f.item+' an hour'))}, ${fmt(best.foodNeed)} energy for your Aniimo.` : 'Nothing the plan makes is edible: stock the food bowl yourself.', 'shop']);
   $('todo').innerHTML = rows.length ? `<div class="card todo"><h3>What to set up</h3><dl>${rows.map(([k,v,t])=>`<dt>${k}</dt><dd>${v} <button type="button" class="linkbtn" data-goto="${t}">Details</button></dd>`).join('')}</dl></div>` : '';
 }
@@ -2059,7 +2094,7 @@ function renderCrew(){
   const {crewList, cap, ctx}=L, lv=state.crewLvl===4?4:3, fewest=state.crewMode==='fewest';
   // Your Aniimo: copies minus those away, and their personalities
   const roster=state.roster||[], avail0={}; for (const e of roster) avail0[e.n]=(avail0[e.n]||0)+Math.max(0,e.c-(e.away||0));
-  const owned=new Set(Object.keys(avail0).filter(n=>avail0[n]>0)), persOf=n=>((roster.find(x=>x.n===n)||{}).p||'');
+  const inRoster=new Set(roster.map(e=>e.n)), owned=new Set(Object.keys(avail0).filter(n=>avail0[n]>0)), persOf=n=>((roster.find(x=>x.n===n)||{}).p||'');
   const lettersOf=r=>[...new Set((r.keys||[]).map(k=>PERSONA[k]).filter(Boolean))];
   // Put your own Aniimo on the jobs, scarcest job first, matching personality first; each copy used once
   const assign=new Map();
@@ -2084,7 +2119,7 @@ function renderCrew(){
                              : `<div class="pick">${roster.length?'<span class="muted">None of yours. </span>':''}Best: <b>${best.join(' or ')||'any '+r.job+' Aniimo'}</b></div>`;
     const pl=(r.keys||[]).filter(k=>PERSONA[k]);
     const pers = pl.length ? `<div class="for">Fastest personality: ${[...new Set(pl.map(k=>PERSONA[k]))].map(c=>`<b>${c}</b> (${pl.filter(k=>PERSONA[k]===c).map(k=>MACH[k].name).join(', ')})`).join(', ')}</div>` : '';
-    const chips=groups.map(g=>`<div class="og"><span class="ol">${g.label}</span><div class="oc">${g.names.map(n=>`<button type="button" class="an${owned.has(n)?' on':''}" data-an="${n}" aria-pressed="${owned.has(n)}">${n}</button>`).join('')}</div></div>`).join('');
+    const chips=groups.map(g=>`<div class="og"><span class="ol">${g.label}</span><div class="oc">${g.names.map(n=>`<button type="button" class="an${owned.has(n)?' on':inRoster.has(n)?' on away':''}" data-an="${n}" aria-pressed="${inRoster.has(n)}"${!owned.has(n)&&inRoster.has(n)?' title="Yours, but all away"':''}>${n}${!owned.has(n)&&inRoster.has(n)?' (away)':''}</button>`).join('')}</div></div>`).join('');
     const note=(AN_OPTS[r.job]||{}).note;
     return `<div class="cc" style="--jc:var(${jobVar(r.job)})"><div class="top">${jobChip(r.job, r.lvl>1?' Lv '+r.lvl+'+':'')}<span class="n">${r.n}</span></div><div class="for">${r.does}</div>${r.busy>0.005?`<div class="for"><b>${Math.round(100*r.busy/Math.max(1,r.n))}%</b> busy on machines${r.n>1?' each':''}</div>`:''}${head}${pers}
       ${groups.length?`<details class="opts"><summary>${all.length} option${all.length>1?'s':''} · tap the ones you own</summary>${chips}${note?`<p class="muted">${note}</p>`:''}</details>`:''}</div>`;
@@ -2101,11 +2136,13 @@ function renderCrew(){
   const openSet=L.openCards||(L.openCards=new Set());
   $('pane-crew').querySelectorAll('details.opts').forEach((d,i)=>{ if(openSet.has(i)) d.open=true; d.addEventListener('toggle',()=>{ d.open?openSet.add(i):openSet.delete(i); }); });
   $('pane-crew').querySelectorAll('button.an').forEach(b=>b.onclick=()=>{ const n=b.dataset.an, R=state.roster||(state.roster=[]), i=R.findIndex(x=>x.n===n);
-    if (i>=0) R.splice(i,1); else R.push({n, c:1, p:'', away:0}); save(); renderCrew(); });
+    if (i>=0){ const e=R[i]; if (e.c===1 && !e.p && !e.away) R.splice(i,1); else { const d=$('pane-crew').querySelector('details.roster'); if (d){ d.open=true; d.scrollIntoView({block:'nearest'}); } return; } }
+    else R.push({n, c:1, p:FIXED_LETTERS[n]&&FIXED_LETTERS[n].length===4?FIXED_LETTERS[n]:'', away:0}); save(); renderCrew(); });
   wireRoster();
   $('pane-crew').querySelectorAll('[data-cm]').forEach(b=>b.onclick=()=>{ state.crewMode=b.dataset.cm; save(); renderCrew(); });
 }
 // My Aniimo: what you have (copies, personality, how many are away), used to pick your crew
+const ROSTER_OPEN={v:false};
 function rosterHtml(roster, crewList, assign){
   const names=ALL_ANIIMO(), short=crewList.map(r=>({r, s:(assign.get(r)||{}).short||0})).filter(x=>x.s>0);
   const rows=roster.map((e,i)=>{ const fx=FIXED_LETTERS[e.n], clash=fx && e.p && [...fx].some(c=>!e.p.includes(c));
@@ -2114,24 +2151,25 @@ function rosterHtml(roster, crewList, assign){
       <td><select data-ri="${i}" data-rf="p" aria-label="Personality of ${esc(e.n)}"><option value="">Not set</option>${PERSONALITIES.map(x=>`<option${e.p===x?' selected':''}>${x}</option>`).join('')}</select>${clash?' <span class="warnmark" title="This Aniimo always has '+fx+'">!</span>':''}</td>
       <td><input type="number" min="0" max="${e.c}" value="${e.away||0}" data-ri="${i}" data-rf="away" aria-label="${esc(e.n)} away"></td>
       <td><button type="button" class="icon xs" data-rdel="${i}" aria-label="Remove ${esc(e.n)}">✕</button></td></tr>`; }).join('');
-  return `<details class="card roster"${roster.length?'':' open'}><summary><b>My Aniimo</b> <span class="note">${roster.length?roster.reduce((t,e)=>t+e.c,0)+' Aniimo, '+roster.length+' kinds':'add the ones you have to plan your crew from them'}</span></summary>
+  return `<details class="card roster"${roster.length&&!ROSTER_OPEN.v?'':' open'}><summary><b>My Aniimo</b> <span class="note">${roster.length?roster.reduce((t,e)=>t+e.c,0)+' Aniimo, '+roster.length+' kinds':'add the ones you have to plan your crew from them'}</span></summary>
     <div class="radd"><input list="anList" id="rosterName" placeholder="Add an Aniimo…" aria-label="Aniimo name"><button type="button" id="rosterAdd">Add</button>
       <datalist id="anList">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
     ${roster.length?`<div class="tablewrap"><table class="rost"><thead><tr><th>Aniimo</th><th>Copies</th><th>Personality</th><th>Away</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
     <p class="note">You can also tap names on the job cards. A matching personality letter makes an Aniimo 20% faster at that facility (each card shows which letter). Away ones (on trips) aren't used.</p>
-    ${roster.length && short.length ? `<p class="warn">Still needed: ${short.map(x=>`${x.s} ${x.r.job}${x.r.lvl>1?' Lv '+x.r.lvl+'+':''}`).join(', ')}.</p>` : ''}
+    ${roster.length && short.length ? `<p class="warn">Still needed: ${[...short.reduce((g,x)=>{ const k=x.r.job+(x.r.lvl>1?' Lv '+x.r.lvl+'+':''); return g.set(k,(g.get(k)||0)+x.s); },new Map())].sort((a,b)=>a[0].localeCompare(b[0])).map(([k,n])=>n+' '+k).join(', ')}.</p>` : ''}
     ${roster.length && !short.length ? '<p class="note ok">Your Aniimo cover every job.</p>' : ''}
   </details>`;
 }
 function wireRoster(){
   const R=()=>state.roster||(state.roster=[]), names=new Set(ALL_ANIIMO());
+  const det=$('pane-crew').querySelector('details.roster'); if (det) det.addEventListener('toggle',()=>{ ROSTER_OPEN.v=det.open; });
   const add=()=>{ const v=cleanName($('rosterName').value,40), n=[...names].find(x=>x.toLowerCase()===v.toLowerCase()); if (!n){ $('rosterName').setCustomValidity('Pick a name from the list'); $('rosterName').reportValidity(); return; }
-    const e=R().find(x=>x.n===n); if (e) e.c=Math.min(20,e.c+1); else R().push({n, c:1, p:FIXED_LETTERS[n]&&FIXED_LETTERS[n].length===4?FIXED_LETTERS[n]:'', away:0}); save(); renderCrew(); };
+    const e=R().find(x=>x.n===n); if (e) e.c=Math.min(20,e.c+1); else R().push({n, c:1, p:FIXED_LETTERS[n]&&FIXED_LETTERS[n].length===4?FIXED_LETTERS[n]:'', away:0}); ROSTER_OPEN.v=true; save(); renderCrew(); if ($('rosterName')) $('rosterName').focus(); };
   if ($('rosterAdd')){ $('rosterAdd').onclick=add; $('rosterName').onkeydown=e=>{ if (e.key==='Enter'){ e.preventDefault(); add(); } }; $('rosterName').oninput=e=>e.target.setCustomValidity(''); }
   document.querySelectorAll('[data-ri]').forEach(el=>el.onchange=()=>{ const e=R()[+el.dataset.ri]; if (!e) return; const f=el.dataset.rf;
-    if (f==='p') e.p=PERSONALITIES.includes(el.value)?el.value:''; else { const v=Math.round(+el.value||0); if (f==='c') e.c=Math.max(1,Math.min(20,v)); else e.away=Math.max(0,Math.min(e.c,v)); }
-    save(); renderCrew(); });
-  document.querySelectorAll('[data-rdel]').forEach(b=>b.onclick=()=>{ R().splice(+b.dataset.rdel,1); save(); renderCrew(); });
+    if (f==='p') e.p=PERSONALITIES.includes(el.value)?el.value:''; else { const v=Math.round(+el.value||0); if (f==='c'){ e.c=Math.max(1,Math.min(20,v)); e.away=Math.min(e.away||0,e.c); } else e.away=Math.max(0,Math.min(e.c,v)); }
+    ROSTER_OPEN.v=true; save(); renderCrew(); });
+  document.querySelectorAll('[data-rdel]').forEach(b=>b.onclick=()=>{ R().splice(+b.dataset.rdel,1); ROSTER_OPEN.v=true; save(); renderCrew(); });
 }
 function crewRows(best, real, o){
   const rows=[], jobs={E:new Set(),G:new Set(),D:new Set()};
@@ -3039,6 +3077,7 @@ function prepare(){
 
   // Items → production chain → crop demand
   const ctx=chainCtx(o), chain=expandChain(wants(ctx, o), ctx);
+  for (const x of lockedWants(ctx)) warnings.push(`${x.n} skipped: needs ${x.why}.`);
   for (const w of chain.warnings) warnings.push(w);
   o.demand={}; o.demandCrops=[];
   for (const [item,rate] of Object.entries(chain.crops)){
@@ -3120,7 +3159,9 @@ function run(){
   let goalHtml='';
   if (gs.need){
     const t={coin: gs.need.coin>0 ? gs.need.coin/best.coinRate : 0, wood: gs.need.wood>0 ? gs.need.wood/best.woodRate : 0, sand: gs.need.sand>0 ? gs.need.sand/best.sandRate : 0};
-    if (gs.need.wood>0 && !(best.woodRate>0)) warnings.push('This goal needs Wood Blocks, and only Woodland grows them. Add Woodland plots.');
+    const noWoodland=woodCap(int('rv'))===0;
+    if (gs.need.wood>0 && !(best.woodRate>0)) warnings.push(noWoodland?`Your RV has no Woodland yet, so bring the ${fmt(gs.need.wood)} ${plMat(gs.need.wood,'Wood Block')} from outside your Homeland. The timing below leaves them out.`:'This goal needs Wood Blocks, and only Woodland grows them. Add Woodland plots.');
+    if (noWoodland) t.wood=0;
     if (gs.need.sand>0 && !(best.sandRate>0)) warnings.push('This goal needs Mineral Sand, which only Mines make. Add Mines.');
     // Processing time on the Bench and Kiln, folded into the material it makes
     const procHrs={bench:0, kiln:0}, procE={bench:0, kiln:0};
@@ -3144,11 +3185,11 @@ function run(){
     if (gs.rv){
       const r=gs.rv;
       const wH=Math.max(t.wood, procHrs.bench);
-      if (gs.need.wood>0 || procHrs.bench>0) rows.push({label:r.tier==='Wood Block'?'Wood Blocks':r.tier, hrs:wH, sub:`${fmt(r.amt)} ${r.tier}: ${fmt(gs.need.wood)} Wood Blocks at ${fmt(best.woodRate)}/h`+(procHrs.bench?`, then ${etaText(procHrs.bench)} on the Woodworking Bench${procE.bench?` (${procE.bench} on E-mode)`:''}`:'')});
+      if ((gs.need.wood>0 && !noWoodland) || procHrs.bench>0) rows.push({label:r.tier==='Wood Block'?'Wood Blocks':r.tier, hrs:wH, sub:`${fmt(r.amt)} ${plMat(r.amt,r.tier)}: ${fmt(gs.need.wood)} ${plMat(gs.need.wood,'Wood Block')} at ${fmt(best.woodRate)}/h`+(procHrs.bench?`, then ${etaText(procHrs.bench)} on the Woodworking Bench${procE.bench?` (${procE.bench} on E-mode)`:''}`:'')});
       if (r.ore){ const oH=Math.max(t.sand, procHrs.kiln);
-        if (gs.need.sand>0 || procHrs.kiln>0) rows.push({label:r.ore, hrs:oH, sub:`${fmt(r.oreAmt)} ${r.ore}: ${fmt(gs.need.sand)} Mineral Sand at ${fmt(best.sandRate)}/h`+(procHrs.kiln?`, then ${etaText(procHrs.kiln)} in the Chimney Kiln${procE.kiln?` (${procE.kiln} on E-mode)`:''}`:'')}); }
+        if (gs.need.sand>0 || procHrs.kiln>0) rows.push({label:r.ore, hrs:oH, sub:`${fmt(r.oreAmt)} ${plMat(r.oreAmt,r.ore)}: ${fmt(gs.need.sand)} Mineral Sand at ${fmt(best.sandRate)}/h`+(procHrs.kiln?`, then ${etaText(procHrs.kiln)} in the Chimney Kiln${procE.kiln?` (${procE.kiln} on E-mode)`:''}`:'')}); }
     } else {
-      if (gs.need.wood>0) rows.push({label:'Wood Blocks', hrs:t.wood, sub:fmt(gs.need.wood)+' at '+fmt(best.woodRate)+'/h'});
+      if (gs.need.wood>0 && !noWoodland) rows.push({label:'Wood Blocks', hrs:t.wood, sub:fmt(gs.need.wood)+' at '+fmt(best.woodRate)+'/h'});
       if (gs.need.sand>0) rows.push({label:'Mineral Sand', hrs:t.sand, sub:fmt(gs.need.sand)+' at '+fmt(best.sandRate)+'/h'});
     }
     const total=Math.max(0,...rows.map(r=>r.hrs));
@@ -3165,9 +3206,10 @@ function run(){
   for (const w of warnings) sum+=`<p class="warn">${esc(w)}</p>`;
   sum+=`<div class="tiles">
     ${gs.need?`<div class="tile goal"><b>${etaText(lastPlan.eta)}</b><span>${gs.rv?'to afford RV '+gs.rv.next:'to reach target'}</span></div>`:''}
-    <div class="tile hero"><b>${fmt(best.coinRate)}</b><span>coin / hour</span></div>
+    ${$('goalMode').value==='wood'?`<div class="tile hero"><b>${fmt(best.woodRate)}</b><span>wood / hour</span></div>`:''}
+    <div class="tile${$('goalMode').value==='wood'?'':' hero'}"><b>${fmt(best.coinRate)}</b><span>coin / hour</span></div>
     <div class="tile"><b>${fmt(best.coinRate*24)}</b><span>coin / day</span></div>
-    <div class="tile"><b>${fmt(best.woodRate)}</b><span>wood / hour</span></div>
+    ${$('goalMode').value==='wood'?'':`<div class="tile"><b>${fmt(best.woodRate)}</b><span>wood / hour</span></div>`}
     ${best.sandRate?`<div class="tile"><b>${fmt(best.sandRate)}</b><span>mineral sand / hour</span></div>`:''}
     ${itemsWorth>0?`<div class="tile"><b>${fmt(itemsWorth)}</b><span>products sold / hour</span></div>`:''}
   </div>${statusHtml(best, gs)}${goalHtml}`;
@@ -3233,20 +3275,25 @@ function run(){
       const note=(e.r.fam?famText(e.r, ctx):'Any Water Aniimo')+(e.r.clim?'. '+CLIM[e.r.clim]:''); if (!m.notes.includes(note)) m.notes.push(note); } }
   // Mines: one recipe each, by hand or on power
   for (const mm of best.mines||[]){ const m=K('mine'), key=mm.r.id+(mm.e?'|E':''); m.need+=mm.count; m.maxLvl=Math.max(m.maxLvl, mm.r.l||0); if (mm.e) m.e=(m.e||0)+mm.count;
-    const l=m.lines.get(key)||{r:mm.r, perHour:0, busy:0, n:0, e:0, f:1, coin:0, feeds:new Set(), extra:true}; l.perHour+=mm.coin/mm.r.p*mm.count; l.busy+=mm.count; l.n+=mm.count; if (mm.e) l.e+=mm.count; l.coin+=mm.coin*mm.count; m.lines.set(key,l); }
+    const l=m.lines.get(key)||{r:mm.r, perHour:0, busy:0, n:0, e:0, f:1, coin:0, feeds:new Set(), extra:true}; l.perHour+=mm.coin/mm.r.p*mm.count; l.busy+=mm.count; l.n+=mm.count; if (mm.e) l.e+=mm.count; l.coin+=mm.coin*mm.count; l.sand=(l.sand||0)+(mm.sand||0)*mm.count; m.lines.set(key,l); }
+  // ore, pearls and the like that your other products use aren't sold, same as the Shopping tab
+  { const gl={...(best.goodsUse||{})}, users={}; for (const a of best.auto||[]) for (const it of Object.keys(a.goods||{})) (users[it]=users[it]||new Set()).add(a.n);
+    for (const m of kinds.values()) for (const l of m.lines.values()) if (l.extra && gl[l.r.n]>1e-9 && l.perHour>0){ const u=Math.min(l.perHour, gl[l.r.n]); gl[l.r.n]-=u; l.coin=Math.max(0,l.coin*(1-u/l.perHour)); for (const x of users[l.r.n]||[]) l.feeds.add(x); } }
   const cards=[...kinds.values()].filter(m=>m.lines.size);
   if (PWR && PWR.gens) cards.unshift({key:'gen', power:PWR, need:PWR.gens, can:genCount(rvL), maxLvl:PWR.lvl, notes:[]});
   if (gs.rv) for (const [key,stages] of [['bench',gs.rv.woodChain],['kiln',gs.rv.oreChain]]) if (stages.length)
     cards.push({key, need:int(key==='bench'?'benches':'kilns'), can:placeAt(key,rvL), maxLvl:Math.max(...stages.map(s=>s.r.l)), forRv:stages, notes:[]});
   lastPlan.machCards=cards;
   if (cards.length){
-    mh+=`<p class="note">Everything your plan makes, machine by machine. ${one?'Each machine sticks to one recipe, so every recipe gets machines of its own (tick <b>Machines switch recipes</b> in step 3 if you swap them by hand).':'Machines take turns on their recipes (switching is on in step 3).'} Coin is what the goods sell for.</p>`;
+    mh+=`<p class="note">Everything your plan makes, machine by machine. ${one?'Each machine sticks to one recipe, so every recipe gets machines of its own (tick <b>Machines switch recipes</b> under Food &amp; goods in Custom setup if you swap them by hand).':'Machines take turns on their recipes (switching is on in Custom setup).'} Coin is what the goods sell for.</p>`;
     const cardHtml=m=>{ const M=MACH[m.key], over=m.need>m.can, jc=`var(${jobVar(M.job)})`;
       const head=`<div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div>`;
       if (m.power){ const P=m.power, rate=P.used<=P.cap+1e-6?120:Math.round(120*P.cap/P.used);
         return `<div class="mc">${head}<div class="meter" style="--jc:${jc}"><i style="width:${Math.min(100,100*P.used/Math.max(1,P.cap))}%"></i></div>
           <ul><li><span>Power used</span><span>${fmt(P.used)} / ${fmt(P.cap)} W</span></li><li><span>E-mode speed</span><span>${rate}%</span></li><li><span>Each makes</span><span>${fmt(P.out)} W</span></li></ul>
-          <p class="note">Each generator needs one Lightning Aniimo (Lv ${GEN.need[P.lvl]}+). Keeping the load under ${fmt(P.cap)} W keeps every E-mode machine at 120%. Link machines to it with Power Poles.</p></div>`; }
+          <p class="note">Each generator needs one Lightning Aniimo (Lv ${GEN.need[P.lvl]}+). Machines run at 120% while the load stays at or under output ÷ 1.2, which is ${fmt(P.cap)} W here. Link machines to it with Power Poles.</p>
+          ${(()=>{ const full=GEN.w[P.lvl]; if (P.out>=full-1e-6) return ''; const lv=[1,2,3,4].find(w=>genOut(P.lvl,w)>=full-1e-6);
+            return `<p class="warn">Your workers make each generator give ${fmt(P.out)} of its ${fmt(full)} W.${lv?` A Lv ${lv} Lightning Aniimo gives the full ${fmt(full)} W.`:''}</p>`; })()}</div>`; }
       if (m.forRv) return `<div class="mc"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div><p class="note">For RV ${gs.rv.next}</p><ul>${m.forRv.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.batches)} total</span></li>`).join('')}</ul></div>`;
       const ls=[...m.lines.values()].sort((a,b)=>(b.coin-a.coin)||(b.perHour-a.perHour));
       // one bar per machine, filled by how busy that machine is
@@ -3256,7 +3303,7 @@ function run(){
       const shown=segs.length<=10 ? segs : [segs.reduce((t,x)=>t+x,0)/segs.length];
       const meter=`<div class="meter" style="--jc:${jc}">${shown.map(x=>`<i style="width:${x*100/shown.length}%"></i>`).join('')}</div>`;
       const li=l=>{ const n=l.n, e=l.e||0, capH=(n-e)+e*(l.f||1), pct=Math.round(100*l.busy/Math.max(e?1e-9:1, one||l.extra?(e?capH:n):m.need));
-        const sub=[one||l.extra ? `${n} machine${n>1?'s':''}`+(e?` (${e===n?(n>1?'all ':''):e+' '}on E-mode)`:'') : '', l.extra||!l.r.i.length ? `${l.r.q} a batch` : '', (one||l.extra) ? pct+'% busy' : '', l.coin>0 ? fmt(l.coin)+' coin/h'+(l.feeds.has('the food bowl')?' · some for the food bowl':'') : (l.feeds.size ? 'for '+[...l.feeds].join(', ') : '')].filter(Boolean).join(' · ');
+        const sub=[one||l.extra ? `${n} machine${n>1?'s':''}`+(e?` (${e===n?(n>1?'all ':''):e+' '}on E-mode)`:'') : '', l.extra||!l.r.i.length ? `${l.r.q} a batch` : '', (one||l.extra) ? pct+'% busy' : '', l.coin>0 ? fmt(l.coin)+' coin/h'+(l.feeds.size?' · some for '+[...l.feeds].join(', '):'') : (l.feeds.size ? 'for '+[...l.feeds].join(', ') : ''), l.sand>0 ? '+'+fmtN(l.sand)+' Mineral Sand/h' : ''].filter(Boolean).join(' · ');
         return `<li class="rl"><div class="rn">${l.extra?`<span>${l.r.n}</span>`:recipeCtl(l.r, ctx, l.item)}<span>${fmtN(l.perHour)}/h</span></div>${sub?`<div class="rs">${sub}</div>`:''}</li>`; };
       const busyAll=ls.reduce((t,l)=>t+l.busy,0);
       return `<div class="mc${over?' over':''}" style="--jc:${jc}">${head}${meter}${one?'':`<p class="note">${Math.round(100*busyAll/Math.max(1,m.need))}% busy${m.need>1?' on average across '+m.need:''}${m.e?` · ${m.e} on E-mode`:''}</p>`}<ul>${ls.map(li).join('')}</ul>${m.notes.map(t=>`<p class="note">${t}.</p>`).join('')}${over?`<p class="note">Needs more than RV ${rvL} allows.</p>`:''}</div>`; };
@@ -3265,7 +3312,7 @@ function run(){
     const grp=m=>m.power?'power':m.forRv?'rv':(MACH[m.key].kind==='gather'?'gather':'proc');
     mh+=GROUPS.map(([g,title,sub])=>{ const cs=cards.filter(m=>grp(m)===g); if (!cs.length) return '';
       return `<div class="mgroup"><h3>${title}</h3>${sub?`<p class="note">${sub}</p>`:''}<div class="mach">${cs.map(cardHtml).join('')}</div></div>`; }).join('');
-  } else mh='<p class="note">No machines needed. Add food or goods in step 3, or plan for an RV upgrade, to see machines here.</p>';
+  } else mh='<p class="note">No machines needed. Add food or goods (Custom setup), or plan for an RV upgrade, to see machines here.</p>';
   if (extrasCut>0) mh+=`<p class="note">${extrasCut} more Well${extrasCut>1?'s or leisure spots':' or leisure spot'} could go in, but the plan gets more from those Aniimo slots and buildings elsewhere.</p>`;
   const av=(state.avoid||[]).map(id=>PROC.find(r=>r.id===id)).filter(Boolean);
   if (av.length) mh=`<p class="note">Not using: ${av.map(r=>`<button type="button" class="chipbtn" data-unavoid="${r.id}" title="Use again">${r.n} · ${MACH[r.m].name} Lv ${r.l} ✕</button>`).join(' ')}</p>`+mh;
@@ -3484,7 +3531,7 @@ function renderData(){
   for (const c of allCrops()) h+=`<tr><td>${c.name}${c.custom?'<span class="pill">yours</span>':''}${c.eco?'<span class="pill">Eco '+c.eco+'</span>':''}</td><td>${c.kind==='wood'?'Wood':'Farm'}</td><td class="n">${c.lvl}</td><td class="n">${c.yield}</td><td class="n">${c.wood||0}</td><td class="n">${c.price}</td><td class="n">${c.seed}</td><td class="n">${Number(c.base.toFixed(2))}</td><td>${NEED(c)||'—'}</td></tr>`;
   $('dataTable').innerHTML=h+'</tbody></table>';
   const cur=int('rv');
-  $('bestRv').innerHTML=`<h3>Best Home Coin an hour at each RV level</h3><p class="note">Everything the level allows, Lv 3 workers, no item list, E-mode and food on, no event crops.</p>
+  $('bestRv').innerHTML=`<h3>Best Home Coin an hour at each RV level</h3><p class="note">Everything the level allows, Lv 3 workers, no food &amp; goods picked, E-mode and food on, no event crops.</p>
     <div class="tablewrap"><table class="bestrv"><thead><tr><th>RV</th>${Object.keys(BEST_RV).map(k=>`<th class="n${+k===cur?' cur':''}">${k}</th>`).join('')}</tr></thead>
     <tbody><tr><td>Coin / h</td>${Object.entries(BEST_RV).map(([k,v])=>`<td class="n${+k===cur?' cur':''}">${fmtK(v)}</td>`).join('')}</tr></tbody></table></div>`;
   $('solverNote').hidden=LP.exact;
@@ -3498,8 +3545,10 @@ for (const k of TABS) $('tab-'+k).onclick=()=>selectTab(k);
 document.querySelector('[role=tablist]').addEventListener('keydown',e=>{ const i=TABS.indexOf(state.tab);
   const T=TABS.filter(k=>!$('tab-'+k).hidden), j=Math.max(0,T.indexOf(state.tab));
   if (e.key==='ArrowRight'||e.key==='ArrowLeft'){ const n=T[(j+(e.key==='ArrowRight'?1:T.length-1))%T.length]; selectTab(n); $('tab-'+n).focus(); e.preventDefault(); } });
-document.addEventListener('click',e=>{ const b=e.target.closest('[data-goto]'); if (!b) return; selectTab(b.dataset.goto); $('tab-'+b.dataset.goto).scrollIntoView({block:'nearest'}); });
-$('aboutBtn').onclick=()=>{ selectTab('data'); $('pane-data').scrollIntoView({block:'nearest'}); };
+document.addEventListener('click',e=>{ const b=e.target.closest('[data-goto]'); if (!b) return; const t=b.dataset.goto; selectTab(t);
+  if (t==='data'){ $('pane-data').scrollIntoView({block:'start'}); $('aboutHead').focus({preventScroll:true}); }
+  else { const tb=$('tab-'+t); tb.scrollIntoView({block:'nearest'}); tb.focus({preventScroll:true}); } });
+$('aboutBtn').onclick=()=>{ selectTab('data'); $('pane-data').scrollIntoView({block:'start'}); $('aboutHead').focus({preventScroll:true}); };
 
 // ---------- Share codes ----------
 const encode=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
@@ -3526,22 +3575,30 @@ $('loadFile').onchange=e=>{ const f=e.target.files&&e.target.files[0]; if (!f) r
   if (f.size>2e6){ $('copyMsg').textContent='That file is too big to be a setup.'; return; }
   f.text().then(t=>{ try{ loadSetup(JSON.parse(t)); $('copyMsg').textContent='Loaded '+f.name.replace(/[<>&"']/g,'')+'.'; } catch(err){ $('copyMsg').textContent="That file isn't a setup from this planner."; } })
    .finally(()=>{ e.target.value=''; }); };
-$('resetAll').onclick=()=>{ state=JSON.parse(JSON.stringify(DEFAULT_STATE)); $('rv').value='12'; maxAll(); refreshInputs(); run(); selectTab('over'); $('loadMsg').textContent='Back to the example.'; };
+$('resetAll').onclick=()=>{ state=JSON.parse(JSON.stringify(DEFAULT_STATE)); writeForm(PRISTINE); $('rv').value='12'; maxAll(); for (const [k,v] of Object.entries(DEFAULTS)) if(k!=='rv') $(k).value=v; refreshInputs(); run(); selectTab('over'); $('loadMsg').textContent='Back to the example.'; };
 
 // ---------- Start ----------
 fillSelect('rv', range(1,20)); $('rv').value='12';
 buildSelects();
+PRISTINE=readForm();
 let restored=false;
 try{ const s=JSON.parse(localStorage.getItem('hfp6')||localStorage.getItem('hfp3')||'null');
   if (s&&s.form&&s.state){ state=cleanState(s.state); $('rv').value=String(Math.max(1,Math.min(20,parseInt(s.form.rv)||12))); buildSelects(); writeForm(s.form); migrateForm(s.form); restored=true;
     if (!s.form.mines){ const rv=int('rv'); $('mines').value=placeAt('mine',rv); $('kilns').value=placeAt('kiln',rv); $('benches').value=placeAt('bench',rv); } } }catch(e){}
 if (!restored){ maxAll(); for (const [k,v] of Object.entries(DEFAULTS)) if(k!=='rv') $(k).value=v; }
-else if (state.mode==='quick') maxAll();                      // Quick always means everything the RV allows
+else if (state.mode==='quick'){ quickDefaults(); maxAll(); }  // Quick always means everything the RV allows, other settings at default
 
 // Any input in the setup column marks the plan out of date
 $('setup').addEventListener('change', e=>{ if (e.target.closest('#prodRows,#reqRows,#fillChips,#codeIn')) return; markDirty(); });
 $('setup').addEventListener('input', e=>{ if (e.target.type==='number' && !e.target.closest('#prodRows')) markDirty(); });
-$('rv').addEventListener('change',()=>{ buildSelects(); if (state.mode==='quick'){ maxAll(); state.land=null; } else $('maxAll').style.boxShadow='0 0 0 3px var(--gold)'; refreshInputs(); applyMode(); });
+$('rv').addEventListener('change',()=>{ buildSelects(); CLAMP_MSG=''; if (state.mode==='quick'){ maxAll(); state.land=null; } else { clampToRv(); $('maxAll').style.boxShadow='0 0 0 3px var(--gold)'; } refreshInputs(); applyMode(); });
+// Anything set higher than the RV allows comes down to its limit
+function clampToRv(){ const rv=int('rv'), lim={farmPlots:farmCap(rv), woodPlots:woodCap(rv), farmLvl:Math.max(1,maxLevel(FARM_RV,rv)), woodLvl:maxLevel(WOOD_RV,rv), eco:ecoAt(rv),
+    heat:limitAt('heat',rv), cool:limitAt('cool',rv), lamp:limitAt('lamp',rv), mines:placeAt('mine',rv), kilns:placeAt('kiln',rv), benches:placeAt('bench',rv), power:powerAt(rv), gens:genCount(rv),
+    kitchen:moduleAt('kitchen',rv), crafting:moduleAt('crafting',rv), detector:moduleAt('detector',rv)};
+  let n=0; for (const [id,mx] of Object.entries(lim)) if (int(id)>mx){ $(id).value=String(mx); n++; }
+  CLAMP_MSG = n ? `Lowered ${n} setting${n>1?'s':''} to what RV ${rv} allows.` : ''; return n; }
+let CLAMP_MSG='';
 for (const id of ['farmPlots','woodPlots','farmLvl','woodLvl','eco','events','kitchen','crafting','detector','persona','useLamp','useHeat','useCool','watering','hauling','hours']) $(id).addEventListener('change',()=>{ renderRequests(); renderProducts(); renderFillChips(); });
 for (const id of ['goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand','needCoin','needWood','needSand']) $(id).addEventListener('input',renderGoalInputs);
 $('goalMode').addEventListener('change',()=>{ renderGoalInputs(); updateMbar(); });
@@ -3549,23 +3606,27 @@ $('goalMode').addEventListener('change',()=>{ renderGoalInputs(); updateMbar(); 
 function applyMode(){ const m=state.mode==='custom'?'custom':'quick'; document.body.classList.toggle('quick', m==='quick');
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.mode===m)));
   const items=(state.products||[]).length;
-  $('modeNote').textContent = m==='quick' ? `Plans as if everything RV ${int('rv')} allows is built and upgraded.${items?` Your ${items} food & goods item${items>1?'s':''} still count (edit them in Custom).`:''}` : 'Set each facility, module and item to match your Homeland.';
+  $('modeNote').textContent = m==='quick' ? `Plans as if everything RV ${int('rv')} allows is built and upgraded.${items?` Your ${items} food & goods item${items>1?'s':''} still count (edit them in Custom).`:''}` : (CLAMP_MSG || 'Set each facility, module and item to match your Homeland.');
   updateMbar(); }
 function updateMbar(){ const g=$('goalMode'); $('mbarText').textContent=`RV ${int('rv')} · ${g.options[g.selectedIndex]?g.options[g.selectedIndex].text:''}`; }
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ if (state.mode===b.dataset.mode) return; state.mode=b.dataset.mode;
-  if (state.mode==='quick'){ maxAll(); state.land=null; refreshInputs(); markDirty(); } applyMode(); save(); });
+  if (state.mode==='quick'){ quickDefaults(); maxAll(); state.land=null; refreshInputs(); markDirty(); } applyMode(); save(); });
 $('mbarBtn').onclick=()=>{ const open=!document.body.classList.contains('setup-open'); document.body.classList.toggle('setup-open',open);
   $('mbarBtn').setAttribute('aria-expanded',String(open)); $('mbarBtn').textContent=open?'Hide setup':'Edit setup'; if (open) $('setup').scrollIntoView({block:'start'}); };
 const stepRv=d=>{ const el=$('rv'), v=Math.max(1,Math.min(20,int('rv')+d)); if (v===int('rv')) return; el.value=String(v); el.dispatchEvent(new Event('change',{bubbles:true})); };
 $('rvDown').onclick=()=>stepRv(-1); $('rvUp').onclick=()=>stepRv(1);
 $('addOrder').onclick=()=>{ (state.orders||(state.orders=[])).push({n:'',q:1,r:0}); save(); renderOrders(); const i=state.orders.length-1; setTimeout(()=>$('ord-n-'+i)&&$('ord-n-'+i).focus(),0); };
 $('maxAll').onclick=()=>{ maxAll(); state.land=null; refreshInputs(); markDirty(); };
-$('runBtn').onclick=()=>run();
+// On a phone, Update plan also folds the setup away and jumps to the results
+function runFromSetup(){ run(); const mb=$('mbar'); if (mb && getComputedStyle(mb).display!=='none' && document.body.classList.contains('setup-open')){
+  document.body.classList.remove('setup-open'); $('mbarBtn').setAttribute('aria-expanded','false'); $('mbarBtn').textContent='Edit setup';
+  const r=$('summary')||document.querySelector('.tabs'); if (r) window.scrollTo({top:Math.max(0,r.getBoundingClientRect().top+window.scrollY-mb.offsetHeight-14)}); } }
+$('runBtn').onclick=runFromSetup;
 for (const [k,[mode,label]] of Object.entries(SKINS)){ const op=document.createElement('option'); op.value=k; op.textContent=label+' · '+mode; $('skin').appendChild(op); }
 $('skin').value=document.documentElement.getAttribute('data-skin');
 $('skin').onchange=()=>{ const k=$('skin').value; document.documentElement.setAttribute('data-skin', k); document.documentElement.setAttribute('data-theme', SKINS[k][0]);
   try{ localStorage.setItem('hfp-skin', k); }catch(e){} };
-$('runBtn2').onclick=()=>run();
+$('runBtn2').onclick=runFromSetup;
 $('session').addEventListener('change',()=>{ save(); renderShop(); });
 document.addEventListener('change',e=>{ if(e.target.id==='crewLvl'){ state.crewLvl=parseInt(e.target.value); renderProducts(); run(); } });
 $('addProd').onclick=()=>{ (state.products||(state.products=[])).push({n:'Bread',amt:5,unit:'h'}); renderProducts(); markDirty(); };
