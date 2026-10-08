@@ -9,7 +9,7 @@
 /* Layout: allotment ledger — setup steps in a left column with a sticky Update bar, results in tabs on the right; stacks on phones. */
 :root{
   --bg:#e7f1fa; --panel:#fbfdff; --sunk:#eef6fd; --ink:#132a3c; --muted:#53697b; --line:#cddceb;
-  --leaf:#2f6c9f; --leaf-ink:#ffffff; --leaf-soft:#dcebf8; --accent:#d0373b; --accent-ink:#ffffff; --sky:#4f86b8;
+  --p-blue:#1f6fd1; --p-pink:#c2357f; --leaf:#2f6c9f; --leaf-ink:#ffffff; --leaf-soft:#dcebf8; --accent:#d0373b; --accent-ink:#ffffff; --sky:#4f86b8;
   --gold:#a26c06; --gold-soft:#f6e6bf;
   --warn-bg:#fbefd9; --warn-fg:#7a4a00; --err-bg:#f7dede; --err-fg:#7a1f1f; --tip-bg:#132a3c; --tip-fg:#edf7ff;
   --area-heat:rgba(214,92,40,.16); --area-cool:rgba(44,120,200,.16); --area-lamp:rgba(214,170,20,.20);
@@ -23,7 +23,7 @@
 }
 @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
   --bg:#0b1520; --panel:#12202d; --sunk:#0e1a26; --ink:#e3eef8; --muted:#93a8ba; --line:#243a4d;
-  --leaf:#8dbbe3; --leaf-ink:#0b1520; --leaf-soft:#1a3149; --accent:#ff6f6a; --accent-ink:#1a0b0b; --sky:#8dbbe3;
+  --p-blue:#7fb6ff; --p-pink:#ff8fc8; --leaf:#8dbbe3; --leaf-ink:#0b1520; --leaf-soft:#1a3149; --accent:#ff6f6a; --accent-ink:#1a0b0b; --sky:#8dbbe3;
   --gold:#e8b64a; --gold-soft:#3a2e12;
   --warn-bg:#3a2c12; --warn-fg:#f2cf8a; --err-bg:#3d1c1c; --err-fg:#f4b4b4; --tip-bg:#e3eef8; --tip-fg:#0b1520;
   --area-heat:rgba(240,120,60,.20); --area-cool:rgba(90,160,240,.20); --area-lamp:rgba(240,200,60,.20);
@@ -34,7 +34,7 @@
   color-scheme:dark; }}
 :root[data-theme="dark"]{
   --bg:#0b1520; --panel:#12202d; --sunk:#0e1a26; --ink:#e3eef8; --muted:#93a8ba; --line:#243a4d;
-  --leaf:#8dbbe3; --leaf-ink:#0b1520; --leaf-soft:#1a3149; --accent:#ff6f6a; --accent-ink:#1a0b0b; --sky:#8dbbe3;
+  --p-blue:#7fb6ff; --p-pink:#ff8fc8; --leaf:#8dbbe3; --leaf-ink:#0b1520; --leaf-soft:#1a3149; --accent:#ff6f6a; --accent-ink:#1a0b0b; --sky:#8dbbe3;
   --gold:#e8b64a; --gold-soft:#3a2e12;
   --warn-bg:#3a2c12; --warn-fg:#f2cf8a; --err-bg:#3d1c1c; --err-fg:#f4b4b4; --tip-bg:#e3eef8; --tip-fg:#0b1520;
   --area-heat:rgba(240,120,60,.20); --area-cool:rgba(90,160,240,.20); --area-lamp:rgba(240,200,60,.20);
@@ -148,7 +148,7 @@ label.f > span{display:flex;align-items:center;gap:4px}
 label.inline{display:inline-flex;align-items:center;gap:6px;color:var(--ink);font-size:.86rem}
 label.inline .fx{font-family:var(--font-mono);font-size:.74rem;color:var(--muted)}
 input,select,button,textarea{font:inherit;color:var(--ink)}
-input[type=number],input[type=text],select,textarea{background:var(--sunk);border:1px solid var(--line);border-radius:7px;padding:6px 8px;width:100%;min-width:0;font-size:.9rem}
+input[type=number],input[type=text],input:not([type]),select,textarea{background:var(--sunk);border:1px solid var(--line);border-radius:7px;padding:6px 8px;width:100%;min-width:0;font-size:.9rem}
 textarea{font-family:var(--font-mono);font-size:.76rem;min-height:56px;resize:vertical}
 input[type=checkbox]{accent-color:var(--leaf);width:16px;height:16px;flex:none;margin:0}
 button{background:var(--sunk);border:1px solid var(--line);border-radius:7px;padding:6px 12px;cursor:pointer;transition:background .15s,border-color .15s}
@@ -305,6 +305,7 @@ p.about{margin:12px 0 0;text-align:right}
 }
 .roster summary{display:flex;gap:8px;align-items:baseline;flex-wrap:wrap}
 .roster .radd{display:flex;gap:6px;margin:10px 0}
+.pt{font-weight:800;letter-spacing:.04em;font-style:normal;white-space:nowrap} .pt i{font-style:normal} .pt .pb{color:var(--p-blue)} .pt .pp{color:var(--p-pink)}
 .roster .radd input{flex:1;min-width:0}
 table.rost input[type=number]{width:64px}
 table.rost td,table.rost th{padding:4px 6px}
@@ -389,14 +390,14 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.unk > span:fi
             <div class="toggles">
               <label class="inline"><input type="checkbox" id="feed" checked>Feed my Aniimo <i class="tip" tabindex="0" data-tip="Every Aniimo at Home eats 10 energy a minute, working or not, and works at 20% speed when the food bowl is empty. The plan sets aside the cheapest food it makes: edible crops or dishes, taken off what it sells. Untick if you feed them from elsewhere.">?</i></label>
               <label class="inline"><input type="checkbox" id="neutralOk" checked>No-climate crops ignore heat &amp; cold <i class="tip" tabindex="0" data-tip="Crops with no temperature need grow at full speed inside a heat or cold range, so they can fill spare space there and keep fields compact. Untick if you see them slow down in game.">?</i></label>
-              <label class="inline"><input type="checkbox" id="watering" checked>Watering <span class="fx">+33%</span> <i class="tip" tabindex="0" data-tip="Water workers cut two eighths off each grow, so a 40 minute crop finishes in 30.">?</i></label>
+              <label class="inline"><input type="checkbox" id="watering" checked>Watering <span class="fx">+33%</span> <i class="tip" tabindex="0" data-tip="Each crop asks for water twice while it grows, and each watering cuts an eighth off its grow time, so a 40 minute crop finishes in 30. Nobody has confirmed whether Aniimo water while you're offline. If you're away from your Homeland a lot, untick this to plan on the slower times.">?</i></label>
               <label class="inline"><input type="checkbox" id="hauling" checked>Hauling + Storage Unit <i class="tip" tabindex="0" data-tip="Hauling workers move full plots into a Storage Unit, so plots never stop. Untick if you collect by hand.">?</i></label>
               <label class="inline"><input type="checkbox" id="persona">Matching personalities <span class="fx">+20%</span> <i class="tip" tabindex="0" data-tip="Tick if each machine's and Mine's worker has that building's personality. They work 20% faster.">?</i></label>
             </div>
             <div class="grid">
               <label class="f"><span>Keep Aniimo free <i class="tip" tabindex="0" data-tip="Slots you use elsewhere, like the Homebuilding Zone or trips. The plan leaves them free.">?</i></span><select id="reserve"></select></label>
               <label class="f"><span>Check-in every <i class="tip" tabindex="0" data-tip="Only used without Hauling. A plot stops when full: Farmland holds 5 harvests per level, Woodland 8 to 28.">?</i></span><select id="hours"></select></label>
-              <label class="f"><span>Wood Block value <i class="tip" tabindex="0" data-tip="Wood Blocks feed RV upgrades instead of selling. Give each one a coin value for the Most Home Coin goal and the plan leans toward trees.">?</i></span><input type="number" id="woodValue" min="0" step="1" value="0"></label>
+              <input type="hidden" id="woodValue" value="0">
               <label class="f"><span>Farmland per Furnace/Lamp <i class="tip" tabindex="0" data-tip="Most 2×2 Farmland that can touch one Heat Furnace or Sunlamp range is 24. Lower it if walls or paths are in the way.">?</i></span><select id="capSmall"></select></label>
               <label class="f"><span>Farmland per Cooling Unit <i class="tip" tabindex="0" data-tip="Most 2×2 Farmland that can touch one Cooling Unit range is 32. Lower it if walls or paths are in the way.">?</i></span><select id="capCool"></select></label>
             </div>
@@ -459,6 +460,9 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.unk > span:fi
           <label class="f"><span>Wood Blocks needed</span><input type="number" id="needWood" min="0" step="10" value="5000"></label>
           <label class="f"><span>Mineral Sand needed</span><input type="number" id="needSand" min="0" step="10" value="0"></label>
         </div>
+        <label class="f" style="margin-top:10px"><span>Each Aniimo must earn at least <i class="tip" tabindex="0" data-tip="A climate unit, Mine, generator or machine worker is only worth a slot if it adds this much Home Coin an hour, after feeding it. Raise it to skip ones that barely pay, like a second Heat Furnace for a couple of trees.">?</i></span><select id="slotCost">
+          <option value="0">Anything (use every slot that pays)</option><option value="250">250 coin an hour</option><option value="500">500 coin an hour</option><option value="1000">1,000 coin an hour</option><option value="2000">2,000 coin an hour</option><option value="5000">5,000 coin an hour</option>
+        </select></label>
         <p class="note" id="goalNote"></p>
       </section>
 
@@ -1103,6 +1107,7 @@ function plan(requests, fillers, o, lp){
   const C = model.constraints, V = model.variables;
   // Aniimo slots left for climate units, Mines, extra machines and extras (see prepare)
   const SL = o.slots; if (SL) C.slots={max:SL.room};
+  const UW={};   // climate units and Mines when their workers sit outside the slot count
   const units = {scorch:o.heat, warm:o.heat, cool:o.cool, freeze:o.allowFreeze?o.cool:0, lamp:o.lamp};
   const active = ZONES.filter(z => z.key==='open' || units[z.key]>0);
   C.heat={max:o.heat}; C.cool={max:o.cool}; C.lamp={max:o.lamp};
@@ -1113,7 +1118,7 @@ function plan(requests, fillers, o, lp){
     C['slot_'+z.key]={max:0}; C['mix_'+z.key]={max:0}; C['wmax_'+z.key]={max:0}; C['fcap_'+z.key]={max:0};
     V['n_'+z.key] = {obj:-EPS, [z.unit]:1, ['slot_'+z.key]:-u.F0, ['mix_'+z.key]:-(u.F0+4), ['wmax_'+z.key]:-u.Wmax, ['fcap_'+z.key]:-capF};
     model.ints['n_'+z.key]=1;
-    if (SL && SL.units) V['n_'+z.key].slots=1;
+    if (SL && SL.units) V['n_'+z.key].slots=1; else UW['n_'+z.key]=1;
   }
   // Buildings that need a unit's climate (Starfall Hammock, Pearl Sandcastle, Floral Windmill): hosting one inside a lone
   // unit's range costs that unit 1 Farmland slot (2 when Woodland mixes in), worked out exactly; the gain is the speed it keeps.
@@ -1133,7 +1138,7 @@ function plan(requests, fillers, o, lp){
     const zs=new Set();
     for (const pt of PAIR_TYPES){
       if (pt.c==='freeze' && !o.allowFreeze) continue;
-      PAIRS.forEach((t,ti)=>{ const name='y_'+pt.key+'_'+ti, v={obj:-3*EPS, heat:1, cool:1}; if (SL && SL.units) v.slots=2;   // dearer than two lone units: pairs only when they earn more
+      PAIRS.forEach((t,ti)=>{ const name='y_'+pt.key+'_'+ti, v={obj:-3*EPS, heat:1, cool:1}; if (SL && SL.units) v.slots=2; else UW[name]=2;   // dearer than two lone units: pairs only when they earn more
         let useful=false;
         for (const r of ['A','B','AB']){ const zk=TEMP_ZONE[regionTemp(pt,r)]; if (!zk) continue;
           if (t['f'+r]){ v['pcf_'+zk]=(v['pcf_'+zk]||0)-t['f'+r]; useful=true; }
@@ -1168,6 +1173,7 @@ function plan(requests, fillers, o, lp){
 
   // Second pass (coinFirst): hold the speed the first pass reached and make the most Home Coin
   if (mode==='target'){ V.r={obj:o.coinFirst?0:1}; if (o.minR!==undefined){ C.lexR={min:o.minR}; V.r.lexR=1; }
+    if (o.procMin>0){ C.rcap={max:NORM/o.procMin}; V.r.rcap=1; }
     if (NC){ C.tCoin={max:-consumed+(o.extraCoin||0)}; V.r.tCoin=NC/NORM; }
     if (NW){ C.tWood={max:0}; V.r.tWood=NW/NORM; }
     if (NS){ C.tSand={max:0}; V.r.tSand=NS/NORM; } }
@@ -1181,7 +1187,7 @@ function plan(requests, fillers, o, lp){
     C.mineTotal={max:o.mines};
     o.mineOpts.forEach((m,k)=>{
       let obj = (mode==='coin'||o.coinFirst) ? m.coin : mode==='sand' ? m.sand + TIE*m.coin : TIE*m.coin;
-      const v={obj, mineTotal:1}; if (SL && SL.units) v.slots=1;
+      const v={obj, mineTotal:1}; if (SL && SL.units) v.slots=1; else UW['mine_'+k]=1;
       if (o.minCoin!==undefined) v.lexCoin=m.coin; if (o.minSand!==undefined) v.lexSand=m.sand;
       if (mode==='target'){ if (NC) v.tCoin=-m.coin; if (NS) v.tSand=-m.sand; }
       V['mine_'+k]=v; model.ints['mine_'+k]=1; mineVars.push({name:'mine_'+k, m}); });
@@ -1311,6 +1317,11 @@ function plan(requests, fillers, o, lp){
   }
   // Food: every Aniimo the plan places eats 600 energy an hour. Feed them the cheapest way from what the plan grows
   // (edible crops, taken off what's sold) and the dishes it makes (taken off sales). Going hungry costs heavily.
+  // A worker has to earn its keep: each Aniimo slot the plan fills costs what you set (taking one away gives it back)
+  if (o.slotCost>0) for (const [nm,v] of Object.entries(V)){ const k=nm==='slk'?0:(v.slots||UW[nm]||0); if (!k) continue;
+    v.obj=(v.obj||0)-((mode==='coin'||o.coinFirst)?1:TIE)*o.slotCost*k;
+    if (mode==='target' && NC) v.tCoin=(v.tCoin||0)+o.slotCost*k; }
+  model.uw=UW;   // for an RV goal: as if each slot cost that much coin
   const foodVars=[];
   if (o.feed && SL && lp.exact){
     C.food={min:EAT_PER_H*(o.fixedAniimo||0)};
@@ -1338,7 +1349,7 @@ function plan(requests, fillers, o, lp){
   const tl0=LP.tl; if (o.oneRecipe && !o.lpOnly && !LP.tl) LP.tl=3;
   let res; try { res = lp.Solve(model);
     // stopped at the limit on a big model (often the first solve, before the browser has warmed up): one longer try
-    if (res && res.limited && o.oneRecipe && !o.lpOnly && !tl0 && lp.exact){ LP.tl=5; const r2=lp.Solve(model); if (r2 && r2.feasible!==false && (r2.result||0) >= (res.result||0)) res=r2; }
+    if (res && res.limited && o.oneRecipe && !o.lpOnly && !tl0 && lp.exact && !LP.retried){ LP.retried=true; LP.tl=5; const r2=lp.Solve(model); if (r2 && r2.feasible!==false && (r2.result||0) >= (res.result||0)) res=r2; }
   } finally { LP.tl=tl0; }
   const val = k => Math.round(res[k]||0);
   const counts = {}; for (const z of ZONES) if (z.key!=='open') counts[z.key]=val('n_'+z.key);
@@ -1583,7 +1594,7 @@ const moduleAt = (k,rv) => { let l=0; MODULE_RV[k].forEach((r,i)=>{ if(i&&rv>=r)
 const ORE_TIER = {'Mineral Sand':1,'Coarse-Sifted Ore':8,'Sintered Ore Brick':64,'Refined Ore':512,'Microcrystalline Ore Plate':2048};
 const FRONTIER_CLEAN = {"small": [{"w": 0, "f": 24, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2], [4, 4]], "wood": []}, {"w": 1, "f": 23, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[4, 4]]}, {"w": 2, "f": 22, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, 4], [4, 4]]}, {"w": 3, "f": 21, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, 4]]}, {"w": 4, "f": 20, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, 4]]}, {"w": 5, "f": 18, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 6, "f": 16, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 7, "f": 14, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 8, "f": 12, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -2], [0, 2], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, -6], [0, 4], [4, -6], [4, -2], [4, 4]]}], "cool": [{"w": 0, "f": 32, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-5, 5], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": []}, {"w": 1, "f": 31, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, 5]]}, {"w": 2, "f": 30, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, -7], [-7, 5]]}, {"w": 3, "f": 29, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, 5]]}, {"w": 4, "f": 28, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, -7], [5, 5]]}, {"w": 5, "f": 26, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 5]]}, {"w": 6, "f": 24, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 7, "f": 22, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 8, "f": 20, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 9, "f": 18, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 10, "f": 16, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 11, "f": 14, "farm": [[-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 12, "f": 12, "farm": [[-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, -7], [-3, 5], [1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}]};
 const FORM_IDS = ['rv','farmPlots','woodPlots','farmLvl','woodLvl','eco','heat','cool','lamp','mines','kilns','benches','useHeat','useCool','useLamp','extras','pairs','neutralOk','freeze',
-  'watering','hauling','persona','events','autoProd','switchRec','power','gens','usePower','feed','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
+  'watering','hauling','persona','events','slotCost','autoProd','switchRec','power','gens','usePower','feed','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
   'needCoin','needWood','needSand','haveHab','kitchen','crafting','detector','reserve'];
 const DEFAULT_STATE = {requests:[{id:'ginseng',plots:10},{id:'grapes',plots:6},{id:'chestnut',plots:4}], custom:[], noFill:[],
   products:[], crewLvl:3, tab:'over', mode:'quick'};
@@ -1716,7 +1727,7 @@ function opts(){
     farmPlots:int('farmPlots'), woodPlots: wl>0?int('woodPlots'):0,
     heat:$('useHeat').checked?int('heat'):0, cool:$('useCool').checked?int('cool'):0, lamp:$('useLamp').checked?int('lamp'):0,
     allowFreeze:$('freeze').checked, watering:$('watering').checked, hauling:$('hauling').checked,
-    checkHours:parseFloat($('hours').value)||0, farmStorage:5*fl, woodStorage:4*(wl+1), woodValue:num('woodValue',0,100000),
+    checkHours:parseFloat($('hours').value)||0, farmStorage:5*fl, woodStorage:4*(wl+1), woodValue:0, slotCost:Math.max(0,parseFloat($('slotCost').value)||0),
     capSmall:int('capSmall')||24, capCool:int('capCool')||32, fill:$('fill').checked,
     pairs:$('pairs').checked, neutralOk:$('neutralOk').checked,
     powerLvl:$('usePower').checked?int('power'):0, gens:int('gens'), feed:$('feed').checked,
@@ -1888,6 +1899,7 @@ const RANK_NAME={coin:'Home Coin', wood:'Wood Blocks', sand:'Mineral Sand'};
 let LEX2=true;
 // The fallback solver handles E-mode only roughly, so it also plans without power and keeps whichever does better
 function solveFor(reqs, fillers, o, gs){
+  LP.retried=false;   // one longer try per plan, so a slow plan doesn't stack them up
   if (!SOLVER.exact && o.power){ const a=solveFor0(reqs, fillers, o, gs), b=solveFor0(reqs, fillers, {...o, power:null}, gs);
     if (!a || !a.feasible) return b; if (!b || !b.feasible) return a;
     const coin=(o.goal||{}).mode==='coin' || gs.ranked;
@@ -1901,7 +1913,12 @@ function solveFor0(reqs, fillers, o, gs){
   const m=(o.goal||{}).mode; let second=null;
   if (m==='target' && first.raw && first.raw.r>0) second=planBest(reqs, fillers, {...o, minR:first.raw.r*(1-1e-6), coinFirst:true}, SOLVER);
   else if (m==='wood') second=planBest(reqs, fillers, {...o, goal:{mode:'coin'}, minWood:Math.max(0, first.woodRate*(1-1e-6)-1e-9)}, SOLVER);
-  return second && second.feasible && second.coinRate > first.coinRate + 1e-6 ? second : first;
+  // with a minimum earning per Aniimo, a slot counts against the coin it brings in
+  const net=r=>r.coinRate-(o.slotCost||0)*slotsUsed(r);
+  return second && second.feasible && net(second) > net(first) + 1e-6 ? second : first;
+}
+function slotsUsed(r){ const V=(r.model||{}).variables||{}, res=r.raw||{}, UW=(r.model||{}).uw||{};
+  return Object.entries(V).reduce((t,[nm,v])=>t+(nm!=='slk' ? (v.slots||UW[nm]||0)*(res[nm]||0) : 0),0);
 }
 function rankOrder(){ const r=(state.rank||[]).filter(k=>RANK_NAME[k]); for (const k of ['wood','sand','coin']) if (!r.includes(k)) r.push(k); return r; }
 function renderRank(){
@@ -2115,10 +2132,10 @@ function renderCrew(){
     const A=assign.get(r)||{got:[],short:r.n,letters:[]};
     const top=groups.find(g=>lv===4 || g.lvl<=3) || groups[0];   // Lv 3 setting suggests Lv 3 forms, which are easier to get
     const best=top ? top.names.filter(n=>lv===4 || !/Prismana/.test(n)).slice(0,2) : [];
-    const head = A.got.length ? `<div class="pick ok">✓ Your <b>${A.got.map(g=>g.n+(g.k>1?' ×'+g.k:'')+(g.p&&A.letters.length?(g.m?' <span class="pm ok" title="Personality matches: 20% faster">'+g.p+'</span>':' <span class="pm" title="Personality doesn\'t match">'+g.p+'</span>'):'')).join(', ')}</b>${A.short?` <span class="muted">· ${A.short} more needed. Best: ${best.join(' or ')||'any '+r.job+' Aniimo'}</span>`:''}</div>`
+    const head = A.got.length ? `<div class="pick ok">✓ Your <b>${A.got.map(g=>g.n+(g.k>1?' ×'+g.k:'')+(g.p&&A.letters.length?(g.m?' <span class="pm ok" title="Personality matches: 20% faster">'+persTag(g.p)+'</span>':' <span class="pm" title="Personality doesn\'t match">'+persTag(g.p)+'</span>'):'')).join(', ')}</b>${A.short?` <span class="muted">· ${A.short} more needed. Best: ${best.join(' or ')||'any '+r.job+' Aniimo'}</span>`:''}</div>`
                              : `<div class="pick">${roster.length?'<span class="muted">None of yours. </span>':''}Best: <b>${best.join(' or ')||'any '+r.job+' Aniimo'}</b></div>`;
     const pl=(r.keys||[]).filter(k=>PERSONA[k]);
-    const pers = pl.length ? `<div class="for">Fastest personality: ${[...new Set(pl.map(k=>PERSONA[k]))].map(c=>`<b>${c}</b> (${pl.filter(k=>PERSONA[k]===c).map(k=>MACH[k].name).join(', ')})`).join(', ')}</div>` : '';
+    const pers = pl.length ? `<div class="for">Fastest personality: ${[...new Set(pl.map(k=>PERSONA[k]))].map(c=>`${persTag(c)} ${P_NAME[c]} (${pl.filter(k=>PERSONA[k]===c).map(k=>MACH[k].name).join(', ')})`).join(', ')}</div>` : '';
     const chips=groups.map(g=>`<div class="og"><span class="ol">${g.label}</span><div class="oc">${g.names.map(n=>`<button type="button" class="an${owned.has(n)?' on':inRoster.has(n)?' on away':''}" data-an="${n}" aria-pressed="${inRoster.has(n)}"${!owned.has(n)&&inRoster.has(n)?' title="Yours, but all away"':''}>${n}${!owned.has(n)&&inRoster.has(n)?' (away)':''}</button>`).join('')}</div></div>`).join('');
     const note=(AN_OPTS[r.job]||{}).note;
     return `<div class="cc" style="--jc:var(${jobVar(r.job)})"><div class="top">${jobChip(r.job, r.lvl>1?' Lv '+r.lvl+'+':'')}<span class="n">${r.n}</span></div><div class="for">${r.does}</div>${r.busy>0.005?`<div class="for"><b>${Math.round(100*r.busy/Math.max(1,r.n))}%</b> busy on machines${r.n>1?' each':''}</div>`:''}${head}${pers}
@@ -2143,12 +2160,15 @@ function renderCrew(){
 }
 // My Aniimo: what you have (copies, personality, how many are away), used to pick your crew
 const ROSTER_OPEN={v:false};
+// Personality letters coloured as in game: E S T J blue, I N F P pink
+const P_NAME={E:'Energetic',I:'Instinctive',S:'Practical',N:'Nimble',T:'Tenacious',F:'Faithful',J:'Judicious',P:'Playful'};
+const persTag=str=>`<span class="pt" title="${[...str].map(c=>P_NAME[c]||c).join(', ')}">${[...str].map(c=>`<i class="${'ESTJ'.includes(c)?'pb':'pp'}">${c}</i>`).join('')}</span>`;
 function rosterHtml(roster, crewList, assign){
   const names=ALL_ANIIMO(), short=crewList.map(r=>({r, s:(assign.get(r)||{}).short||0})).filter(x=>x.s>0);
   const rows=roster.map((e,i)=>{ const fx=FIXED_LETTERS[e.n], clash=fx && e.p && [...fx].some(c=>!e.p.includes(c));
-    return `<tr><td>${esc(e.n)}${fx?` <span class="pill" title="Always has ${fx.split('').join(' and ')}">${fx}</span>`:''}</td>
+    return `<tr><td>${esc(e.n)}${fx?` <span class="pill" title="Always has ${fx.split('').join(' and ')}">${persTag(fx)}</span>`:''}</td>
       <td><input type="number" min="1" max="20" value="${e.c}" data-ri="${i}" data-rf="c" aria-label="Copies of ${esc(e.n)}"></td>
-      <td><select data-ri="${i}" data-rf="p" aria-label="Personality of ${esc(e.n)}"><option value="">Not set</option>${PERSONALITIES.map(x=>`<option${e.p===x?' selected':''}>${x}</option>`).join('')}</select>${clash?' <span class="warnmark" title="This Aniimo always has '+fx+'">!</span>':''}</td>
+      <td><select data-ri="${i}" data-rf="p" aria-label="Personality of ${esc(e.n)}"><option value="">Not set</option>${PERSONALITIES.map(x=>`<option${e.p===x?' selected':''}>${x}</option>`).join('')}</select>${e.p?' '+persTag(e.p):''}${clash?' <span class="warnmark" title="This Aniimo always has '+fx+'">!</span>':''}</td>
       <td><input type="number" min="0" max="${e.c}" value="${e.away||0}" data-ri="${i}" data-rf="away" aria-label="${esc(e.n)} away"></td>
       <td><button type="button" class="icon xs" data-rdel="${i}" aria-label="Remove ${esc(e.n)}">✕</button></td></tr>`; }).join('');
   return `<details class="card roster"${roster.length&&!ROSTER_OPEN.v?'':' open'}><summary><b>My Aniimo</b> <span class="note">${roster.length?roster.reduce((t,e)=>t+e.c,0)+' Aniimo, '+roster.length+' kinds':'add the ones you have to plan your crew from them'}</span></summary>
@@ -3097,6 +3117,13 @@ function prepare(){
   { const rvP=int('rv'), pl=Math.min(o.powerLvl||0, powerAt(rvP)), gn=Math.min(o.gens||0, genCount(rvP));
     if (pl>0 && gn>0){ o.power={lvl:pl, gens:gn, out:genOut(pl, ctx.workerLvl), rv:rvP};
       for (const r of PROC) if (r.es){ const m=batchMinutes(r,ctx); if (isFinite(m) && m>0) o.eF[r.id]=m*60/(r.es/1.2); } } }
+  // The fastest the Bench and Kiln can process the upgrade's materials. Gathering faster than that doesn't bring the
+  // upgrade any closer, so the plan stops chasing speed there and spends the rest on coin.
+  o.procMin=0;
+  if (gs.rv) for (const [key,stages] of [['bench',gs.rv.woodChain],['kiln',gs.rv.oreChain]]){
+    const count=int(key==='bench'?'benches':'kilns'); if (!stages.length || !count) continue;
+    const per=st=>Math.min(batchMinutes(st.r,ctx)/60, o.power && st.r.es ? st.r.es/1.2/3600 : Infinity);
+    const hrs=stages.reduce((s,st)=>s+st.batches*per(st),0)/count; if (isFinite(hrs)) o.procMin=Math.max(o.procMin,hrs); }
 
   // Your items are sold, so their coin counts (crops they use were taken off above)
   o.itemCoin = wants(ctx, o).reduce((t,w)=>t+w.perHour*(w.recipe.p||0),0);
@@ -3488,7 +3515,7 @@ function renderShop(){
     const col=lastPlan.colorOf?lastPlan.colorOf({crop:e.c}):'--c0';
     h+=`<div class="sc"><span class="sw" style="background:var(${col})"></span><span class="nm">${e.c.name}</span><span class="buy">${fmt(seeds)}</span><span class="sub"><span>${e.c.event?'Moonray Wheat':fmt(seeds*e.c.seed)+' coin'}</span><span>${fmt(e.harvests*e.c.yield)} harvested</span></span></div>`;
   }
-  h+=`</div><div class="tiles"><div class="tile"><b>${fmt(cost)}</b><span>seed cost</span></div><div class="tile"><b>${fmt(coin-cost)}</b><span>field coin after seeds</span></div></div>
+  h+=`</div><div class="tiles"><div class="tile"><b>${fmt(cost)}</b><span>seed cost</span></div><div class="tile"><b>${fmt(coin-cost)}</b><span>Home Coin from crops, after seeds</span></div></div>
   <p class="note">One seed per harvest.</p>`;
   h+=sellHtml(hrs);
   $('shop').innerHTML=h;
@@ -3514,6 +3541,8 @@ function sellHtml(hrs){
   // food for the Aniimo comes off what's sold and goes in the food bowl
   for (const f of best.food||[]){ const r=sell.find(x=>x.name===f.item); if (r){ const u=Math.min(r.n, f.perHour); r.coin*= (r.n-u)/r.n; r.n-=u; }
     keep.push({name:f.item+' (food bowl)', n:f.perHour}); }
+  // one row per item: Mines worked by hand and on E-mode both make Copper Ore, say
+  for (let i=sell.length-1;i>=0;i--){ const j=sell.findIndex(x=>x.name===sell[i].name); if (j<i){ sell[j].n+=sell[i].n; sell[j].coin+=sell[i].coin; if (sell[j].kind!==sell[i].kind && !sell[j].kind.includes(sell[i].kind)) sell[j].kind+=', '+sell[i].kind; sell.splice(i,1); } }
   for (let i=sell.length-1;i>=0;i--) if (sell[i].n<=1e-6) sell.splice(i,1);
   if (best.woodRate>0) keep.push({name:'Wood Block', n:best.woodRate});
   if (best.sandRate>0) keep.push({name:'Mineral Sand', n:best.sandRate});
