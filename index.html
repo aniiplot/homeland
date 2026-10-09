@@ -1301,6 +1301,8 @@ function plan(requests, fillers, o, lp){
     for (const zk of zonesFor(c)){
       const z = ZONES.find(q=>q.key===zk);
       if (!active.includes(z)) continue;
+      // crops with no climate need grow on open ground, kept out of unit ranges unless you ask to fill spare unit space
+      if (zk!=='open' && c.temp===0 && !c.light && !o.neutralOk) continue;
       const pv = plotValue(c, z, o);
       if (pv.eff<=0) continue;
       const coin = coinOf(c,pv), wood = woodOf(c,pv);
