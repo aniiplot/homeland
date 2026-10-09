@@ -372,8 +372,17 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.unk > span:fi
 .tg{margin:6px 0 4px}
 .tgh{display:flex;justify-content:space-between;align-items:baseline;font-size:.78rem;color:var(--muted);margin:12px 0 0;font-weight:700}
 .tgh .linkbtn{font-size:.78rem;font-weight:400}
+.dbar{position:sticky;bottom:0;z-index:2;display:flex;justify-content:space-between;align-items:center;gap:10px;margin:14px -16px 0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--bg);border-top:1px solid var(--line)}
+.dbar .st{font-size:.86rem;font-weight:700;display:flex;align-items:center;gap:8px}
+.dbar .st::before{content:"";width:9px;height:9px;border-radius:50%;background:var(--leaf)}
+body.has-changes .dbar .st::before{background:var(--gold)}
+.dbar .dirty,body.has-changes .dbar .clean{display:none}
+body.has-changes .dbar .dirty{display:inline}
+body.setup-open .updatebar{display:none}
+.side .bar{grid-template-columns:minmax(0,1fr) auto;gap:3px 10px}
+.side .bar .track{grid-column:1/-1;grid-row:2;height:10px}
 /* setup drawer */
-.drawer{position:fixed;top:0;bottom:0;left:84px;width:min(460px,calc(100vw - 84px));z-index:20;background:var(--bg);border-right:1px solid var(--line);box-shadow:20px 0 40px rgba(0,0,0,.35);overflow:auto;padding:0 16px 110px;transform:translateX(calc(-100% - 90px));visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
+.drawer{position:fixed;top:0;bottom:0;left:84px;width:min(460px,calc(100vw - 84px));z-index:20;background:var(--bg);border-right:1px solid var(--line);box-shadow:20px 0 40px rgba(0,0,0,.35);overflow:auto;padding:0 16px;transform:translateX(calc(-100% - 90px));visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
 body.setup-open .drawer{transform:none;visibility:visible;transition:transform .22s ease}
 .dhead{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;align-items:center;padding:14px 0 10px;background:var(--bg);margin-bottom:4px}
 .dhead h2{font-family:var(--font-display);font-size:1.2rem;margin:0}
@@ -406,14 +415,16 @@ body:not(.setup-open) .scrim{display:none}
   .rail [role=tab],.railbtn{min-width:46px}
   .rail [role=tab] .cnt{display:none}
   .hdr h1{font-size:1rem}
-  .hdr .themepick{display:none}
+  .hdr .themepick{padding:3px 4px 3px 9px}
+  .hdr .themepick select{font-size:.78rem;padding:3px 6px}
   .kpis{order:3;flex-basis:100%}
   .kpis .tile:nth-child(n+5){display:none}
   .main{padding:12px 14px 20px}
   .side{display:none;padding:12px 14px 20px}
   body.view-over .side{display:block}
   body.view-over .main>.panel{display:none}
-  .drawer{left:0;width:100vw;padding-bottom:140px}
+  .drawer{left:0;width:100vw;bottom:calc(58px + env(safe-area-inset-bottom,0px))}
+  .dbar{padding-bottom:12px}
   .updatebar{bottom:calc(70px + env(safe-area-inset-bottom,0px))}
 }
 </style>
@@ -439,7 +450,7 @@ body:not(.setup-open) .scrim{display:none}
   <header class="hdr">
     <div class="ttl"><h1>Homeland <span>Field</span> Planner</h1><button type="button" class="ctx" id="mbarText" aria-controls="setup"></button></div>
     <div id="kpis" class="kpis" aria-live="polite"></div>
-    <div class="hdr-r"><button type="button" class="eventbtn" id="eventBtn" hidden></button><button type="button" class="primary" id="mbarBtn" aria-controls="setup" aria-expanded="false">Edit setup</button></div>
+    <div class="hdr-r"><button type="button" class="eventbtn" id="eventBtn" hidden></button><label class="themepick" title="Theme"><span class="ic" aria-hidden="true"></span><span class="tl">Theme</span><select id="skin" aria-label="Theme"></select></label><button type="button" class="primary" id="mbarBtn" aria-controls="setup" aria-expanded="false">Edit setup</button></div>
   </header>
   <main class="main" aria-labelledby="h-plan">
     <h2 id="h-plan" class="sr">Your plan</h2>
@@ -607,7 +618,8 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><label class="themepick"><span class="ic" aria-hidden="true"></span><span>Theme</span><select id="skin" aria-label="Theme"></select></label><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button></div>
+  <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
         <span class="state" id="updState" aria-live="polite">Plan is up to date</span>
@@ -2070,7 +2082,7 @@ function rvChecks(next, best, chain, extras){
   const rows=[['Farmland plots', int('farmPlots'), farmCap(rv)], ['Woodland plots', int('woodPlots'), woodCap(rv)], ['Mines', int('mines'), placeAt('mine',rv)], ['Wells', wells, placeAt('well',rv), 'the plan places']];
   if (HAB_NEED[next]) rows.push(['Habitability', num('haveHab',0,1e9), HAB_NEED[next], 'you have']);
   return `<ul class="checks">${rows.filter(r=>r[2]>0).map(([lbl,have,need,how])=>{ const ok=have>=need, unk=lbl==='Habitability'&&!(have>0);
-    if (unk) return `<li class="unk"><span>? ${lbl}</span><span>${fmt(need)} needed <small>(enter yours under Goal)</small></span></li>`;
+    if (unk) return `<li class="unk" title="Enter the Habitability on your RV screen under Goal in the setup"><span>? ${lbl}</span><span>? / ${fmt(need)}</span></li>`;
     return `<li class="${ok?'ok':'no'}"><span>${ok?'✓':'✗'} ${lbl}</span><span>${fmt(have)} / ${fmt(need)}${how&&!ok?` <small>(${how})</small>`:''}</span></li>`; }).join('')}</ul>
     ${HAB_NEED[next] && num('haveHab',0,1e9)>0 && num('haveHab',0,1e9)<HAB_NEED[next] ? '<p class="note">Raise Habitability with furniture bought with Bud Tickets; each Aniimo living at Home adds some too.</p>' : ''}`;
 }
@@ -2504,12 +2516,40 @@ function homelandSvg(H, land, edge, colorOf){
   const plot=(x,y,sz,p)=>`<rect x="${X(x)+.8}" y="${Y(y)+.8}" width="${sz*T-1.6}" height="${sz*T-1.6}" rx="${sz>2?3:2}" fill="var(${colorOf(p)})" fill-opacity="0.9"><title>${p.crop.name}</title></rect>`;
   for (const u of H.placed){ for (const p of u.plots) s+=plot(p.x,p.y,p.s,p.p);
     for (const q of u.cores) s+=`<rect x="${X(q.x)}" y="${Y(q.y)}" width="${q.s*T}" height="${q.s*T}" fill="var(--unit-${q.unit})"><title>${UNITNAME[q.unit]} · ${SETTING[q.zk]}</title></rect>`+coreMark(q,X,Y,T); }
+  if (H.openBox){ const b=H.openBox; s+=`<rect x="${X(b.x)-3}" y="${Y(b.y)-3}" width="${b.w*T+6}" height="${b.h*T+6}" rx="5" fill="none" stroke="var(--muted)" stroke-dasharray="5 4"><title>Open ground: crops with no temperature need</title></rect>`; }
   for (const p of H.open) s+=plot(p.x,p.y,p.s,p.p);
   for (const b of H.builds){ const fs=Math.max(7,Math.min(10, b.w*T/5.2)), lbl=b.w*T>=40?b.short:b.short.slice(0,2);
     s+=`<g><title>${b.name}</title><rect x="${X(b.x)+.8}" y="${Y(b.y)+.8}" width="${b.w*T-1.6}" height="${b.h*T-1.6}" rx="3" fill="color-mix(in srgb,var(${jobVar(b.job)}) ${b.idle?10:30}%,var(--panel))" stroke="var(${jobVar(b.job)})" stroke-width="1.5"${b.idle?' stroke-dasharray="3 2"':''}/>`;
     s+=`<text x="${X(b.x+b.w/2)}" y="${Y(b.y+b.h/2)+fs/3}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${lbl}</text>`;
     if (b.face) s+=faceMark(b,X,Y,T);
     s+='</g>'; }
+  return s+'</svg>';
+}
+
+// Open ground as one field of its own: Woodland rows on top, Farmland rows below, each crop kept together.
+// Returns layouts for a few widths (in tiles), squarest first.
+function openBlocks(openPlots){
+  const wood=[], farm=[];
+  for (const p of openPlots.slice().sort((a,b)=>b.plots-a.plots)) for (let i=0;i<p.plots;i++) (p.crop.kind==='wood'?wood:farm).push(p);
+  if (!wood.length && !farm.length) return [];
+  const out=[], area=16*wood.length+4*farm.length;
+  for (let W=wood.length?4:2; W<=28; W+=2){
+    if (wood.length && W%4) continue;
+    const parts=[]; let y=0;
+    const row=(list,sz)=>{ const per=Math.max(1,Math.floor(W/sz)); list.forEach((p,i)=>parts.push({x:(i%per)*sz, y:y+Math.floor(i/per)*sz, w:sz, h:sz, s:sz, p})); y+=Math.ceil(list.length/per)*sz; };
+    row(wood,4); row(farm,2);
+    const Wt=Math.max(...parts.map(q=>q.x+q.w));
+    out.push({parts, W:Wt, H:y, sq:Math.abs(Math.log(Wt/y))+(Wt*y-area)/area});
+    if (W>=Math.sqrt(area)*2.2) break; }
+  const seen=new Set();
+  return out.sort((a,b)=>a.sq-b.sq).filter(v=>{ const k=v.W+'x'+v.H; if (seen.has(k)) return false; seen.add(k); return true; }).slice(0,5);
+}
+function openSvg(openPlots, colorOf){
+  const V=openBlocks(openPlots)[0]; if (!V) return '';
+  const T=12, P=6, W=V.W*T, Hh=V.H*T, X=v=>P+v*T, Y=v=>P+v*T;
+  let s=`<svg viewBox="0 0 ${W+2*P} ${Hh+2*P}" role="img" aria-label="Open ground layout" style="max-height:260px">`;
+  s+=`<rect x="${P-3}" y="${P-3}" width="${W+6}" height="${Hh+6}" rx="6" fill="none" stroke="var(--muted)" stroke-dasharray="5 4"/>`;
+  for (const q of V.parts) s+=`<rect x="${X(q.x)+1}" y="${Y(q.y)+1}" width="${q.s*T-2}" height="${q.s*T-2}" rx="${q.s>2?3:2}" fill="var(${colorOf(q.p)})" fill-opacity="0.85"><title>${q.p.crop.name}</title></rect>`;
   return s+'</svg>';
 }
 
@@ -2580,9 +2620,11 @@ function planHomelandClean(real, openPlots, land, edge, things){
     const R=vars[got.vi].R;
     placed.push({u, cores:R.cores.map(q=>({...q,x:q.x+got.ox,y:q.y+got.oy})), ranges:got.rr, plots:R.plots.map(q=>({...q,x:q.x+got.ox,y:q.y+got.oy})), guests:(R.guests||[]).map(q=>({...q,x:q.x+got.ox,y:q.y+got.oy}))});
   }
-  // Open-ground plots: one tidy block per crop (Woodland first)
-  const open=[]; let openLeft=0;
-  const groups=openPlots.slice().sort((a,b)=>(b.crop.kind==='wood')-(a.crop.kind==='wood') || b.plots-a.plots);
+  // Open-ground plots: one field of their own beside the units if it fits, else one tidy block per crop (Woodland first)
+  const open=[]; let openLeft=0, openBox=null;
+  { const got=place(openBlocks(openPlots).map(V=>({parts:V.parts.map(q=>({...q}))})));
+    if (got){ for (const r of got.parts) open.push({x:r.x, y:r.y, s:r.s, p:r.p}); openBox=bboxOf(got.parts); } }
+  const groups=openBox ? [] : openPlots.slice().sort((a,b)=>(b.crop.kind==='wood')-(a.crop.kind==='wood') || b.plots-a.plots);
   const blockOf=(n,s,cols)=>{ const parts=[]; for (let i=0;i<n;i++) parts.push({x:(i%cols)*s, y:Math.floor(i/cols)*s, w:s, h:s}); return parts; };
   for (const p of groups){
     const s=p.crop.kind==='wood'?4:2; let left=p.plots;
@@ -2646,7 +2688,7 @@ function planHomelandClean(real, openPlots, land, edge, things){
   const big=plain.filter(t=>t.w*t.h>9), small=plain.filter(t=>t.w*t.h<=9).sort((a,b)=>a.key.localeCompare(b.key));
   if (big.length) placeGroup(big);
   if (small.length) placeGroup(small);
-  return addFacing({placed, open, unplaced, openLeft, N, builds, missed, ax, ay});
+  return addFacing({placed, open, openBox, unplaced, openLeft, N, builds, missed, ax, ay});
 }
 
 // Machines work from their front and turn in 90° steps. Face each one toward the side with the most free space
@@ -2874,7 +2916,7 @@ function renderLayout(){
   if (open.length){
     const t={}; for (const p of open){ t[p.crop.id]=t[p.crop.id]||{p,n:0}; t[p.crop.id].n+=p.plots; }
     const sens=open.some(p=>p.crop.temp!==0);
-    cards.push(`<div class="ucard"><div class="top"><b>Open ground</b><i class="tip" tabindex="0" data-tip="${sens?'Keep these outside every dashed range. Crops that want heat or cold grow slower here, already counted in their speed.':'These crops ignore heat, cold and light, so they can go anywhere.'}">?</i></div><div class="legend" style="display:grid;gap:4px">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
+    cards.push(`<div class="ucard"><div class="top"><b>Open ground</b><i class="tip" tabindex="0" data-tip="${sens?'Keep these outside every dashed range. Crops that want heat or cold grow slower here, already counted in their speed.':'These crops ignore heat, cold and light, so they get a field of their own outside every range.'}">?</i></div>${openSvg(open, colorOf)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
   }
   const view=state.layoutView==='units'?'units':'map';
   // Clean vs Packed only differs for full units; part-filled units always use their tightest layout
@@ -3772,11 +3814,11 @@ $('maxAll').onclick=()=>{ maxAll(); state.land=null; refreshInputs(); markDirty(
 // Update plan also closes the drawer so the new plan is in view
 function runFromSetup(){ run(); if (document.body.classList.contains('setup-open')){ setSetup(false); window.scrollTo({top:0}); } }
 $('runBtn').onclick=runFromSetup;
-for (const [k,[mode,label]] of Object.entries(SKINS)){ const op=document.createElement('option'); op.value=k; op.textContent=label+' · '+mode; $('skin').appendChild(op); }
+for (const [k,[mode,label]] of Object.entries(SKINS)){ const op=document.createElement('option'); op.value=k; op.textContent=label; $('skin').appendChild(op); }
 $('skin').value=document.documentElement.getAttribute('data-skin');
 $('skin').onchange=()=>{ const k=$('skin').value; document.documentElement.setAttribute('data-skin', k); document.documentElement.setAttribute('data-theme', SKINS[k][0]);
   try{ localStorage.setItem('hfp-skin', k); }catch(e){} };
-$('runBtn2').onclick=runFromSetup;
+$('runBtn2').onclick=runFromSetup; $('runBtn3').onclick=runFromSetup;
 $('session').addEventListener('change',()=>{ save(); renderShop(); });
 document.addEventListener('change',e=>{ if(e.target.id==='crewLvl'){ state.crewLvl=parseInt(e.target.value); renderProducts(); run(); } });
 $('addProd').onclick=()=>{ (state.products||(state.products=[])).push({n:'Bread',amt:5,unit:'h'}); renderProducts(); markDirty(); };
