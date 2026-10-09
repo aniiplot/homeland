@@ -381,6 +381,15 @@ body.has-changes .dbar .dirty{display:inline}
 body.setup-open .updatebar{display:none}
 .side .bar{grid-template-columns:minmax(0,1fr) auto;gap:3px 10px}
 .side .bar .track{grid-column:1/-1;grid-row:2;height:10px}
+.mapmain svg,.ucard svg{cursor:zoom-in}
+.zoom{position:fixed;inset:0;z-index:40;background:rgba(5,7,15,.92);display:flex;flex-direction:column}
+.zoom[hidden]{display:none}
+.zbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 14px;background:#0b0e1a;border-bottom:1px solid #2a3050}
+.zbar .zhint{margin-right:auto;color:#c9cde6;font-size:.84rem}
+.zstage{flex:1;overflow:hidden;position:relative;touch-action:none;cursor:grab;user-select:none;-webkit-user-select:none}
+.zstage.drag{cursor:grabbing}
+.zin{position:absolute;left:0;top:0;transform-origin:0 0}
+.zin svg{display:block;background:var(--bg);border-radius:10px}
 /* setup drawer */
 .drawer{position:fixed;top:0;bottom:0;left:84px;width:min(460px,calc(100vw - 84px));z-index:20;background:var(--bg);border-right:1px solid var(--line);box-shadow:20px 0 40px rgba(0,0,0,.35);overflow:auto;padding:0 16px;transform:translateX(calc(-100% - 90px));visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
 body.setup-open .drawer{transform:none;visibility:visible;transition:transform .22s ease}
@@ -559,14 +568,14 @@ body:not(.setup-open) .scrim{display:none}
         </details>
       </section>
 
-      <section class="step adv" aria-labelledby="h-prod">
+      <section class="step" aria-labelledby="h-prod">
         <header>
           <h2 id="h-prod"><span class="num"></span>Food &amp; goods you want <i class="tip" tabindex="0" data-tip="Pick anything a machine makes and how many you want. The planner works out the crops, machines, gathering buildings and workers behind it.">?</i></h2>
           <button type="button" id="addProd">+ Add item</button>
         </header>
         <div class="rows" id="prodRows"></div>
-        <div class="toggles"><label class="inline"><input type="checkbox" id="autoProd" checked>Craft products from crops <i class="tip" tabindex="0" data-tip="The plan picks which products to make from your crops, alongside your items above, using the machines and Aniimo your RV allows, for the most coin whatever your goal. Your items always come first. Untick to sell crops as they are.">?</i></label><label class="inline"><input type="checkbox" id="switchRec">Machines switch recipes <i class="tip" tabindex="0" data-tip="Off: each machine sticks to one recipe, so every recipe gets machines of its own and only the best ones are picked. On: one machine takes turns on several recipes, which means switching them by hand as you go.">?</i></label></div>
-        <details>
+        <div class="toggles adv"><label class="inline"><input type="checkbox" id="autoProd" checked>Craft products from crops <i class="tip" tabindex="0" data-tip="The plan picks which products to make from your crops, alongside your items above, using the machines and Aniimo your RV allows, for the most coin whatever your goal. Your items always come first. Untick to sell crops as they are.">?</i></label><label class="inline"><input type="checkbox" id="switchRec">Machines switch recipes <i class="tip" tabindex="0" data-tip="Off: each machine sticks to one recipe, so every recipe gets machines of its own and only the best ones are picked. On: one machine takes turns on several recipes, which means switching them by hand as you go.">?</i></label></div>
+        <details class="adv">
           <summary>RV modules for special recipes <i class="tip" tabindex="0" data-tip="Premium, Advanced and Quick recipes unlock with these RV modules. Max for RV sets them to the highest your RV allows; lower them if you haven't upgraded yet.">?</i></summary>
           <div class="in"><div class="grid">
             <label class="f"><span>Kitchen Module</span><select id="kitchen"></select></label>
@@ -618,13 +627,17 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 9 Oct, 4:20pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 9 Oct, 4:35pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
         <span class="state" id="updState" aria-live="polite">Plan is up to date</span>
         <button type="button" class="primary" id="runBtn">Update plan</button>
       </div>
+<div class="zoom" id="zoom" hidden role="dialog" aria-modal="true" aria-label="Zoomed map">
+  <div class="zbar"><span class="zhint">Scroll or pinch to zoom, drag to move</span><button type="button" class="icon" id="zOut" aria-label="Zoom out">−</button><button type="button" class="icon" id="zIn" aria-label="Zoom in">+</button><button type="button" id="zFit">Fit</button><button type="button" class="icon" id="zClose" aria-label="Close">✕</button></div>
+  <div class="zstage" id="zStage"><div class="zin" id="zIn2"></div></div>
+</div>
 <div id="tipBox" role="tooltip" hidden></div>
 <dialog id="eventDlg" aria-labelledby="evTitle"><div class="evwrap" id="evBody"></div></dialog>
 
@@ -3793,7 +3806,7 @@ $('goalMode').addEventListener('change',()=>{ renderGoalInputs(); updateMbar(); 
 function applyMode(){ const m=state.mode==='custom'?'custom':'quick'; document.body.classList.toggle('quick', m==='quick');
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.mode===m)));
   const items=(state.products||[]).length;
-  $('modeNote').textContent = m==='quick' ? `Plans as if everything RV ${int('rv')} allows is built and upgraded.${items?` Your ${items} food & goods item${items>1?'s':''} still count (edit them in Custom).`:''}` : (CLAMP_MSG || 'Set each facility, module and item to match your Homeland.');
+  $('modeNote').textContent = m==='quick' ? `Plans as if everything RV ${int('rv')} allows is built and upgraded.` : (CLAMP_MSG || 'Set each facility, module and item to match your Homeland.');
   updateMbar(); }
 function updateMbar(){ const g=$('goalMode'); $('mbarText').textContent=`RV ${int('rv')} · ${g.options[g.selectedIndex]?g.options[g.selectedIndex].text:''}`; }
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ if (state.mode===b.dataset.mode) return; state.mode=b.dataset.mode;
@@ -3830,6 +3843,37 @@ const MUTATES=['wheat','potato','rice','soybean','cotton','rose','lavender','str
 $('addAll').onclick=()=>{ const o=opts(); for (const id of MUTATES){ const c=cropById(id); if (!c || !available(c).ok || state.requests.some(r=>r.id===id)) continue;
     if (c.light && o.lamp===0) continue; if (plotRoom(-1).left[kindOf(id)]<1) break; state.requests.push({id,plots:1}); }
   renderRequests(); markDirty(); };
+
+// ---------- Zoom: tap the map (or a unit) to see it full screen; scroll/pinch to zoom, drag to move ----------
+{ const Z={s:1,x:0,y:0,w:0,h:0}, st=$('zStage'), inn=$('zIn2'); let last=null;
+  const apply=()=>{ inn.style.transform=`translate(${Z.x}px,${Z.y}px) scale(${Z.s})`; };
+  const fit=()=>{ const r=st.getBoundingClientRect(), k=Math.min((r.width-24)/Z.w,(r.height-24)/Z.h); Z.s=k; Z.x=(r.width-Z.w*k)/2; Z.y=(r.height-Z.h*k)/2; apply(); };
+  const zoomAt=(f,cx,cy)=>{ const ns=Math.max(0.3,Math.min(12,Z.s*f)); f=ns/Z.s; Z.x=cx-(cx-Z.x)*f; Z.y=cy-(cy-Z.y)*f; Z.s=ns; apply(); };
+  const center=()=>{ const r=st.getBoundingClientRect(); return [r.width/2, r.height/2]; };
+  window.openZoom=svg=>{ const c=svg.cloneNode(true), vb=(svg.getAttribute('viewBox')||'0 0 400 400').split(/\s+/).map(Number);
+    Z.w=1000; Z.h=1000*vb[3]/vb[2]; c.setAttribute('width',Z.w); c.setAttribute('height',Z.h); c.style.maxHeight='none'; c.style.width=Z.w+'px'; c.style.height=Z.h+'px';
+    inn.replaceChildren(c); last=document.activeElement; $('zoom').hidden=false; document.body.style.overflow='hidden'; fit(); $('zClose').focus(); };
+  const close=()=>{ $('zoom').hidden=true; document.body.style.overflow=''; inn.replaceChildren(); if (last&&last.focus) last.focus(); };
+  $('zClose').onclick=close; $('zFit').onclick=fit; $('zIn').onclick=()=>zoomAt(1.4,...center()); $('zOut').onclick=()=>zoomAt(1/1.4,...center());
+  document.addEventListener('keydown',e=>{ if ($('zoom').hidden) return; if (e.key==='Escape'){ e.preventDefault(); close(); } else if (e.key==='+'||e.key==='=') zoomAt(1.25,...center()); else if (e.key==='-') zoomAt(0.8,...center()); });
+  st.addEventListener('wheel',e=>{ e.preventDefault(); const r=st.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY*0.0015), e.clientX-r.left, e.clientY-r.top); },{passive:false});
+  const pts=new Map(); let pinch=null, moved=0;
+  st.addEventListener('pointerdown',e=>{ st.setPointerCapture(e.pointerId); pts.set(e.pointerId,[e.clientX,e.clientY]); moved=0; st.classList.add('drag');
+    if (pts.size===2){ const [a,b]=[...pts.values()]; pinch={d:Math.hypot(a[0]-b[0],a[1]-b[1])}; } });
+  st.addEventListener('pointermove',e=>{ if (!pts.has(e.pointerId)) return; const p=pts.get(e.pointerId), dx=e.clientX-p[0], dy=e.clientY-p[1]; pts.set(e.pointerId,[e.clientX,e.clientY]);
+    if (pts.size===2 && pinch){ const [a,b]=[...pts.values()], d=Math.hypot(a[0]-b[0],a[1]-b[1]), r=st.getBoundingClientRect(); zoomAt(d/pinch.d,(a[0]+b[0])/2-r.left,(a[1]+b[1])/2-r.top); pinch.d=d; }
+    else { Z.x+=dx; Z.y+=dy; apply(); } moved+=Math.abs(dx)+Math.abs(dy); });
+  const up=e=>{ pts.delete(e.pointerId); if (pts.size<2) pinch=null; if (!pts.size) st.classList.remove('drag'); };
+  st.addEventListener('pointerup',up); st.addEventListener('pointercancel',up);
+  st.addEventListener('dblclick',e=>{ const r=st.getBoundingClientRect(); zoomAt(2,e.clientX-r.left,e.clientY-r.top); });
+  // tap the shade around the picture (without dragging) to close
+  st.addEventListener('click',e=>{ if (moved<6 && !e.target.closest('svg')) close(); });
+  const zoomable=e=>e.target.closest('.mapmain svg, .ucard svg');
+  document.addEventListener('click',e=>{ const svg=zoomable(e); if (svg && !e.target.closest('.zoom')) openZoom(svg); });
+  document.addEventListener('keydown',e=>{ if ((e.key==='Enter'||e.key===' ') && e.target.matches && e.target.matches('.mapmain svg, .ucard svg')){ e.preventDefault(); openZoom(e.target); } });
+  new MutationObserver(()=>document.querySelectorAll('.mapmain svg:not([tabindex]), .ucard svg:not([tabindex])').forEach(v=>{ v.setAttribute('tabindex','0'); v.setAttribute('aria-description','Press Enter to zoom'); }))
+    .observe($('pane-layout'),{childList:true,subtree:true});
+}
 refreshInputs();
 selectTab(TABS.includes(state.tab)?state.tab:'layout');
 if (!restored) setSetup(true, false);   // first visit: start with the setup open
