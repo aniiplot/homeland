@@ -531,7 +531,7 @@ body:not(.setup-open) .scrim{display:none}
           <label class="inline"><input type="checkbox" id="useLamp" checked>Sunlamp</label>
           <label class="inline"><input type="checkbox" id="usePower" checked>E-mode <i class="tip" tabindex="0" data-tip="Lets the plan put machines, Mines and Wells on generator power (RV 12+). They need no Aniimo and run at their E-mode speed, 20% faster while the load stays under 5/6 of the generators' output. The plan picks which ones are worth it.">?</i></label>
           <label class="inline"><input type="checkbox" id="extras" checked>Leisure &amp; Wells <i class="tip" tabindex="0" data-tip="Fills spare Aniimo slots with Wells and leisure spots (Sandcastle, Dewy House, Nimbus Bed, Starfall Hammock, Floral Windmill). They need no land or ingredients, just one Aniimo each, and their coin counts toward your goal. Leisure spots need a specific species.">?</i></label>
-          <label class="inline"><input type="checkbox" id="pairs" checked>Overlap heat &amp; cold <i class="tip" tabindex="0" data-tip="Where a Heat Furnace and Cooling Unit ranges overlap, temperatures add: Scorching + Cool makes Warm, Warm + Freeze makes Cool. One pair can then serve three climates.">?</i></label>
+          <label class="inline"><input type="checkbox" id="pairs">Overlap heat &amp; cold <i class="tip" tabindex="0" data-tip="Where a Heat Furnace and Cooling Unit ranges overlap, temperatures add: Scorching + Cool makes Warm, Warm + Freeze makes Cool. One pair can then serve three climates.">?</i></label>
           <label class="inline"><input type="checkbox" id="freeze" checked>Freeze <i class="tip" tabindex="0" data-tip="The Cooling Unit's colder setting, needed at full speed by Cranberry and Maple Syrup. Needs an Ice Lv 2 worker.">?</i></label>
         </div>
         <details class="adv">
@@ -547,12 +547,43 @@ body:not(.setup-open) .scrim{display:none}
             <div class="grid">
               <label class="f"><span>Keep Aniimo free <i class="tip" tabindex="0" data-tip="Slots you use elsewhere, like the Homebuilding Zone or trips. The plan leaves them free.">?</i></span><select id="reserve"></select></label>
               <label class="f"><span>Check-in every <i class="tip" tabindex="0" data-tip="Only used without Hauling. A plot stops when full: Farmland holds 5 harvests per level, Woodland 8 to 28.">?</i></span><select id="hours"></select></label>
-              <input type="hidden" id="woodValue" value="0">
+              <input type="hidden" id="woodValue" value="0"><input type="hidden" id="sv" value="2">
               <label class="f"><span>Farmland per Furnace/Lamp <i class="tip" tabindex="0" data-tip="Most 2×2 Farmland that can touch one Heat Furnace or Sunlamp range is 24. Lower it if walls or paths are in the way.">?</i></span><select id="capSmall"></select></label>
               <label class="f"><span>Farmland per Cooling Unit <i class="tip" tabindex="0" data-tip="Most 2×2 Farmland that can touch one Cooling Unit range is 32. Lower it if walls or paths are in the way.">?</i></span><select id="capCool"></select></label>
             </div>
           </div>
         </details>
+      </section>
+
+      <section class="step" aria-labelledby="h-goal">
+        <header>
+          <h2 id="h-goal"><span class="num"></span>Goal <i class="tip" tabindex="0" data-tip="Your picked crops and items always come first. The goal decides what the rest of your ground, climate units and Mines are used for.">?</i></h2>
+        </header>
+        <label class="f"><span>Plan for</span><select id="goalMode">
+          <option value="rv" selected>Fastest next RV upgrade</option>
+          <option value="coin">Most Home Coin per hour</option>
+          <option value="wood">Most Wood Blocks per hour</option>
+          <option value="ranked">Ranked goals</option>
+          <option value="custom">Reach my own target</option>
+        </select></label>
+        <div id="goalRanked" hidden><ol class="rank" id="rankList"></ol></div>
+        <div id="goalRv" class="grid" hidden>
+          <label class="f"><span>Home Coin you have</span><input type="number" id="haveCoin" min="0" step="1000" value="0"></label>
+          <label class="f"><span id="haveTierLbl">Wood you have</span><input type="number" id="haveTier" min="0" value="0"></label>
+          <label class="f" id="haveWBWrap"><span>Loose Wood Blocks</span><input type="number" id="haveWB" min="0" value="0"></label>
+          <label class="f" id="haveOreWrap"><span id="haveOreLbl">Ore you have</span><input type="number" id="haveOre" min="0" value="0"></label>
+          <label class="f" id="haveSandWrap"><span>Loose Mineral Sand</span><input type="number" id="haveSand" min="0" value="0"></label>
+          <label class="f" id="haveHabWrap"><span>Habitability you have <i class="tip" tabindex="0" data-tip="Shown on your RV screen. Furniture adds to it (bought with Bud Tickets), and so does each Aniimo living at Home. RV 10 and up ask for a minimum.">?</i></span><input type="number" id="haveHab" min="0" step="100" value="0"></label>
+        </div>
+        <div id="goalCustom" class="grid" hidden>
+          <label class="f"><span>Home Coin needed</span><input type="number" id="needCoin" min="0" step="1000" value="1000000"></label>
+          <label class="f"><span>Wood Blocks needed</span><input type="number" id="needWood" min="0" step="10" value="5000"></label>
+          <label class="f"><span>Mineral Sand needed</span><input type="number" id="needSand" min="0" step="10" value="0"></label>
+        </div>
+        <label class="f" style="margin-top:10px"><span>Each Aniimo must earn at least <i class="tip" tabindex="0" data-tip="A climate unit, Mine, generator or machine worker is only worth a slot if it adds this much Home Coin an hour, after feeding it. Raise it to skip ones that barely pay, like a second Heat Furnace for a couple of trees.">?</i></span><select id="slotCost">
+          <option value="0">Anything (use every slot that pays)</option><option value="250">250 coin an hour</option><option value="500">500 coin an hour</option><option value="1000">1,000 coin an hour</option><option value="2000">2,000 coin an hour</option><option value="5000">5,000 coin an hour</option>
+        </select></label>
+        <p class="note" id="goalNote"></p>
       </section>
 
       <section class="step" aria-labelledby="h-crops">
@@ -585,36 +616,6 @@ body:not(.setup-open) .scrim{display:none}
         </details>
       </section>
 
-      <section class="step" aria-labelledby="h-goal">
-        <header>
-          <h2 id="h-goal"><span class="num"></span>Goal <i class="tip" tabindex="0" data-tip="Your picked crops and items always come first. The goal decides what the rest of your ground, climate units and Mines are used for.">?</i></h2>
-        </header>
-        <label class="f"><span>Plan for</span><select id="goalMode">
-          <option value="coin">Most Home Coin per hour</option>
-          <option value="rv">Fastest next RV upgrade</option>
-          <option value="wood">Most Wood Blocks per hour</option>
-          <option value="ranked">Ranked goals</option>
-          <option value="custom">Reach my own target</option>
-        </select></label>
-        <div id="goalRanked" hidden><ol class="rank" id="rankList"></ol></div>
-        <div id="goalRv" class="grid" hidden>
-          <label class="f"><span>Home Coin you have</span><input type="number" id="haveCoin" min="0" step="1000" value="0"></label>
-          <label class="f"><span id="haveTierLbl">Wood you have</span><input type="number" id="haveTier" min="0" value="0"></label>
-          <label class="f" id="haveWBWrap"><span>Loose Wood Blocks</span><input type="number" id="haveWB" min="0" value="0"></label>
-          <label class="f" id="haveOreWrap"><span id="haveOreLbl">Ore you have</span><input type="number" id="haveOre" min="0" value="0"></label>
-          <label class="f" id="haveSandWrap"><span>Loose Mineral Sand</span><input type="number" id="haveSand" min="0" value="0"></label>
-          <label class="f" id="haveHabWrap"><span>Habitability you have <i class="tip" tabindex="0" data-tip="Shown on your RV screen. Furniture adds to it (bought with Bud Tickets), and so does each Aniimo living at Home. RV 10 and up ask for a minimum.">?</i></span><input type="number" id="haveHab" min="0" step="100" value="0"></label>
-        </div>
-        <div id="goalCustom" class="grid" hidden>
-          <label class="f"><span>Home Coin needed</span><input type="number" id="needCoin" min="0" step="1000" value="1000000"></label>
-          <label class="f"><span>Wood Blocks needed</span><input type="number" id="needWood" min="0" step="10" value="5000"></label>
-          <label class="f"><span>Mineral Sand needed</span><input type="number" id="needSand" min="0" step="10" value="0"></label>
-        </div>
-        <label class="f" style="margin-top:10px"><span>Each Aniimo must earn at least <i class="tip" tabindex="0" data-tip="A climate unit, Mine, generator or machine worker is only worth a slot if it adds this much Home Coin an hour, after feeding it. Raise it to skip ones that barely pay, like a second Heat Furnace for a couple of trees.">?</i></span><select id="slotCost">
-          <option value="0">Anything (use every slot that pays)</option><option value="250">250 coin an hour</option><option value="500">500 coin an hour</option><option value="1000">1,000 coin an hour</option><option value="2000">2,000 coin an hour</option><option value="5000">5,000 coin an hour</option>
-        </select></label>
-        <p class="note" id="goalNote"></p>
-      </section>
 
       <details class="step" style="padding-top:14px">
         <summary>Save, share or start over</summary>
@@ -627,7 +628,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 9 Oct, 4:35pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 11 Oct, 12:30pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -1709,10 +1710,10 @@ const MODULE_RV = {kitchen:[0,2,4,8,10,13,16,19], crafting:[0,5,7,10,12,17,18,19
 const moduleAt = (k,rv) => { let l=0; MODULE_RV[k].forEach((r,i)=>{ if(i&&rv>=r) l=i; }); return l; };
 const ORE_TIER = {'Mineral Sand':1,'Coarse-Sifted Ore':8,'Sintered Ore Brick':64,'Refined Ore':512,'Microcrystalline Ore Plate':2048};
 const FRONTIER_CLEAN = {"small": [{"w": 0, "f": 24, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2], [4, 4]], "wood": []}, {"w": 1, "f": 23, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[4, 4]]}, {"w": 2, "f": 22, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, 4], [4, 4]]}, {"w": 3, "f": 21, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, 4]]}, {"w": 4, "f": 20, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, 4]]}, {"w": 5, "f": 18, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 6, "f": 16, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 7, "f": 14, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 8, "f": 12, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -2], [0, 2], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, -6], [0, 4], [4, -6], [4, -2], [4, 4]]}], "cool": [{"w": 0, "f": 32, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-5, 5], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": []}, {"w": 1, "f": 31, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, 5]]}, {"w": 2, "f": 30, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, -7], [-7, 5]]}, {"w": 3, "f": 29, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, 5]]}, {"w": 4, "f": 28, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, -7], [5, 5]]}, {"w": 5, "f": 26, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 5]]}, {"w": 6, "f": 24, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 7, "f": 22, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 8, "f": 20, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 9, "f": 18, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 10, "f": 16, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 11, "f": 14, "farm": [[-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 12, "f": 12, "farm": [[-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, -7], [-3, 5], [1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}]};
-const FORM_IDS = ['rv','farmPlots','woodPlots','farmLvl','woodLvl','eco','heat','cool','lamp','mines','kilns','benches','useHeat','useCool','useLamp','extras','pairs','fillUnits','freeze',
+const FORM_IDS = ['sv','rv','farmPlots','woodPlots','farmLvl','woodLvl','eco','heat','cool','lamp','mines','kilns','benches','useHeat','useCool','useLamp','extras','pairs','fillUnits','freeze',
   'watering','hauling','persona','events','slotCost','autoProd','switchRec','power','gens','usePower','feed','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
   'needCoin','needWood','needSand','haveHab','kitchen','crafting','detector','reserve'];
-const DEFAULT_STATE = {requests:[{id:'ginseng',plots:10},{id:'grapes',plots:6},{id:'chestnut',plots:4}], custom:[], noFill:[],
+const DEFAULT_STATE = {requests:[], custom:[], noFill:[],
   products:[], crewLvl:3, tab:'layout', layoutView:'map', mode:'quick'};
 let state = JSON.parse(JSON.stringify(DEFAULT_STATE));
 // Text that ends up in the page: escape it, and keep names people type (or load from a code) to plain words
@@ -1781,11 +1782,17 @@ function readForm(){ const o={}; for (const k of FORM_IDS){ const el=$(k); o[k]=
 // Saves from before a setting existed: give it the default it would have had
 function migrateForm(f){ const rv=Math.max(1,Math.min(20,parseInt(f&&f.rv)||12));
   if (f && !('feed' in f)) $('feed').checked=true;
+  // settings version 2: overlapping heat and cold became opt-in
+  if (f && !(parseInt(f.sv)>=2)){ $('pairs').checked=false; $('sv').value='2'; }
   // an earlier version reset these to 1 when switching to Quick; nobody means 1 Farmland per unit
   if (f && String(f.capSmall)==='1' && String(f.capCool)==='1'){ $('capSmall').value=DEFAULTS.capSmall; $('capCool').value=DEFAULTS.capCool; }
   if (f && !('power' in f)){ $('power').value=String(powerAt(rv)); $('gens').value=String(genCount(rv)); $('usePower').checked=true; } }
 function writeForm(o){ for (let [k,v] of Object.entries(o||{})){ if (!FORM_IDS.includes(k)) continue; const el=$(k); if(!el) continue; if (k==='rv') v=Math.max(1,Math.min(20,parseInt(v)||12));
-  if (el.type==='checkbox') el.checked=!!v; else { const was=el.value; el.value=String(v); if (el.tagName==='SELECT' && el.selectedIndex<0) el.value=DEFAULTS[k]||was; } } }
+  if (el.type==='checkbox') el.checked=!!v; else { const was=el.value; el.value=String(v); if (el.tagName==='SELECT' && el.selectedIndex<0){
+      // a number this RV can't have (40 Farmland at RV 4): take the most it allows
+      const n=parseFloat(v), opts=[...el.options].map(o=>parseFloat(o.value)).filter(x=>!isNaN(x));
+      if (!isNaN(n) && opts.length){ const fit=opts.filter(x=>x<=n); el.value=String(fit.length?Math.max(...fit):Math.min(...opts)); }
+      else el.value=DEFAULTS[k]||was; } } } }
 function save(){ try{ localStorage.setItem('hfp6', JSON.stringify({form:readForm(), state})); }catch(e){} }
 function int(id){ return parseInt($(id).value)||0; }
 function num(id, lo, hi){ let v=parseFloat($(id).value); if(isNaN(v)) v=lo; return Math.max(lo,Math.min(hi,v)); }
@@ -2033,7 +2040,8 @@ function solveFor0(reqs, fillers, o, gs){
   if (m==='target' && first.raw && first.raw.r>0) second=planBest(reqs, fillers, {...o, minR:first.raw.r*(1-1e-6), coinFirst:true}, SOLVER);
   else if (m==='wood') second=planBest(reqs, fillers, {...o, goal:{mode:'coin'}, minWood:Math.max(0, first.woodRate*(1-1e-6)-1e-9)}, SOLVER);
   // with a minimum earning per Aniimo, a slot counts against the coin it brings in
-  const net=r=>r.coinRate-(o.slotCost||0)*slotsUsed(r);
+  const units=r=>Object.values(r.counts||{}).reduce((t,n)=>t+n,0)+2*(r.pairs||[]).length;
+  const net=r=>r.coinRate-(o.slotCost||0)*slotsUsed(r)-UNIT_COST*units(r);
   return second && second.feasible && net(second) > net(first) + 1e-6 ? second : first;
 }
 function slotsUsed(r){ const V=(r.model||{}).variables||{}, res=r.raw||{}, UW=(r.model||{}).uw||{};
@@ -3750,19 +3758,36 @@ $('aboutBtn').onclick=()=>{ setSetup(false,false); selectTab('data'); window.scr
 matchMedia('(max-width:720px)').addEventListener('change',()=>{ if (state.tab==='over' && !isPhone()) selectTab('layout'); });
 
 // ---------- Share codes ----------
-const encode=o=>btoa(unescape(encodeURIComponent(JSON.stringify(o))));
-const decode=s=>JSON.parse(decodeURIComponent(escape(atob(s.trim()))));
-$('copyCode').onclick=()=>{
-  const code=encode({v:6, form:readForm(), state}); $('codeIn').value=code;
+// Setup codes: only what differs from a fresh page, squeezed (deflate) into a short code starting "2.".
+// Things that are yours alone (your Aniimo, ticked checklist, tabs, layout style, orders) stay out of the code.
+const SHARE_STATE=['requests','products','noFill','crewLvl','avoid','recipeFor','rank','land','mode','allMach'];
+const b64u={ enc:u8=>{ let s=''; for (const c of u8) s+=String.fromCharCode(c); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); },
+  dec:t=>{ const s=atob(t.replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from(s,c=>c.charCodeAt(0)); } };
+async function zip(str, inflate){ const cs=inflate?new DecompressionStream('deflate-raw'):new CompressionStream('deflate-raw');
+  const out=new Response(new Blob([str]).stream().pipeThrough(cs)); return inflate ? await out.text() : new Uint8Array(await out.arrayBuffer()); }
+async function encodeSetup(){ const f=readForm(), base=PRISTINE||{}, form={};
+  for (const [k,v] of Object.entries(f)) if (k==='rv' || String(v)!==String(base[k])) form[k]=v;
+  const st={}; for (const k of SHARE_STATE){ const v=state[k], d=DEFAULT_STATE[k]; if (v!==undefined && JSON.stringify(v)!==JSON.stringify(d===undefined?null:d)) st[k]=v; }
+  const json=JSON.stringify({v:7, f:form, s:st});
+  try{ return '2.'+b64u.enc(await zip(json)); }catch(e){ return btoa(unescape(encodeURIComponent(json))); } }
+async function decodeSetup(code){ const t=code.replace(/\s+/g,'');
+  const json = t.startsWith('2.') ? await zip(b64u.dec(t.slice(2)).buffer, true) : decodeURIComponent(escape(atob(t)));
+  const d=JSON.parse(json);
+  if (d && d.v===7) return {form:{...PRISTINE, ...d.f}, state:{...JSON.parse(JSON.stringify(DEFAULT_STATE)), ...keepMine(), ...d.s}};
+  return {...d, state:{...d.state, ...keepMine()}}; }
+// what loading someone else's code leaves alone
+const keepMine=()=>({roster:state.roster, done:state.done, tab:state.tab, layoutView:state.layoutView, layoutStyle:state.layoutStyle, orders:state.orders, event:state.event, crewMode:state.crewMode});
+$('copyCode').onclick=async()=>{
+  const code=await encodeSetup(); $('codeIn').value=code;
   const fallback=()=>{ $('codeIn').select(); $('copyMsg').textContent='Select the code below and copy it.'; };
-  try{ navigator.clipboard.writeText(code).then(()=>{ $('copyMsg').textContent='Copied.'; }, fallback); }catch(e){ fallback(); }
+  try{ navigator.clipboard.writeText(code).then(()=>{ $('copyMsg').textContent=`Copied (${code.length} characters).`; }, fallback); }catch(e){ fallback(); }
 };
 // A saved setup (from a code or a file): checked and rebuilt from known values before use
 function loadSetup(d){ if(!d||typeof d!=='object'||!d.form||!d.state||typeof d.form!=='object') throw 0;
   state=cleanState(d.state);
-  $('rv').value=String(Math.max(1,Math.min(20,parseInt(d.form.rv)||12))); buildSelects(); writeForm(d.form); migrateForm(d.form); refreshInputs(); run(); }
-$('loadCode').onclick=()=>{
-  try{ loadSetup(decode($('codeIn').value)); $('loadMsg').textContent='Loaded.'; }
+  $('rv').value=String(Math.max(1,Math.min(20,parseInt(d.form.rv)||12))); buildSelects(); writeForm(PRISTINE); writeForm(d.form); migrateForm(d.form); applyMode(); refreshInputs(); run(); }
+$('loadCode').onclick=async()=>{
+  try{ loadSetup(await decodeSetup($('codeIn').value)); $('loadMsg').textContent='Loaded.'; }
   catch(e){ $('loadMsg').textContent="That code didn't work. Copy the whole code and try again."; }
 };
 $('saveFile').onclick=()=>{
