@@ -390,6 +390,10 @@ body.setup-open .updatebar{display:none}
 .zstage.drag{cursor:grabbing}
 .zin{position:absolute;left:0;top:0;transform-origin:0 0}
 .zin svg{display:block;background:var(--bg);border-radius:10px}
+.emode{display:inline-flex;align-items:center;gap:3px;font-size:.78rem;font-weight:700;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--j-lightning) 22%,var(--panel));border:1px solid var(--j-lightning);color:var(--ink);white-space:nowrap}
+.emode.big{font-size:.8rem;padding:2px 9px;margin-top:4px}
+.mc:has(.emode.big){border-color:color-mix(in srgb,var(--j-lightning) 60%,var(--line))}
+.pill.vt{border-color:var(--leaf);color:var(--leaf);font-weight:700;margin-left:4px}
 /* setup drawer */
 .drawer{position:fixed;top:0;bottom:0;left:84px;width:min(460px,calc(100vw - 84px));z-index:20;background:var(--bg);border-right:1px solid var(--line);box-shadow:20px 0 40px rgba(0,0,0,.35);overflow:auto;padding:0 16px;transform:translateX(calc(-100% - 90px));visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
 body.setup-open .drawer{transform:none;visibility:visible;transition:transform .22s ease}
@@ -628,7 +632,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 11 Oct, 12:30pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 12 Oct, 10:15pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -2137,8 +2141,8 @@ function renderTodo(){
   // buildings
   { const mc=(L.machCards||[]).filter(m=>!m.power && m.need>0), items=[];
     for (const m of mc.sort((a,b)=>(a.key==='mine'?-1:0)-(b.key==='mine'?-1:0) || b.need-a.need)){
-      const recs=m.forRv ? ['for the RV upgrade'] : [...new Set([...(m.lines||new Map()).values()].map(l=>l.r.n))];
-      items.push({t:plural(MACH[m.key].name, m.need), s:[short(recs), m.e?`${m.e} on E-mode`:''].filter(Boolean).join(' · ')}); }
+      const recs=m.forRv ? ['for the RV upgrade'] : [...new Set([...(m.lines||new Map()).values()].map(l=>varWord(l.r)+l.r.n))];
+      items.push({t:plural(MACH[m.key].name, m.need), s:[short(recs), m.e?`⚡ ${m.e>=m.need?'all':m.e} on E-mode`:''].filter(Boolean).join(' · ')}); }
     if (P && P.gens) items.push({t:plural('Crackle Generator', P.gens), s:`${fmt(P.used)} of ${fmt(P.cap)} W in use`});
     if (items.length) G.push({g:'Build', tab:'mach', items}); }
   // Aniimo by job
@@ -3483,7 +3487,7 @@ function run(){
   if (cards.length){
     mh+=`<p class="note">Everything your plan makes, machine by machine. ${one?'Each machine sticks to one recipe, so every recipe gets machines of its own (tick <b>Machines switch recipes</b> under Food &amp; goods in Custom setup if you swap them by hand).':'Machines take turns on their recipes (switching is on in Custom setup).'} Coin is what the goods sell for.</p>`;
     const cardHtml=m=>{ const M=MACH[m.key], over=m.need>m.can, jc=`var(${jobVar(M.job)})`;
-      const head=`<div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div>`;
+      const head=`<div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}${m.e&&!m.power?` <span class="emode big" title="Runs on Crackle Generator power: switch it to E-mode in game. No Aniimo needed.">⚡ ${m.e>=m.need?(m.need>1?'All on':'On'):m.e+' of '+m.need+' on'} E-mode</span>`:''}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div>`;
       if (m.power){ const P=m.power, rate=P.used<=P.cap+1e-6?120:Math.round(120*P.cap/P.used);
         return `<div class="mc">${head}<div class="meter" style="--jc:${jc}"><i style="width:${Math.min(100,100*P.used/Math.max(1,P.cap))}%"></i></div>
           <ul><li><span>Power used</span><span>${fmt(P.used)} / ${fmt(P.cap)} W</span></li><li><span>E-mode speed</span><span>${rate}%</span></li><li><span>Each makes</span><span>${fmt(P.out)} W</span></li></ul>
@@ -3499,10 +3503,10 @@ function run(){
       const shown=segs.length<=10 ? segs : [segs.reduce((t,x)=>t+x,0)/segs.length];
       const meter=`<div class="meter" style="--jc:${jc}">${shown.map(x=>`<i style="width:${x*100/shown.length}%"></i>`).join('')}</div>`;
       const li=l=>{ const n=l.n, e=l.e||0, capH=(n-e)+e*(l.f||1), pct=Math.round(100*l.busy/Math.max(e?1e-9:1, one||l.extra?(e?capH:n):m.need));
-        const sub=[one||l.extra ? `${n} machine${n>1?'s':''}`+(e?` (${e===n?(n>1?'all ':''):e+' '}on E-mode)`:'') : '', l.extra||!l.r.i.length ? `${l.r.q} a batch` : '', (one||l.extra) ? pct+'% busy' : '', l.coin>0 ? fmt(l.coin)+' coin/h'+(l.feeds.size?' · some for '+[...l.feeds].join(', '):'') : (l.feeds.size ? 'for '+[...l.feeds].join(', ') : ''), l.sand>0 ? '+'+fmtN(l.sand)+' Mineral Sand/h' : ''].filter(Boolean).join(' · ');
-        return `<li class="rl"><div class="rn">${l.extra?`<span>${l.r.n}</span>`:recipeCtl(l.r, ctx, l.item)}<span>${fmtN(l.perHour)}/h</span></div>${sub?`<div class="rs">${sub}</div>`:''}</li>`; };
+        const sub=[one||l.extra ? `${n} machine${n>1?'s':''}`+(e?` <span class="emode">⚡ ${e===n?(n>1?'all ':''):e+' '}on E-mode</span>`:'') : '', l.extra||!l.r.i.length ? `${l.r.q} a batch` : '', (one||l.extra) ? pct+'% busy' : '', l.coin>0 ? fmt(l.coin)+' coin/h'+(l.feeds.size?' · some for '+[...l.feeds].join(', '):'') : (l.feeds.size ? 'for '+[...l.feeds].join(', ') : ''), l.sand>0 ? '+'+fmtN(l.sand)+' Mineral Sand/h' : ''].filter(Boolean).join(' · ');
+        return `<li class="rl"><div class="rn">${l.extra?`<span>${l.r.n}${varTag(l.r)}</span>`:recipeCtl(l.r, ctx, l.item)}<span>${fmtN(l.perHour)}/h</span></div>${sub?`<div class="rs">${sub}</div>`:''}</li>`; };
       const busyAll=ls.reduce((t,l)=>t+l.busy,0);
-      return `<div class="mc${over?' over':''}" style="--jc:${jc}">${head}${meter}${one?'':`<p class="note">${Math.round(100*busyAll/Math.max(1,m.need))}% busy${m.need>1?' on average across '+m.need:''}${m.e?` · ${m.e} on E-mode`:''}</p>`}<ul>${ls.map(li).join('')}</ul>${m.notes.map(t=>`<p class="note">${t}.</p>`).join('')}${over?`<p class="note">Needs more than RV ${rvL} allows.</p>`:''}</div>`; };
+      return `<div class="mc${over?' over':''}" style="--jc:${jc}">${head}${meter}${one?'':`<p class="note">${Math.round(100*busyAll/Math.max(1,m.need))}% busy${m.need>1?' on average across '+m.need:''}</p>`}<ul>${ls.map(li).join('')}</ul>${m.notes.map(t=>`<p class="note">${t}.</p>`).join('')}${over?`<p class="note">Needs more than RV ${rvL} allows.</p>`:''}</div>`; };
     // grouped like the game's facility menu: power, gathering, processing, and what the RV upgrade needs
     const GROUPS=[['power','Power',''],['gather','Gathering','Mines, Wells and leisure spots: no ingredients needed.'],['proc','Processing','Turn crops and goods into products.'],['rv','For the RV upgrade','Process the materials the next RV level asks for.']];
     const grp=m=>m.power?'power':m.forRv?'rv':(MACH[m.key].kind==='gather'?'gather':'proc');
@@ -3578,11 +3582,17 @@ function renderCompare(key){
   wrap.querySelectorAll('button.sort').forEach(b=>b.onclick=()=>renderCompare(b.dataset.k));
 }
 // Recipe name on a machine card, with a picker when other recipes make the same item, and a button to stop using it
+// A recipe's upgraded version shares its plain name in our data; the game lists it as the Quick (Resource Detector),
+// Premium (Kitchen Module) or Advanced (Crafting Module) version, so say which one to pick
+function varInfo(r){ const u=r.u||{}, t=u.d?['Quick','Resource Detector',u.d]:u.k?['Premium','Kitchen Module',u.k]:u.c?['Advanced','Crafting Module',u.c]:null;
+  if (!t || r.n.startsWith(t[0]) || !PROC.some(x=>x!==r && x.n===r.n)) return null; return t; }
+const varWord=r=>{ const t=varInfo(r); return t?t[0]+' ':''; };
+const varTag=r=>{ const t=varInfo(r); return t?` <span class="pill vt" title="Pick the ${t[0]} version of this recipe in game (unlocked by ${t[1]} Lv ${t[2]})">${t[0]} recipe</span>`:''; };
 function recipeCtl(r, ctx, pick=true){
   const alts=pick ? PROC.filter(x=>x.n===r.n && !(ctx.avoid&&ctx.avoid.has(x.id))) : [];
-  const desc=x=>`${MACH[x.m].name} Lv ${x.l} · ${x.i.length?(x.q>1?x.q+' from ':'')+x.i.map(([n,q])=>q+' '+n).join(' + '):x.q+' a batch'}${lockReason(x,ctx)?' 🔒':''}`;
+  const desc=x=>`${varWord(x)}${MACH[x.m].name} Lv ${x.l} · ${x.i.length?(x.q>1?x.q+' from ':'')+x.i.map(([n,q])=>q+' '+n).join(' + '):x.q+' a batch'}${lockReason(x,ctx)?' 🔒':''}`;
   const sel = alts.length>1 ? `<select data-item="${r.n}" aria-label="Recipe for ${r.n}"><option value="">Best: ${desc(pickRecipe(r.n,{...ctx,choose:{}}))}</option>${alts.map(x=>`<option value="${x.id}"${(ctx.choose||{})[r.n]===x.id?' selected':''}>${desc(x)}</option>`).join('')}</select>` : '';
-  return `<span class="rc"><span>${r.n}</span>${sel}<button type="button" class="icon xs" data-avoid="${r.id}" aria-label="Don't use this recipe for ${r.n}" title="Don't use this recipe">✕</button></span>`;
+  return `<span class="rc"><span>${r.n}${varTag(r)}</span>${sel}<button type="button" class="icon xs" data-avoid="${r.id}" aria-label="Don't use this recipe for ${r.n}" title="Don't use this recipe">✕</button></span>`;
 }
 // ---------- Daily Orders: deliver or sell? ----------
 const ORDER_ITEMS=[...new Set([...CROP_ITEMS, ...PROC.map(r=>r.n)])].sort();
