@@ -48,8 +48,8 @@
 :root[data-skin="midnight"]{--bg:#000000; --panel:#0c0c0e; --sunk:#060607; --ink:#ededee; --muted:#9b9ba1; --line:#232327; --leaf:#e6e6e9; --leaf-ink:#0c0c0e; --leaf-soft:#1c1c20; --accent:#5aa9ff; --accent-ink:#00111f; --sky:#5aa9ff; --tip-bg:#ededee; --tip-fg:#000000;}
 :root[data-skin="aurora"]{--bg:#0d1020; --panel:#151a2e; --sunk:#111528; --ink:#e7ebff; --muted:#9da3c4; --line:#2a3050; --leaf:#6fdcc9; --leaf-ink:#06201b; --leaf-soft:#173a3a; --accent:#d79bff; --accent-ink:#220a33; --sky:#6fdcc9; --tip-bg:#e7ebff; --tip-fg:#0d1020;}
 :root[data-skin="ember"]{--bg:#14110f; --panel:#1d1916; --sunk:#181411; --ink:#f2e9e1; --muted:#b3a596; --line:#362e28; --leaf:#ffb27a; --leaf-ink:#2a1404; --leaf-soft:#3a2618; --accent:#ff8f87; --accent-ink:#2b0907; --sky:#ffb27a; --tip-bg:#f2e9e1; --tip-fg:#14110f;}
-:root[data-skin="paper"]{--bg:#efe4cb; --panel:#f7eedb; --sunk:#f2e7cf; --ink:#3d3324; --muted:#7b6b52; --line:#dccdab; --leaf:#9c6230; --leaf-ink:#fbf4e4; --leaf-soft:#ead9b8; --accent:#b4583a; --accent-ink:#fbf4e4; --sky:#a8875a; --tip-bg:#3d3324; --tip-fg:#f7eedb; --gold:#8a5c0a; --gold-soft:#ecdcae; --warn-bg:#f0dfb4; --warn-fg:#6b4405;}
-:root[data-skin="daylight"]{--bg:#eef1f6; --panel:#ffffff; --sunk:#f5f7fb; --ink:#1a2230; --muted:#5a6577; --line:#d6dce6; --leaf:#4256c4; --leaf-ink:#ffffff; --leaf-soft:#e3e7fa; --accent:#8a45c2; --accent-ink:#ffffff; --sky:#6170c8; --tip-bg:#1a2230; --tip-fg:#ffffff;}
+:root[data-skin="paper"]{--bg:#efe4cb; --panel:#f7eedb; --sunk:#f2e7cf; --ink:#3d3324; --muted:#665640; --line:#dccdab; --leaf:#9c6230; --leaf-ink:#fbf4e4; --leaf-soft:#ead9b8; --accent:#b4583a; --accent-ink:#fbf4e4; --sky:#a8875a; --tip-bg:#3d3324; --tip-fg:#f7eedb; --gold:#8a5c0a; --gold-soft:#ecdcae; --warn-bg:#f0dfb4; --warn-fg:#6b4405;}
+:root[data-skin="daylight"]{--bg:#eef1f6; --panel:#ffffff; --sunk:#f5f7fb; --ink:#1a2230; --muted:#5a6577; --line:#d6dce6; --leaf:#4256c4; --leaf-ink:#ffffff; --leaf-soft:#e3e7fa; --accent:#8a45c2; --accent-ink:#ffffff; --sky:#6170c8; --tip-bg:#1a2230; --tip-fg:#ffffff; --gold:#875800;}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--font-body);font-size:15px;line-height:1.45}
@@ -348,6 +348,7 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.unk > span:fi
 .kpis .tile.hero b{font-size:1.45rem;color:var(--accent)}
 .kpis .tile.hero span{color:var(--muted)}
 .kpis .tile.goal b{color:var(--gold)}
+.kpis .tile.blocked span{color:var(--err-fg)}
 .main{grid-column:2;padding:18px 22px 110px;display:grid;gap:14px;align-content:start;min-width:0}
 .main>.panel{padding-top:0}
 .side{grid-column:3;border-left:1px solid var(--line);background:var(--panel);padding:18px 18px 110px;min-width:0}
@@ -362,10 +363,12 @@ ul.checks li.ok > span:first-child{color:var(--leaf)} ul.checks li.unk > span:fi
 .prog{height:8px;border-radius:99px;background:var(--sunk);border:1px solid var(--line);overflow:hidden;margin:0 0 10px}
 .prog i{display:block;height:100%;background:var(--leaf);transition:width .2s}
 .todo ul{list-style:none;margin:0;padding:0}
-.todo li{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;padding:10px 0;border-top:1px solid var(--line)}
+.todo li{padding:10px 0;border-top:1px solid var(--line)}
+.todo li label{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 10px;cursor:pointer}
 .todo li:first-child{border-top:0}
 .todo li input{margin-top:3px;width:18px;height:18px}
 .todo li b{display:block}
+.todo li .v{display:block}
 .todo li .v{color:var(--muted);font-size:.88rem}
 .todo li.done b{text-decoration:line-through;color:var(--muted)}
 .todo li .linkbtn{font-size:.82rem}
@@ -381,7 +384,7 @@ body.has-changes .dbar .dirty{display:inline}
 body.setup-open .updatebar{display:none}
 .side .bar{grid-template-columns:minmax(0,1fr) auto;gap:3px 10px}
 .side .bar .track{grid-column:1/-1;grid-row:2;height:10px}
-.mapmain svg,.ucard svg{cursor:zoom-in}
+.mapmain > svg,.ucard > svg{cursor:zoom-in}
 .zoom{position:fixed;inset:0;z-index:40;background:rgba(5,7,15,.92);display:flex;flex-direction:column}
 .zoom[hidden]{display:none}
 .zbar{display:flex;align-items:center;justify-content:flex-end;gap:8px;padding:10px 14px;background:#0b0e1a;border-bottom:1px solid #2a3050}
@@ -409,6 +412,11 @@ body:not(.setup-open) .scrim{display:none}
   .app{grid-template-columns:84px minmax(0,1fr)}
   .side{grid-column:2;border-left:0;border-top:1px solid var(--line);padding:18px 22px 110px}
   .main{padding-bottom:18px}
+  .app{grid-template-rows:auto auto auto}
+  #tab-over{display:grid}
+  body.view-over .main{display:none}
+  .hdr{flex-wrap:wrap}
+  .kpis{order:3;flex-basis:100%}
 }
 /* phones: the rail becomes a bottom bar and the checklist is its own view */
 @media (max-width:720px){
@@ -420,7 +428,9 @@ body:not(.setup-open) .scrim{display:none}
   .rail [role=tab],.railbtn{width:auto;min-width:54px;flex:0 0 auto;padding:6px 4px;font-size:.62rem}
   .railbtn{margin:0}
   #tab-over{display:grid}
-  #tab-data,#tab-orders{display:none}
+  #tab-data{display:none}
+  th.from,td.from{display:none}
+  #shop td[colspan="4"]{white-space:normal}
   .hdr{position:static;padding:10px 14px;gap:8px 12px;flex-wrap:wrap}
   #mbarBtn{display:none}
   .hdr .eventbtn{font-size:.78rem;padding:4px 10px}
@@ -524,7 +534,7 @@ body:not(.setup-open) .scrim{display:none}
           <label class="f"><span>Sunlamps</span><select id="lamp"></select></label>
           <label class="f"><span>Mines</span><select id="mines"></select></label>
           <label class="f"><span>Chimney Kilns <i class="tip" tabindex="0" data-tip="Turns Mineral Sand into the ore an RV upgrade asks for.">?</i></span><select id="kilns"></select></label>
-          <label class="f"><span>Woodwork Benches <i class="tip" tabindex="0" data-tip="Turns Wood Blocks into the lumber an RV upgrade asks for.">?</i></span><select id="benches"></select></label>
+          <label class="f"><span>Woodworking Benches <i class="tip" tabindex="0" data-tip="Turns Wood Blocks into the lumber an RV upgrade asks for.">?</i></span><select id="benches"></select></label>
           <label class="f"><span>Power Module <i class="tip" tabindex="0" data-tip="From RV 12. Lets machines, Mines and Wells run in E-mode on Crackle Generator power: no Aniimo needed. Module level n allows generator level n (600, 800, 1000, 1200, 1500 W).">?</i></span><select id="power"></select></label>
           <label class="f"><span>Crackle Generators <i class="tip" tabindex="0" data-tip="How many generators you have (1 at RV 12-14, 2 at RV 15-17, 3 from RV 18). Each needs one Lightning Aniimo.">?</i></span><select id="gens"></select></label>
         </div>
@@ -577,7 +587,7 @@ body:not(.setup-open) .scrim{display:none}
           <label class="f" id="haveWBWrap"><span>Loose Wood Blocks</span><input type="number" id="haveWB" min="0" value="0"></label>
           <label class="f" id="haveOreWrap"><span id="haveOreLbl">Ore you have</span><input type="number" id="haveOre" min="0" value="0"></label>
           <label class="f" id="haveSandWrap"><span>Loose Mineral Sand</span><input type="number" id="haveSand" min="0" value="0"></label>
-          <label class="f" id="haveHabWrap"><span>Habitability you have <i class="tip" tabindex="0" data-tip="Shown on your RV screen. Furniture adds to it (bought with Bud Tickets), and so does each Aniimo living at Home. RV 10 and up ask for a minimum.">?</i></span><input type="number" id="haveHab" min="0" step="100" value="0"></label>
+          <label class="f" id="haveHabWrap"><span>Habitability you have <i class="tip" tabindex="0" data-tip="Shown on your RV screen. Furniture adds to it (bought with Bud Tickets), and so does each Aniimo living at Home. RV 10 and up ask for a minimum.">?</i></span><input type="number" id="haveHab" min="0" step="100" value="" placeholder="Not entered"></label>
         </div>
         <div id="goalCustom" class="grid" hidden>
           <label class="f"><span>Home Coin needed</span><input type="number" id="needCoin" min="0" step="1000" value="1000000"></label>
@@ -632,7 +642,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 12 Oct, 10:15pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Oct, 7:30am</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -691,7 +701,7 @@ const PROC = [
   R('mill',5,3,81,'Refined Flour',1,1260,[['Premium Wheat',15]]),
   R('mill',5,3,81,'Coconut Oil',1,1580,[['Coconut',5]]),
   R('mill',6,3,81,'Cocoa Powder',1,2470,[['Cocoa',6]]),
-  R('mill',6,3,162,'Coconut Milk',1,3820,[['Coconut',5],['Natural Mineral Spring Water',6]]),
+  R('mill',6,3,162,'Coconut Milk',1,3820,[['Coconut',5],['Natural Mineral Spring',6]]),
   // Claw Game Cooker
   R('claw',1,1,108,'Bread',1,280,[['Wheatmeal',2],['Well Water',5]]),
   R('claw',1,1,108,'Premium Bread',1,330,[['Wheatmeal',2],['Well Water',5]],{k:2}),
@@ -760,7 +770,7 @@ const PROC = [
   R('table',1,1,54,'Wood Sculpture',1,90,[['Willow Wood',19]]),
   R('table',1,3,405,'Harvest Platter',1,5290,[['Roasted Waxing Moon Pepper',1],['Moondew Radish Slices',1]],{note:1,ev:1}),
   R('table',2,1,54,'Bamboo Ware',1,190,[['Bamboo',10]]),
-  R('table',2,1,108,'River-Washed Stones',1,300,[['Rock',18],['Well Water',5]],{},{doubt:'AniimoGuide notes the game files make 2 per batch, not 1.'}),
+  R('table',2,1,108,'River-Washed Stones',1,300,[['Rock',18],['Well Water',5]]),
   R('table',2,1,108,'Premium River-Washed Stones',1,360,[['Rock',18],['Well Water',5]],{c:1}),
   R('table',3,2,203,'Rose Freshener',1,1270,[['Rose Incense',1],['Bamboo',13]]),
   R('table',3,2,135,'Pottery',1,630,[['Clay',15],['Well Water',8]]),
@@ -791,10 +801,10 @@ const PROC = [
   R('perfume',4,3,162,'Herbal Ginseng Aroma',1,2360,[['Ginseng Powder',1],['Aromathyst',8]]),
   R('perfume',5,3,243,'Soap',1,5500,[['Coconut Oil',1],['Petals',6],['Deep Rock Spring Water',6]]),
   R('perfume',5,3,243,'Premium Soap',1,6320,[['Coconut Oil',1],['Petals',6],['Deep Rock Spring Water',6]],{c:5}),
-  R('perfume',6,3,162,'Mixed Perfume',1,4850,[['Dried Flowers',1],['Natural Mineral Spring Water',6]]),
+  R('perfume',6,3,162,'Mixed Perfume',1,4850,[['Dried Flowers',1],['Natural Mineral Spring',6]]),
   R('perfume',6,3,162,'Orange Flower Incense',1,3640,[['Orange Flower',8],['Aromathyst',8]]),
   R('perfume',6,3,162,'Lotion',1,7030,[['Orange Flower',8],['Coconut Oil',2]],{note:1}),
-  R('perfume',6,3,162,'Premium Mixed Perfume',1,5520,[['Dried Flowers',1],['Natural Mineral Spring Water',6]],{c:7}),
+  R('perfume',6,3,162,'Premium Mixed Perfume',1,5520,[['Dried Flowers',1],['Natural Mineral Spring',6]],{c:7}),
   // Bouncy Brew Keg
   R('keg',1,2,135,'Toasted Rice Green Tea',1,740,[['Milled Rice',2],['Well Water',8]]),
   R('keg',1,2,135,'Wheat Tea',1,330,[['Wheat',50],['Well Water',10]]),
@@ -806,12 +816,12 @@ const PROC = [
   R('keg',3,3,162,'Ginseng Water',1,2670,[['Dried Ginseng',1],['Deep Rock Spring Water',6]]),
   R('keg',3,3,243,'Grape Lemon Drink',1,2970,[['Grapes',9],['Lemon',16],['Deep Rock Spring Water',6]]),
   R('keg',3,3,162,'Walnut Milk',1,2270,[['Walnut',6],['Deep Rock Spring Water',6]]),
-  R('keg',4,3,162,'Cranberry Juice',1,4060,[['Cranberry',7],['Natural Mineral Spring Water',6]]),
+  R('keg',4,3,162,'Cranberry Juice',1,4060,[['Cranberry',7],['Natural Mineral Spring',6]]),
   R('keg',4,3,81,'Coconut Cooler',1,1650,[['Coconut',5]]),
   R('keg',5,3,162,'Coconut Cocoa',1,4930,[['Coconut',5],['Cocoa Powder',1]]),
-  R('keg',5,3,162,'Hot Cocoa',1,5330,[['Cocoa Powder',1],['Natural Mineral Spring Water',6]]),
-  R('keg',5,3,162,'Orange Flower Dew',1,4700,[['Orange Flower',8],['Natural Mineral Spring Water',6]]),
-  R('keg',5,3,243,'Agave Drink',1,6610,[['Agave Syrup',1],['Natural Mineral Spring Water',6]]),
+  R('keg',5,3,162,'Hot Cocoa',1,5330,[['Cocoa Powder',1],['Natural Mineral Spring',6]]),
+  R('keg',5,3,162,'Orange Flower Dew',1,4700,[['Orange Flower',8],['Natural Mineral Spring',6]]),
+  R('keg',5,3,243,'Agave Drink',1,6610,[['Agave Syrup',1],['Natural Mineral Spring',6]]),
   // Pickling Jar
   R('jar',1,2,135,'Salted Cherry Blossom',1,780,[['Cherry Blossom',7],['Sea Salt',13]]),
   R('jar',1,2,135,'Soy Sauce',1,650,[['Soybean',16],['Sea Salt',13]]),
@@ -841,12 +851,12 @@ const PROC = [
   R('kiln',3,3,41,'Refined Ore',1,0,[['Sintered Ore Brick',8]]),
   R('kiln',4,3,41,'Microcrystalline Ore Plate',1,0,[['Refined Ore',4]]),
   // Dance Pad Polisher and Aniipod Maker (Aniimo EXP items and Aniipods, not sold)
-  R('dance',1,1,1200,'Growth Bud',3,0,[['Potato',23]],{},{doubt:'AniimoGuide notes the game files list less work (900) for this.'}),
-  R('dance',2,2,3000,'Growth Flower',2,0,[['Soybean',16]],{},{doubt:'AniimoGuide notes the game files list less work (900) and Lightning Lv 1 for this.'}),
-  R('dance',3,3,5400,'Growth Fruit',1,0,[['Rose',8]],{},{doubt:'AniimoGuide notes the game files list less work (1,125) and Lightning Lv 2 for this.'}),
-  R('pod',1,1,1800,'Aniipod',1,0,[['Rock',12]],{},{doubt:'AniimoGuide notes the game files list less work (900) for this.'}),
-  R('pod',2,2,2250,'Aniipod Pro',1,0,[['Clay',10]],{},{doubt:'AniimoGuide notes the game files list less work (1,125) for this.'}),
-  R('pod',3,3,2700,'Aniipod Mega',1,0,[['Shell',6]],{},{doubt:'AniimoGuide notes the game files list less work (1,125) and Lightning Lv 2 for this.'}),
+  R('dance',1,1,1200,'Growth Bud',3,0,[['Potato',23]]),
+  R('dance',2,2,3000,'Growth Flower',2,0,[['Soybean',16]]),
+  R('dance',3,3,5400,'Growth Fruit',1,0,[['Rose',8]]),
+  R('pod',1,1,1800,'Aniipod',1,0,[['Rock',12]]),
+  R('pod',2,2,2250,'Aniipod Pro',1,0,[['Clay',10]]),
+  R('pod',3,3,2700,'Aniipod Mega',1,0,[['Shell',6]]),
   // Gathering buildings
   R('well',1,1,1800,'Well Water',10,12,[]),
   R('well',1,1,1800,'Well Water',15,12,[],{d:1}),
@@ -854,8 +864,8 @@ const PROC = [
   R('well',3,3,2700,'Plain Fresh Water',17,46,[],{d:4}),
   R('well',4,3,2700,'Deep Rock Spring Water',6,150,[]),
   R('well',4,3,2700,'Deep Rock Spring Water',9,150,[],{d:6}),
-  R('well',5,3,2700,'Natural Mineral Spring Water',6,250,[]),
-  R('well',5,3,2700,'Natural Mineral Spring Water',9,250,[],{d:7}),
+  R('well',5,3,2700,'Natural Mineral Spring',6,250,[]),
+  R('well',5,3,2700,'Natural Mineral Spring',9,250,[],{d:7}),
   R('mine',1,1,900,'Rock',6,7,[],{},{by:['Mineral Sand',3]}),
   R('mine',2,2,2250,'Clay',10,22,[],{},{by:['Mineral Sand',16]}),
   R('mine',3,2,2250,'Shell',6,76,[],{},{by:['Mineral Sand',32]}),
@@ -884,7 +894,7 @@ const FOOD_E = {"Premium Berry Chocolate Coconut Pudding":142560,"Berry Chocolat
 const EAT_PER_H = 600;
 // The planner's best Home Coin an hour at each RV level: everything that level allows, Lv 3 workers, no item list,
 // E-mode and food on, no event crops (worked out with a 20-second limit per level).
-const BEST_RV = {1:400,2:1133,3:3198,4:5724,5:11972,6:14672,7:25701,8:38905,9:46686,10:53889,11:77553,12:111618,13:130656,14:156420,15:185698,16:233200,17:308045,18:375236,19:420912,20:420894};
+const BEST_RV = {1:400,2:1133,3:3198,4:5724,5:11972,6:14672,7:25701,8:39303,9:47225,10:54856,11:78398,12:112105,13:132556,14:153429,15:185894,16:233200,17:307625,18:375236,19:420912,20:420930};
 // Habitability an RV upgrade asks for (from RV 10). Besides it, reaching RV N needs every plot, Mine and Well RV N-1 allows.
 const HAB_NEED = {10:13000, 11:13500, 12:14000, 13:14500, 14:15000, 15:15500, 16:16000, 17:17000, 18:18000, 19:19000, 20:20000};
 // Crackle Generators: output by level (Power Module level n allows generator Lv n), how many you can place, and the
@@ -952,12 +962,15 @@ function batchMinutes(r, ctx){
   return rate>0 ? r.w/rate : Infinity;
 }
 // Why a recipe can't be used yet ('' when it can)
+// The Harvest Moon festival and its seeds open at RV 10 (game seed shop; AniimoTools; AniimoGuide)
+const EVENT_RV = 10;
 function lockReason(r, ctx){
   const need = MACH[r.m].lv[r.l];
   if (need===undefined || ctx.rv < need) return `${MACH[r.m].name} Lv ${r.l} (RV ${need})`;
   if (r.u.k && ctx.kitchen < r.u.k) return `Kitchen Module Lv ${r.u.k}`;
   if (r.u.c && ctx.crafting < r.u.c) return `Crafting Module Lv ${r.u.c}`;
   if (r.u.d && ctx.detector < r.u.d) return `Resource Detector Lv ${r.u.d}`;
+  if (r.u.ev && ctx.rv<EVENT_RV) return `RV ${EVENT_RV} (Harvest Moon)`;
   if (r.u.ev && !ctx.events) return 'event recipes on';
   return '';
 }
@@ -1088,6 +1101,9 @@ function woodCap(rv){ return rv<2 ? 0 : Math.min(20, rv+1); }
 const FRONTIER = {"small":[{"farm":[[-5,-1],[-5,3],[-4,-5],[-4,-3],[-4,1],[-3,3],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-1,4],[0,-5],[0,-3],[0,2],[1,-1],[1,4],[2,-5],[2,-3],[2,2],[4,-5],[4,-3],[4,-1],[4,2],[4,4]],"wood":[]},{"farm":[[-5,0],[-4,-5],[-4,-3],[-4,2],[-4,4],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-4],[0,-2],[0,2],[0,4],[1,0],[2,-5],[2,-2],[2,2],[2,4],[4,-3],[4,-1],[4,1],[4,4]],"wood":[[4,-7]]},{"farm":[[-5,0],[-4,-3],[-4,2],[-4,4],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-4],[0,-2],[0,2],[0,4],[1,0],[2,-5],[2,-2],[2,2],[2,4],[4,-3],[4,-1],[4,1],[4,4]],"wood":[[-6,-7],[4,-7]]},{"farm":[[-5,0],[-4,-3],[-4,2],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-4],[0,-2],[0,2],[0,4],[1,0],[2,-5],[2,-2],[2,2],[2,4],[3,0],[4,-3],[4,2],[4,4]],"wood":[[-6,-7],[-6,4],[4,-7]]},{"farm":[[-5,2],[-4,-3],[-4,-1],[-3,2],[-2,-5],[-2,-3],[-2,-1],[-2,4],[-1,1],[0,-4],[0,-2],[0,4],[1,0],[1,2],[2,-4],[2,-2],[2,4],[3,0],[3,2],[4,-3]],"wood":[[-7,4],[-6,-7],[4,-7],[4,4]]},{"farm":[[-4,-3],[-4,-1],[-4,2],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-4],[0,-2],[0,2],[0,4],[1,0],[2,-5],[2,-2],[2,2],[2,4],[4,-3]],"wood":[[-7,4],[-6,-7],[4,-7],[4,0],[4,4]]},{"farm":[[-4,-3],[-4,-1],[-4,2],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-2],[0,2],[0,4],[1,0],[2,-2],[2,2],[2,4],[4,-3]],"wood":[[-7,4],[-6,-7],[0,-7],[4,-7],[4,0],[4,4]]},{"farm":[[-5,1],[-4,-3],[-4,-1],[-3,2],[-2,-5],[-2,-3],[-2,-1],[-1,1],[0,-2],[1,0],[2,-2],[2,2],[2,4],[4,-3]],"wood":[[-7,4],[-6,-7],[-2,4],[0,-7],[4,-7],[4,0],[4,4]]},{"farm":[[-4,-3],[-3,2],[-2,-5],[-2,-3],[-2,-1],[-1,1],[0,-2],[1,0],[2,-2],[2,2],[2,4],[4,-3]],"wood":[[-7,-1],[-6,-7],[-6,4],[-2,4],[0,-7],[4,-7],[4,0],[4,4]]}],"cool":[{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,1],[-5,3],[-5,5],[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-4],[-1,-2],[-1,2],[-1,4],[1,-4],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3],[5,5]],"wood":[]},{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,3],[-3,5],[-2,-1],[-2,1],[-1,-5],[-1,-3],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3],[5,5]],"wood":[[-7,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3],[5,5]],"wood":[[-7,-7],[-7,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3]],"wood":[[-7,-7],[-7,5],[5,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-3],[5,-1],[5,1],[5,3]],"wood":[[-7,-7],[-7,5],[5,-7],[5,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[5,-3],[5,-1],[5,1],[5,3]],"wood":[[-7,-7],[-7,5],[1,5],[5,-7],[5,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,5],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-5,-3],[-5,-1],[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,1],[-7,5],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-2],[1,3],[2,1],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[1,-7],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-2],[-1,3],[-1,5],[1,-2],[1,3],[2,1],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[-3,-7],[1,-7],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-3],[-3,-1],[-3,1],[-3,3],[-1,-2],[-1,3],[1,-2],[1,3],[2,1],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[-3,-7],[-3,5],[1,-7],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-3],[-3,-1],[-3,1],[-3,3],[-1,-2],[-1,3],[1,-2],[1,3],[2,1],[3,-3],[3,-1],[3,3]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[-3,-7],[-3,5],[1,-7],[1,5],[5,-7],[5,-3],[5,1],[5,5]]}]};
 // Coin an hour a climate unit must add to be worth its worker (see plan)
 const UNIT_COST = 100;
+// How wide the product shortlist is (one recipe per machine): extra recipes per machine kind beyond what you can place,
+// and the best few per kind by coin per machine-hour
+const SHORTLIST={extra:3, top:5};
 const UNIT = {
   small:{ F0:24, Wmax:8,  size:1, lo:-4,   hi:5   },
   cool: { F0:32, Wmax:12, size:2, lo:-3.5, hi:5.5 },
@@ -1206,10 +1222,10 @@ function plan(requests, fillers, o, lp){
     // recipes worth a machine: the relaxed solve's best on each machine kind (one more than you can place)...
     const val={}; for (const a of pre.auto||[]) for (const st of a.steps){ const k=st.r.m; (val[k]||(val[k]={}))[st.r.id]=((val[k]||{})[st.r.id]||0)+a.perHour*a.profit; }
     const rk=new Set();
-    for (const [k,m] of Object.entries(val)) Object.entries(m).filter(([rid])=>!own(k).has(rid)).sort((x,y)=>y[1]-x[1]).slice(0,slots(k)+1).forEach(([rid])=>rk.add(rid));
+    for (const [k,m] of Object.entries(val)) Object.entries(m).filter(([rid])=>!own(k).has(rid)).sort((x,y)=>y[1]-x[1]).slice(0,slots(k)+SHORTLIST.extra).forEach(([rid])=>rk.add(rid));
     // ...and the best few per machine kind by coin per machine-hour
     const byK={}; for (const a of o.auto){ const h=Object.values(a.mh).reduce((t,x)=>t+x,0); for (const k of Object.keys(a.mh)) (byK[k]||(byK[k]=[])).push({a, v:a.profit/Math.max(h,1e-9)}); }
-    const keep=new Set(); for (const L of Object.values(byK)) L.sort((x,y)=>y.v-x.v).slice(0,2).forEach(x=>keep.add(x.a.n));
+    const keep=new Set(); for (const L of Object.values(byK)) L.sort((x,y)=>y.v-x.v).slice(0,SHORTLIST.top).forEach(x=>keep.add(x.a.n));
     for (const a of o.auto) if (a.steps.every(st=>rk.has(st.r.id) || own(st.r.m).has(st.r.id))) keep.add(a.n);
     o = {...o, shortlisted:true, auto:o.auto.filter(a=>keep.has(a.n))};
   }
@@ -1283,7 +1299,9 @@ function plan(requests, fillers, o, lp){
   const itemOf = c => (typeof CROP_ITEM!=='undefined' && CROP_ITEM[c.id]) || c.item || c.name;
   // Crop items the planner's own product picks could use get a row too (their need starts at 0)
   const autoItems = [...new Set((o.auto||[]).flatMap(a=>Object.keys(a.crops)))].filter(it=>!demItems.includes(it));
-  const allItems = [...demItems, ...autoItems];
+  // Edible crops get a row too when Aniimo are fed, so the food bowl can be filled from what's grown
+  const foodItems = (o.feed && o.slots && lp.exact) ? [...new Set(crops.map(itemOf))].filter(it=>FOOD_E[it] && !demItems.includes(it) && !autoItems.includes(it)) : [];
+  const allItems = [...demItems, ...autoItems, ...foodItems];
   let consumed = 0;
   allItems.forEach((it,k)=>{ C['dem_'+k]={min:demand[it]||0}; V['u_'+k]={obj:-1, ['dem_'+k]:1};
     const src = CROPS.find(c=>itemOf(c)===it); if (src) consumed += (demand[it]||0)*src.price; });
@@ -1440,8 +1458,7 @@ function plan(requests, fillers, o, lp){
   // (edible crops, taken off what's sold) and the dishes it makes (taken off sales). Going hungry costs heavily.
   // A worker has to earn its keep: each Aniimo slot the plan fills costs what you set (taking one away gives it back)
   if (o.slotCost>0) for (const [nm,v] of Object.entries(V)){ const k=nm==='slk'?0:(v.slots||UW[nm]||0); if (!k) continue;
-    v.obj=(v.obj||0)-((mode==='coin'||o.coinFirst)?1:TIE)*o.slotCost*k;
-    if (mode==='target' && NC) v.tCoin=(v.tCoin||0)+o.slotCost*k; }
+    v.obj=(v.obj||0)-((mode==='coin'||o.coinFirst)?1:TIE)*o.slotCost*k; }
   model.uw=UW;   // for an RV goal: as if each slot cost that much coin
   const foodVars=[];
   if (o.feed && SL && lp.exact){
@@ -1585,7 +1602,8 @@ function planBest(requests, fillers, o, lp){
     return full.feasible && full.objective > base.objective + tol ? full : base;
   }
   const base = plan(requests, fillers, {...o, pairs:false}, lp);
-  if (!withPairs) return base;
+  // the fallback solver can't bound its relaxed solves, and they can run for minutes: no pair search there
+  if (!withPairs || !lp.exact) return base;
   const t0 = Date.now(), BUDGET = 6000;
   const rel = plan(requests, fillers, {...o, lpOnly:true}, lp);
   const pick = r => Object.keys(r.raw||{}).filter(k=>k.startsWith('y_') && r.raw[k]>1e-6).sort((a,b)=>r.raw[b]-r.raw[a]).slice(0,6);
@@ -1807,6 +1825,7 @@ function available(c){
   const lvl = c.kind==='wood' ? int('woodLvl') : Math.max(1,int('farmLvl'));
   if (c.lvl>lvl) return {ok:false, why:`${c.kind==='wood'?'Woodland':'Farmland'} Lv ${c.lvl}`};
   if (c.eco>int('eco')) return {ok:false, why:`Eco Module Lv ${c.eco}`};
+  if (c.event && int('rv')<EVENT_RV) return {ok:false, why:`RV ${EVENT_RV} (the Harvest Moon festival opens there)`};
   if (c.event && !$('events').checked) return {ok:false, why: Date.now()>EVENT.end ? 'the Harvest Moon event, which has ended' : 'Harvest Moon crops switched on'};
   return {ok:true};
 }
@@ -1823,7 +1842,7 @@ function maxAll(){
   for (const k of ['kitchen','crafting','detector']) $(k).value=moduleAt(k,rv);
   $('mines').value=placeAt('mine',rv); $('kilns').value=placeAt('kiln',rv); $('benches').value=placeAt('bench',rv);
   $('power').value=String(powerAt(rv)); $('gens').value=String(genCount(rv));
-  $('useHeat').checked=$('useCool').checked=$('useLamp').checked=$('extras').checked=$('pairs').checked=true;
+  $('useHeat').checked=$('useCool').checked=$('useLamp').checked=$('extras').checked=true;
   $('maxAll').style.boxShadow='';
 }
 
@@ -1849,7 +1868,7 @@ new MutationObserver(nameTips).observe(document.body,{childList:true,subtree:tru
 // ---------- Dirty state & Update button ----------
 let dirty=false;
 function markDirty(){ dirty=true; save(); $('updateBar').classList.add('dirty'); document.body.classList.add('has-changes'); $('updState').textContent='Changes not applied yet'; $('stale').hidden=false; $('stale').style.display='flex'; }
-function markClean(){ dirty=false; $('updateBar').classList.remove('dirty'); document.body.classList.remove('has-changes'); $('updState').textContent='Plan is up to date'; $('stale').hidden=true; $('stale').style.display='none'; }
+function markClean(){ dirty=false; $('updateBar').classList.remove('dirty'); document.body.classList.remove('has-changes'); $('updState').textContent='Plan is up to date'; $('stale').hidden=true; $('stale').style.display='none'; if (lastPlan){ const g=$('goalMode'); lastPlan.ctxText=`RV ${int('rv')} · ${g.options[g.selectedIndex]?g.options[g.selectedIndex].text:''}`; } updateMbar(); }
 
 function opts(){
   const fl=Math.max(1,int('farmLvl')), wl=int('woodLvl');
@@ -2108,6 +2127,7 @@ function rvChecks(next, best, chain, extras){
   const wells=((chain.machines.find(m=>m.key==='well')||{}).need||0)+extras.filter(e=>e.key==='well').length+(P.eExtras||[]).filter(e=>e.key==='well').reduce((t,e)=>t+e.count,0)+((best.autoMach||{}).well||0)+((P.eMachK||{}).well||0);
   const rows=[['Farmland plots', int('farmPlots'), farmCap(rv)], ['Woodland plots', int('woodPlots'), woodCap(rv)], ['Mines', int('mines'), placeAt('mine',rv)], ['Wells', wells, placeAt('well',rv), 'the plan places']];
   if (HAB_NEED[next]) rows.push(['Habitability', num('haveHab',0,1e9), HAB_NEED[next], 'you have']);
+  lastPlan.rvUnmet=rows.filter(r=>r[2]>0 && r[1]<r[2] && !(r[0]==='Habitability' && !(r[1]>0))).map(([lbl,have,need])=>`${fmt(need-have)} more ${lbl==='Habitability'?'Habitability':lbl.replace(/s$/,need-have===1?'':'s')}`);
   return `<ul class="checks">${rows.filter(r=>r[2]>0).map(([lbl,have,need,how])=>{ const ok=have>=need, unk=lbl==='Habitability'&&!(have>0);
     if (unk) return `<li class="unk" title="Enter the Habitability on your RV screen under Goal in the setup"><span>? ${lbl}</span><span>? / ${fmt(need)}</span></li>`;
     return `<li class="${ok?'ok':'no'}"><span>${ok?'✓':'✗'} ${lbl}</span><span>${fmt(have)} / ${fmt(need)}${how&&!ok?` <small>(${how})</small>`:''}</span></li>`; }).join('')}</ul>
@@ -2154,7 +2174,7 @@ function renderTodo(){
   const n=all.filter(k=>done[k]).length;
   $('todo').innerHTML = G.length ? `<div class="todo"><h3>Your checklist <small>${n} / ${all.length}</small></h3><div class="prog" role="progressbar" aria-label="Checklist" aria-valuemin="0" aria-valuemax="${all.length}" aria-valuenow="${n}"><i style="width:${all.length?100*n/all.length:0}%"></i></div>
     ${G.map(g=>`<div class="tg"><div class="tgh"><span>${esc(g.g)}</span><button type="button" class="linkbtn" data-goto="${g.tab}">Details</button></div><ul>${g.items.map(it=>{ const k=keyOf(g,it), on=!!done[k];
-      return `<li class="${on?'done':''}"><input type="checkbox" data-done="${esc(k)}"${on?' checked':''} aria-label="${esc(it.t)}"><div><b>${esc(it.t)}</b>${it.s?`<span class="v">${esc(it.s)}</span>`:''}</div></li>`; }).join('')}</ul></div>`).join('')}
+      return `<li class="${on?'done':''}"><label><input type="checkbox" data-done="${esc(k)}"${on?' checked':''}><span><b>${esc(it.t)}</b>${it.s?`<span class="v">${esc(it.s)}</span>`:''}</span></label></li>`; }).join('')}</ul></div>`).join('')}
     ${n?'<button type="button" class="linkbtn" id="todoClear">Untick everything</button>':''}</div>` : '';
   $('todo').querySelectorAll('[data-done]').forEach(cb=>cb.onchange=()=>{ if (cb.checked) done[cb.dataset.done]=1; else delete done[cb.dataset.done]; save(); renderTodo(); });
   if ($('todoClear')) $('todoClear').onclick=()=>{ state.done={}; save(); renderTodo(); };
@@ -2313,7 +2333,7 @@ function rosterHtml(roster, crewList, assign){
       <td><select data-ri="${i}" data-rf="p" aria-label="Personality of ${esc(e.n)}"><option value="">Not set</option>${PERSONALITIES.map(x=>`<option${e.p===x?' selected':''}>${x}</option>`).join('')}</select>${e.p?' '+persTag(e.p):''}${clash?' <span class="warnmark" title="This Aniimo always has '+fx+'">!</span>':''}</td>
       <td><input type="number" min="0" max="${e.c}" value="${e.away||0}" data-ri="${i}" data-rf="away" aria-label="${esc(e.n)} away"></td>
       <td><button type="button" class="icon xs" data-rdel="${i}" aria-label="Remove ${esc(e.n)}">✕</button></td></tr>`; }).join('');
-  return `<details class="card roster"${roster.length&&!ROSTER_OPEN.v?'':' open'}><summary><b>My Aniimo</b> <span class="note">${roster.length?roster.reduce((t,e)=>t+e.c,0)+' Aniimo, '+roster.length+' kinds':'add the ones you have to plan your crew from them'}</span></summary>
+  return `<details class="card roster"${roster.length&&!ROSTER_OPEN.v?'':' open'}><summary><b>My Aniimo</b> <span class="note">${roster.length?roster.reduce((t,e)=>t+e.c,0)+' Aniimo, '+roster.length+(roster.length>1?' kinds':' kind'):'add the ones you have to plan your crew from them'}</span></summary>
     <div class="radd"><input list="anList" id="rosterName" placeholder="Add an Aniimo…" aria-label="Aniimo name"><button type="button" id="rosterAdd">Add</button>
       <datalist id="anList">${names.map(n=>`<option value="${esc(n)}">`).join('')}</datalist></div>
     ${roster.length?`<div class="tablewrap"><table class="rost"><thead><tr><th>Aniimo</th><th>Copies</th><th>Personality</th><th>Away</th><th></th></tr></thead><tbody>${rows}</tbody></table></div>`:''}
@@ -2361,7 +2381,9 @@ const CLIM_ZONE = {warm:'warm', cool:'cool', light:'lamp'};
 
 // A cluster's local layout in tiles: its climate unit(s) with ranges, and its plots with what grows there.
 // A single unit sits at (0,0); an overlapping pair has the Heat Furnace at (0,0) and the Cooling Unit at (dx,0).
-function geomOf(u, style){ return withFaces(geomOf0(u, style)); }
+function geomOf(u, style){ const G=withFaces(geomOf0(u, style));
+  if (style==='packed' && !u.pair && G.cores.some(q=>!q.face)) return withFaces(geomOf0(u, 'clean'));
+  return G; }
 // The tile in front of a climate unit, where its worker stands
 const coreFront=(q,d=q.face,k=1)=>{ const s=q.s; return d==='up'?{x:q.x,y:q.y-k,w:s,h:1} : d==='down'?{x:q.x,y:q.y+s+k-1,w:s,h:1} : d==='left'?{x:q.x-k,y:q.y,w:1,h:s} : {x:q.x+s+k-1,y:q.y,w:1,h:s}; };
 // Face each unit toward the most open ground beside it (up to 3 tiles deep), so its worker has room to stand
@@ -2432,6 +2454,7 @@ function planHomeland(real, openPlots, style, land, edge, things=[]){
     solid.push(...best.all); best.rr.forEach((r,i)=>{ r.zk=best.R.ranges[i].zk; r.unit=best.R.ranges[i].unit; }); ranges.push(...best.rr);
     const {ox,oy,R}=best;
     placed.push({u, cores:R.cores.map(q=>({...q,x:ox+q.x,y:oy+q.y})), ranges:R.ranges.map((q,i)=>({...q,...best.rr[i]})), plots:R.plots.map(q=>({...q,x:ox+q.x,y:oy+q.y})), guests:(R.guests||[]).map(q=>({...q,x:ox+q.x,y:oy+q.y}))});
+    for (const q of placed[placed.length-1].cores) if (q.face) solid.push(coreFront(q));   // keep the worker's tile clear
   }
   // Open-ground plots: outside every range, Woodland first, nearest the middle
   const open=[]; let openLeft=0;
@@ -2646,11 +2669,12 @@ function planHomelandClean(real, openPlots, land, edge, things){
     if (!got){ unplaced++; continue; }
     const R=vars[got.vi].R;
     placed.push({u, cores:R.cores.map(q=>({...q,x:q.x+got.ox,y:q.y+got.oy})), ranges:got.rr, plots:R.plots.map(q=>({...q,x:q.x+got.ox,y:q.y+got.oy})), guests:(R.guests||[]).map(q=>({...q,x:q.x+got.ox,y:q.y+got.oy}))});
+    for (const q of placed[placed.length-1].cores) if (q.face) solid.push(coreFront(q));   // keep the worker's tile clear
   }
   // Open-ground plots: one field of their own beside the units if it fits, else one tidy block per crop (Woodland first)
   const open=[]; let openLeft=0, openBox=null;
   { const got=place(openBlocks(openPlots).map(V=>({parts:V.parts.map(q=>({...q}))})));
-    if (got){ for (const r of got.parts) open.push({x:r.x, y:r.y, s:r.s, p:r.p}); openBox=bboxOf(got.parts); } }
+    if (got){ for (const r of got.parts) open.push({x:r.x, y:r.y, s:r.s, p:r.p}); openBox=bboxOf(got.parts); solid.push(openBox); } }
   const groups=openBox ? [] : openPlots.slice().sort((a,b)=>(b.crop.kind==='wood')-(a.crop.kind==='wood') || b.plots-a.plots);
   const blockOf=(n,s,cols)=>{ const parts=[]; for (let i=0;i<n;i++) parts.push({x:(i%cols)*s, y:Math.floor(i/cols)*s, w:s, h:s}); return parts; };
   for (const p of groups){
@@ -2688,7 +2712,7 @@ function planHomelandClean(real, openPlots, land, edge, things){
       while (n>0 && !got){ const sub=left.slice(0,n), aisle=sub.length>3 && rowLen(sub)>16;
         if (aisle && rowLen(sub)>48){ n=Math.ceil(n/2); continue; }               // keep each row to about 24 tiles
         got=place(aisle ? aisleVariants(sub) : rowVariants(sub), ()=>true); if (!got) n=Math.floor(n/2); }
-      if (!got){ missed.push(...left); break; }
+      if (!got){ missed.push(left[0]); left=left.slice(1); continue; }   // that one doesn't fit: try the rest
       const used=new Set();
       for (const r of got.parts){ builds.push({...r.t, w:r.w, h:r.h, x:r.x, y:r.y, inClimate:null, face:r.face}); used.add(r.t); }
       left=left.filter(t=>!used.has(t));
@@ -2836,6 +2860,7 @@ function planHomelandSquare(real, openPlots, land, edge, things){
       for (const q of plots) plotsK.push({...sq(q), u});
       for (const r of rr) ranges.push({...r, u});
       for (const g of guests){ const pf=pickFace(sq(g)); if (pf){ g.face=pf.d; reserve(pf.f); } }
+      for (const q of cores) if (q.face) reserve(coreFront(q));    // the unit's worker stands here
       placed.push({u, cores, ranges:rr, plots, guests}); };
     const unitOK=(u,R,ox,oy)=>{
       const parts=[...R.cores,...R.plots,...(R.guests||[])].map(q=>({x:q.x+ox,y:q.y+oy,w:q.s,h:q.s})), rr=R.ranges.map(q=>({x:q.x+ox,y:q.y+oy,w:q.w,h:q.h}));
@@ -2886,7 +2911,7 @@ function planHomelandSquare(real, openPlots, land, edge, things){
     for (const t of plainB){ const g='b:'+t.key, r=putFirst(t.w,t.h,()=>true,g); if (!r) return null;
       fill(r); (kin[g]||(kin[g]=[])).push(r); const pf=pickFace(r)||r.pf; reserve(pf.f); builds.push({...t, x:r.x, y:r.y, w:r.w, h:r.h, inClimate:null, face:pf.d, fr:pf.f, body:r}); }
     for (const [list,s] of [[woods,4],[farms,2]]) for (const p of list){ const g='p:'+p.crop.id;
-      const r=putFirst(s,s, q=>!(sens(p) && ranges.some(R=>hit(q,R))), g); if (!r)return null;
+      const r=putFirst(s,s, q=>!((sens(p) || !$('fillUnits').checked) && ranges.some(R=>hit(q,R))), g); if (!r) return null;   // open-ground crops stay out of every range unless you fill units
       fill(r); (kin[g]||(kin[g]=[])).push(r); open.push({x:r.x, y:r.y, s, p}); if (sens(p)) plotsK.push(r); }
     // Pull machines outward: rows can leave a small machine stranded toward the middle when nothing near the edge
     // lined up with it. Deepest first, each moves to the free spot nearest the edge that sits against something
@@ -2937,7 +2962,7 @@ function renderLayout(){
         ${clusterSvg(u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
       continue; }
     cnt[u.zone.unit]++; lastOf[u.zone.unit]=cards.length;
-    cards.push(`<div class="ucard"><div class="top"><b><span class="dot" style="background:var(--unit-${u.zone.unit})"></span>${UNITNAME[u.zone.unit]} ${cnt[u.zone.unit]}</b><span><span class="pill">${SETTING[u.zone.key]}</span>${jobChip(WORKER[u.zone.key].replace(' Lv 2',''), WORKER[u.zone.key].includes('Lv 2')?' Lv 2':'')}</span></div>${fieldSvg(u.zone,u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
+    cards.push(`<div class="ucard"><div class="top"><b><span class="dot" style="background:var(--unit-${u.zone.unit})"></span>${UNITNAME[u.zone.unit]} ${cnt[u.zone.unit]}</b><span><span class="pill">${SETTING[u.zone.key]}</span>${jobChip(WORKER[u.zone.key].replace(' Lv 2',''), WORKER[u.zone.key].includes('Lv 2')?' Lv 2':'')}</span></div>${fieldSvg(u.zone,u,colorOf,style)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}${u.guest?`<span>Hosts the ${MACH[u.guest.key].name}${Object.keys(t).length?'':', which works faster inside this range'}</span>`:''}</div></div>`);
   }
   const open=lastPlan.openPlots||[];
   if (open.length){
@@ -2988,6 +3013,7 @@ function fillWorth(w){
   document.querySelectorAll('[data-worth]').forEach(el=>{ const k=el.dataset.worth, x=w[k]; if (!x){ el.remove(); return; }
     const parts=[(x.coin>=0?'−':'+')+fmt(Math.abs(x.coin))+' coin/h'];
     if (x.eta!==null && lastPlan.gs.rv) parts.push(Math.abs(x.eta)<1/60 ? 'same time to RV '+lastPlan.gs.rv.next : (x.eta>0?'+':'−')+etaText(Math.abs(x.eta))+' to RV '+lastPlan.gs.rv.next);
+    if (x.coin<0 && !(x.eta>1/60)){ el.innerHTML=`<b>Without ${x.n>1?'this '+NAME[k]:'it'}:</b> about the same in a quick re-plan (${parts.join(', ')}). Raise "Each Aniimo must earn at least" under Goal to drop units like this.`; el.title='The plan worked out again with one fewer '+NAME[k]+'. A small gain here is within the quick check\'s rounding, or the unit holds crops you picked.'; return; }
     el.innerHTML=`<b>Without ${x.n>1?'this '+NAME[k]:'it'}:</b> ${parts.join(', ')}`+(x.n>1&&x.coin>=0?` <span title="Removing any one ${NAME[k]} gives this; the plan reshuffles the rest.">(any one of your ${x.n})</span>`:'');
     el.title='The plan worked out again with one fewer '+NAME[k]+', its Aniimo free for other work.'; });
 }
@@ -3024,7 +3050,8 @@ function renderHomeMap(seg, style){
   const picker=`<div class="landpick" role="group" aria-label="Land plots you own">${land.map((v,i)=>`<button type="button" data-plot="${i}" aria-pressed="${v}" aria-label="Plot ${PLOT_NO[i]}">${PLOT_NO[i]}</button>`).join('')}</div>`;
   const warn=[]; if (H.missed.length) warn.push(`No room for: ${[...new Set(H.missed.map(t=>t.name))].join(', ')}. Tick more land.`);
   for (const k of new Set(H.builds.filter(b=>b.inClimate===false).map(b=>b.name+'|'+b.clim))){ const [n,cl]=k.split('|');
-    warn.push(`${n} sits outside a ${cl==='cool'?'Cooling Unit (Cool)':'Heat Furnace (Warm)'} range, so it works at 80% speed.`); }
+    const zk=cl==='cool'?'cool':'warm', have=(lastPlan.best.counts||{})[zk]>0;
+    warn.push(`${n} works at 80% speed outside a ${cl==='cool'?'Cooling Unit on Cool':'Heat Furnace on Warm'} range${have?', and there wasn\'t room for it inside one':', and your plan has none'}.`); }
   if (H.squareFallback) warn.push('Everything won\'t fit in one block on the land you ticked, so this shows Clean grid. Tick more land for Square.');
   if (H.unplaced) warn.push(`${H.unplaced} climate unit${H.unplaced>1?'s':''} didn't fit on the land you ticked.`); if (H.openLeft) warn.push(`${H.openLeft} open-ground plot${H.openLeft>1?'s':''} didn't fit.`);
   const legend={}; for (const u of H.placed) for (const p of u.plots) legend[p.p.crop.id]=p.p; for (const p of H.open) legend[p.p.crop.id]=p.p;
@@ -3117,7 +3144,10 @@ function unitPoints(geo, w, f, style, host){
 const ring = (p, s, c) => Math.max(Math.abs(p[0]+s/2-c), Math.abs(p[1]+s/2-c));
 const byNear = (pts, s, c) => pts.slice().sort((a,b)=>ring(a,s,c)-ring(b,s,c) || a[1]-b[1] || a[0]-b[0]);
 function fieldSvg(zone, un, colorOf, style){
-  const g=UNIT[zone.geo], T=12, P=6, c=g.size/2, L=unitPoints(zone.geo, un.w, un.farm.length, style, un.host);
+  const g=UNIT[zone.geo], T=12, P=6, c=g.size/2;
+  const faceOf=L=>withFaces({cores:[{x:0,y:0,s:g.size}], plots:[...L.farm.map(([x,y])=>({x,y,s:2})), ...L.wood.map(([x,y])=>({x,y,s:4}))], guests:L.guest?[{x:L.guest[0],y:L.guest[1],s:5}]:[]}).cores[0].face;
+  let L=unitPoints(zone.geo, un.w, un.farm.length, style, un.host);
+  if (style==='packed' && !faceOf(L)) L=unitPoints(zone.geo, un.w, un.farm.length, 'clean', un.host);   // walled in: leave its worker a side
   const farmPts=L.farm, woodPts=L.wood;
   let minX=Math.min(g.lo,0), maxX=Math.max(g.hi,g.size);
   for (const [x,y] of farmPts){ minX=Math.min(minX,x,y); maxX=Math.max(maxX,x+2,y+2); }
@@ -3323,7 +3353,8 @@ function prepare(){
     const minPool=Object.values(jobs).reduce((t,P)=>t+Math.max(P.field||P.base>0?1:0, Math.ceil(P.base+(P.field?FIELD_SHARE:0)-1e-9)),0);
     const room=cap-fixed, unitsMines=o.heat+o.cool+o.lamp+o.mines;
     // Climate units and Mines always get their worker (as before); the rest share what's left
-    o.slots = room>=unitsMines+minPool ? {room, units:true} : {room:Math.max(0,room-unitsMines), units:false};
+    // climate units and Mines count against your slots too, so a small Home drops the ones that earn least
+    o.slots = {room:Math.max(0,room), units:true};
     o.fixedAniimo = fixed + (o.slots.units ? 0 : unitsMines);
   } else o.slots=null;
   return {o, warnings, reqs, fillers, reqFarm, reqWood, ctx, chain, chainMines, gs};
@@ -3354,6 +3385,7 @@ function run(){
   const usedF=best.placed.filter(p=>p.crop.kind==='farm').reduce((s,p)=>s+p.plots,0);
   const usedW=best.placed.filter(p=>p.crop.kind==='wood').reduce((s,p)=>s+p.plots,0);
 
+  if (o.feed && best.foodShort>1) warnings.push(`Nothing the plan makes covers ${fmt(best.foodShort)} of the ${fmt(best.foodNeed||best.foodShort)} food energy your Aniimo eat an hour. Stock the food bowl yourself or they work at 20% speed.`);
   // ----- Goal timing -----
   let goalHtml='';
   if (gs.need){
@@ -3401,16 +3433,19 @@ function run(){
   // ----- Summary tiles -----
   const itemsWorth = o.itemCoin + (best.auto||[]).reduce((t,a)=>t+a.perHour*a.r.p,0);
   let sum='';
-  if (distErr) sum+=`<p class="err">Some plots couldn't be drawn in the Layout tab. Your totals still count them.</p>`;
+  if (distErr) sum+=`<p class="err">Some plots couldn't be drawn on the Map. Your totals still count them.</p>`;
   for (const w of warnings) sum+=`<p class="warn">${esc(w)}</p>`;
   const wg=$('goalMode').value==='wood';
   $('kpis').innerHTML=`<div class="tiles">
     <div class="tile hero"><b>${fmt(wg?best.woodRate:best.coinRate)}</b><span>${wg?'wood':'coin'} / hour</span></div>
-    ${gs.need?`<div class="tile goal"><b>${etaText(lastPlan.eta)}</b><span>${gs.rv?'to RV '+gs.rv.next:'to target'}</span></div>`:''}
+    ${gs.need?(()=>{ const un=gs.rv?(lastPlan.rvUnmet||[]):[];
+      if (un.length) return `<div class="tile goal blocked" title="The RV ${gs.rv.next} upgrade also needs: ${esc(un.join(', '))}. The time shown is for the materials only."><b>${etaText(lastPlan.eta)}</b><span>to RV ${gs.rv.next} · also needs ${esc(un[0])}${un.length>1?' +'+(un.length-1):''}</span></div>`;
+      if (!(lastPlan.eta>0)) return `<div class="tile goal"><b>Ready</b><span>${gs.rv?'upgrade to RV '+gs.rv.next+' now':'target reached'}</span></div>`;
+      return `<div class="tile goal"><b>${etaText(lastPlan.eta)}</b><span>${gs.rv?'to RV '+gs.rv.next:'to target'}</span></div>`; })():''}
     <div class="tile"><b>${fmt(wg?best.coinRate:best.woodRate)}</b><span>${wg?'coin':'wood'} / hour</span></div>
     ${best.sandRate?`<div class="tile"><b>${fmt(best.sandRate)}</b><span>sand / hour</span></div>`:''}
     <div class="tile"><b>${fmt(best.coinRate*24)}</b><span>coin / day</span></div>
-    ${itemsWorth>0?`<div class="tile"><b>${fmt(itemsWorth)}</b><span>products sold / hour</span></div>`:''}
+    ${itemsWorth>0?`<div class="tile"><b>${fmt(itemsWorth)}</b><span>coin from products / hour</span></div>`:''}
   </div>`;
   sum+=`${statusHtml(best, gs)}${goalHtml}`;
   $('summary').innerHTML=sum;
@@ -3565,7 +3600,9 @@ function run(){
   const crewList=Object.values(byJob), crewMin=crewList.reduce((s,r)=>s+r.n,0);
   Object.assign(lastPlan,{crewList, crewMin, cap, openCards:new Set()}); renderCrew();
   // tab counts
-  setCount('tab-mach', cards.filter(c=>!c.forRv).reduce((t,c)=>t+c.need,0)); setCount('tab-crew', crewMin); setCount('tab-layout', real.length);
+  const nM=cards.filter(c=>!c.power).reduce((t,c)=>t+c.need,0);
+  setCount('tab-mach', nM); setCount('tab-crew', crewMin); setCount('tab-layout', real.length);
+  $('tab-mach').title=`${nM} machines and gathering buildings`; $('tab-crew').title=`${crewMin} Aniimo slots used`; $('tab-layout').title=`${real.length} climate unit${real.length===1?'':'s'} to place`;
   renderShop(); renderData(); renderTodo(); markClean(); applyMode();
 }
 // Every crop at its best climate, one plot each: sortable reference table
@@ -3606,7 +3643,7 @@ function renderOrders(){
     const row=document.createElement('div'); row.className='row order';
     row.innerHTML=`<input list="orderItems" id="ord-n-${i}" aria-label="Item" placeholder="Item" value="${esc(od.n||'')}"><input type="number" id="ord-q-${i}" min="1" step="1" aria-label="How many" placeholder="How many" value="${od.q||''}"><input type="number" id="ord-r-${i}" min="0" step="100" aria-label="Reward (Home Coin)" placeholder="Reward" value="${od.r||''}"><button type="button" class="icon" aria-label="Remove order">✕</button>`;
     const [n,q,r,del]=row.children;
-    n.onchange=()=>{ od.n=cleanName(n.value,60); save(); renderOrderOut(); };
+    n.onchange=()=>{ const v=cleanName(n.value,60), hit=ORDER_ITEMS.find(x=>x.toLowerCase()===v.toLowerCase()); od.n=hit||v; if (hit) n.value=hit; save(); renderOrderOut(); };   // any capitalisation
     q.oninput=()=>{ od.q=Math.max(0,parseFloat(q.value)||0); save(); renderOrderOut(); };
     r.oninput=()=>{ od.r=Math.max(0,parseFloat(r.value)||0); save(); renderOrderOut(); };
     del.onclick=()=>{ list.splice(i,1); save(); renderOrders(); };
@@ -3728,9 +3765,12 @@ function sellHtml(hrs){
   sell.sort((a,b)=>b.coin-a.coin);
   const tot=sell.reduce((t,r)=>t+r.coin,0);
   let h=`<div class="head" style="margin-top:18px"><h3>What you sell</h3><i class="tip" tabindex="0" data-tip="Sold at the Co-op Store. Crops your items use are taken out first. Coin here is before seed costs.">?</i></div>
-    <div class="tablewrap"><table><thead><tr><th>Item</th><th>From</th><th class="n">Per hour</th><th class="n">In ${hrs} h</th><th class="n">Coin / h</th></tr></thead><tbody>`;
-  for (const r of sell) h+=`<tr><td>${r.name}</td><td>${r.kind}</td><td class="n">${fmtN(r.n)}</td><td class="n">${fmt(r.n*hrs)}</td><td class="n">${fmt(r.coin)}</td></tr>`;
-  h+=`<tr class="grp"><td colspan="4">Total</td><td class="n">${fmt(tot)}</td></tr></tbody></table></div>`;
+    <div class="tablewrap"><table><thead><tr><th>Item</th><th class="from">From</th><th class="n">Per hour</th><th class="n">In ${hrs} h</th><th class="n">Coin / h</th></tr></thead><tbody>`;
+  for (const r of sell) h+=`<tr><td>${r.name}</td><td class="from">${r.kind}</td><td class="n">${fmtN(r.n)}</td><td class="n">${fmt(r.n*hrs)}</td><td class="n">${fmt(r.coin)}</td></tr>`;
+  const seeds=best.placed.reduce((t,p)=>t+p.plots*p.pv.rate*(p.crop.event?0:p.crop.seed),0);
+  h+=`<tr class="grp"><td colspan="4">Total sales</td><td class="n">${fmt(tot)}</td></tr>`;
+  if (seeds>0.5) h+=`<tr><td colspan="4">Seeds bought</td><td class="n">−${fmt(seeds)}</td></tr><tr class="grp"><td colspan="4">Coin an hour (as in the header)</td><td class="n">${fmt(tot-seeds)}</td></tr>`;
+  h+=`</tbody></table></div>`;
   if (keep.length) h+=`<p class="note">Kept, not sold: ${keep.map(k=>`${fmtN(k.n)} ${k.name} an hour`).join(', ')}.</p>`;
   return h;
 }
@@ -3747,8 +3787,8 @@ function renderData(){
 function refreshInputs(){ renderOrders(); renderRequests(); renderProducts(); renderFillChips(); renderGoalInputs(); }
 
 // ---------- Tabs ----------
-const TABS=['over','plant','layout','mach','crew','shop','orders','data'];
-const isPhone=()=>matchMedia('(max-width:720px)').matches;
+const TABS=['layout','over','plant','mach','crew','shop','orders','data'];
+const isPhone=()=>matchMedia('(max-width:1180px)').matches;   // narrow enough that the checklist isn't beside the map
 // the checklist column sticks just under the header, whatever height the header wraps to
 const setHdrH=()=>document.documentElement.style.setProperty('--hdr-h', document.querySelector('.hdr').offsetHeight+'px');
 new ResizeObserver(setHdrH).observe(document.querySelector('.hdr'));
@@ -3765,7 +3805,7 @@ document.addEventListener('click',e=>{ const b=e.target.closest('[data-goto]'); 
   if (t==='data'){ window.scrollTo({top:0}); $('aboutHead').focus({preventScroll:true}); }
   else { const tb=$('tab-'+t); tb.scrollIntoView({block:'nearest'}); tb.focus({preventScroll:true}); } });
 $('aboutBtn').onclick=()=>{ setSetup(false,false); selectTab('data'); window.scrollTo({top:0}); $('aboutHead').focus({preventScroll:true}); };
-matchMedia('(max-width:720px)').addEventListener('change',()=>{ if (state.tab==='over' && !isPhone()) selectTab('layout'); });
+matchMedia('(max-width:1180px)').addEventListener('change',()=>{ if (state.tab==='over' && !isPhone()) selectTab('layout'); });
 
 // ---------- Share codes ----------
 // Setup codes: only what differs from a fresh page, squeezed (deflate) into a short code starting "2.".
@@ -3809,7 +3849,7 @@ $('loadFile').onchange=e=>{ const f=e.target.files&&e.target.files[0]; if (!f) r
   if (f.size>2e6){ $('copyMsg').textContent='That file is too big to be a setup.'; return; }
   f.text().then(t=>{ try{ loadSetup(JSON.parse(t)); $('copyMsg').textContent='Loaded '+f.name.replace(/[<>&"']/g,'')+'.'; } catch(err){ $('copyMsg').textContent="That file isn't a setup from this planner."; } })
    .finally(()=>{ e.target.value=''; }); };
-$('resetAll').onclick=()=>{ state=JSON.parse(JSON.stringify(DEFAULT_STATE)); writeForm(PRISTINE); $('rv').value='12'; maxAll(); for (const [k,v] of Object.entries(DEFAULTS)) if(k!=='rv') $(k).value=v; refreshInputs(); run(); selectTab('over'); $('loadMsg').textContent='Back to the example.'; };
+$('resetAll').onclick=()=>{ if (!confirm('Start over with a fresh setup? Your Aniimo list and orders stay.')) return; const mine={roster:state.roster, orders:state.orders, event:state.event}; state={...JSON.parse(JSON.stringify(DEFAULT_STATE)), ...mine}; writeForm(PRISTINE); $('rv').value='12'; maxAll(); for (const [k,v] of Object.entries(DEFAULTS)) if(k!=='rv') $(k).value=v; refreshInputs(); run(); selectTab('over'); $('loadMsg').textContent='Back to the example.'; };
 
 // ---------- Start ----------
 fillSelect('rv', range(1,20)); $('rv').value='12';
@@ -3843,11 +3883,15 @@ function applyMode(){ const m=state.mode==='custom'?'custom':'quick'; document.b
   const items=(state.products||[]).length;
   $('modeNote').textContent = m==='quick' ? `Plans as if everything RV ${int('rv')} allows is built and upgraded.` : (CLAMP_MSG || 'Set each facility, module and item to match your Homeland.');
   updateMbar(); }
-function updateMbar(){ const g=$('goalMode'); $('mbarText').textContent=`RV ${int('rv')} · ${g.options[g.selectedIndex]?g.options[g.selectedIndex].text:''}`; }
+// The header chip names the RV and goal of the plan on screen; edits show once the plan is updated
+function updateMbar(){ $('rvDown').disabled=int('rv')<=1; $('rvUp').disabled=int('rv')>=20;
+  const g=$('goalMode'), now=`RV ${int('rv')} · ${g.options[g.selectedIndex]?g.options[g.selectedIndex].text:''}`;
+  $('mbarText').textContent = (lastPlan && lastPlan.ctxText) ? lastPlan.ctxText : now; }
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ if (state.mode===b.dataset.mode) return; state.mode=b.dataset.mode;
   if (state.mode==='quick'){ quickDefaults(); maxAll(); state.land=null; refreshInputs(); markDirty(); } applyMode(); save(); });
 // The setup lives in a drawer: open it from the rail, the header button or the RV chip; Esc, ✕ or the shade close it
 function setSetup(open, focus=true){ document.body.classList.toggle('setup-open',open); $('scrim').hidden=!open;
+  document.querySelector('.app').inert=open;   // keyboard and screen readers stay in the drawer while it's open
   for (const id of ['mbarBtn','railSetup','mbarText']) $(id).setAttribute('aria-expanded',String(open));
   $('mbarBtn').textContent=open?'Close setup':'Edit setup';
   if (open && focus) setTimeout(()=>$('setupClose').focus({preventScroll:true}),0);
@@ -3855,8 +3899,9 @@ function setSetup(open, focus=true){ document.body.classList.toggle('setup-open'
 const toggleSetup=()=>setSetup(!document.body.classList.contains('setup-open'));
 $('mbarBtn').onclick=toggleSetup; $('railSetup').onclick=toggleSetup; $('mbarText').onclick=()=>setSetup(true);
 $('setupClose').onclick=()=>setSetup(false); $('scrim').onclick=()=>setSetup(false);
-document.addEventListener('keydown',e=>{ if (e.key==='Escape' && document.body.classList.contains('setup-open') && !document.querySelector('dialog[open]')) setSetup(false); });
+document.addEventListener('keydown',e=>{ if (e.key==='Escape' && document.body.classList.contains('setup-open') && !document.querySelector('dialog[open]') && $('tipBox').hidden && $('zoom').hidden) setSetup(false); }, true);   // first Esc closes an open tooltip
 const stepRv=d=>{ const el=$('rv'), v=Math.max(1,Math.min(20,int('rv')+d)); if (v===int('rv')) return; el.value=String(v); el.dispatchEvent(new Event('change',{bubbles:true})); };
+$('rv').addEventListener('change',()=>{ $('rvDown').disabled=int('rv')<=1; $('rvUp').disabled=int('rv')>=20; });
 $('rvDown').onclick=()=>stepRv(-1); $('rvUp').onclick=()=>stepRv(1);
 $('addOrder').onclick=()=>{ (state.orders||(state.orders=[])).push({n:'',q:1,r:0}); save(); renderOrders(); const i=state.orders.length-1; setTimeout(()=>$('ord-n-'+i)&&$('ord-n-'+i).focus(),0); };
 $('maxAll').onclick=()=>{ maxAll(); state.land=null; refreshInputs(); markDirty(); };
@@ -3887,8 +3932,8 @@ $('addAll').onclick=()=>{ const o=opts(); for (const id of MUTATES){ const c=cro
   const center=()=>{ const r=st.getBoundingClientRect(); return [r.width/2, r.height/2]; };
   window.openZoom=svg=>{ const c=svg.cloneNode(true), vb=(svg.getAttribute('viewBox')||'0 0 400 400').split(/\s+/).map(Number);
     Z.w=1000; Z.h=1000*vb[3]/vb[2]; c.setAttribute('width',Z.w); c.setAttribute('height',Z.h); c.style.maxHeight='none'; c.style.width=Z.w+'px'; c.style.height=Z.h+'px';
-    inn.replaceChildren(c); last=document.activeElement; $('zoom').hidden=false; document.body.style.overflow='hidden'; fit(); $('zClose').focus(); };
-  const close=()=>{ $('zoom').hidden=true; document.body.style.overflow=''; inn.replaceChildren(); if (last&&last.focus) last.focus(); };
+    inn.replaceChildren(c); last=document.activeElement; $('zoom').hidden=false; document.querySelector('.app').inert=true; $('setup').inert=true; document.body.style.overflow='hidden'; fit(); $('zClose').focus(); };
+  const close=()=>{ $('zoom').hidden=true; document.querySelector('.app').inert=document.body.classList.contains('setup-open'); $('setup').inert=false; document.body.style.overflow=''; inn.replaceChildren(); if (last&&last.focus) last.focus(); };
   $('zClose').onclick=close; $('zFit').onclick=fit; $('zIn').onclick=()=>zoomAt(1.4,...center()); $('zOut').onclick=()=>zoomAt(1/1.4,...center());
   document.addEventListener('keydown',e=>{ if ($('zoom').hidden) return; if (e.key==='Escape'){ e.preventDefault(); close(); } else if (e.key==='+'||e.key==='=') zoomAt(1.25,...center()); else if (e.key==='-') zoomAt(0.8,...center()); });
   st.addEventListener('wheel',e=>{ e.preventDefault(); const r=st.getBoundingClientRect(); zoomAt(Math.exp(-e.deltaY*0.0015), e.clientX-r.left, e.clientY-r.top); },{passive:false});
@@ -3903,10 +3948,10 @@ $('addAll').onclick=()=>{ const o=opts(); for (const id of MUTATES){ const c=cro
   st.addEventListener('dblclick',e=>{ const r=st.getBoundingClientRect(); zoomAt(2,e.clientX-r.left,e.clientY-r.top); });
   // tap the shade around the picture (without dragging) to close
   st.addEventListener('click',e=>{ if (moved<6 && !e.target.closest('svg')) close(); });
-  const zoomable=e=>e.target.closest('.mapmain svg, .ucard svg');
+  const zoomable=e=>e.target.closest('.mapmain > svg, .ucard > svg');
   document.addEventListener('click',e=>{ const svg=zoomable(e); if (svg && !e.target.closest('.zoom')) openZoom(svg); });
-  document.addEventListener('keydown',e=>{ if ((e.key==='Enter'||e.key===' ') && e.target.matches && e.target.matches('.mapmain svg, .ucard svg')){ e.preventDefault(); openZoom(e.target); } });
-  new MutationObserver(()=>document.querySelectorAll('.mapmain svg:not([tabindex]), .ucard svg:not([tabindex])').forEach(v=>{ v.setAttribute('tabindex','0'); v.setAttribute('aria-description','Press Enter to zoom'); }))
+  document.addEventListener('keydown',e=>{ if ((e.key==='Enter'||e.key===' ') && e.target.matches && e.target.matches('.mapmain > svg, .ucard > svg')){ e.preventDefault(); openZoom(e.target); } });
+  new MutationObserver(()=>document.querySelectorAll('.mapmain > svg:not([tabindex]), .ucard > svg:not([tabindex])').forEach(v=>{ v.setAttribute('tabindex','0'); v.setAttribute('aria-description','Press Enter to zoom'); }))
     .observe($('pane-layout'),{childList:true,subtree:true});
 }
 refreshInputs();
