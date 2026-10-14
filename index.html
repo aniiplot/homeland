@@ -399,6 +399,11 @@ body.setup-open .updatebar{display:none}
 .mapside .ab{font-family:var(--font-mono);font-size:.72rem;padding:0 5px;border:1px solid var(--line);border-radius:4px;color:var(--muted);margin-left:4px}
 .wh{display:none;font-size:.78rem;color:var(--muted);margin-top:2px}
 .pill.vt{border-color:var(--leaf);color:var(--leaf);font-weight:700;margin-left:4px}
+.unlock{margin-top:10px}
+.unlock summary{cursor:pointer;font-size:.86rem;font-weight:700}
+.unlock small,.ahead small{display:block;color:var(--muted);font-family:var(--font-body)}
+.ahead{margin-top:12px;border-top:1px solid var(--line);padding-top:10px}
+.ahead h4{margin:0 0 4px}
 /* setup drawer */
 .drawer{position:fixed;top:0;bottom:0;left:84px;width:min(460px,calc(100vw - 84px));z-index:20;background:var(--bg);border-right:1px solid var(--line);box-shadow:20px 0 40px rgba(0,0,0,.35);overflow:auto;padding:0 16px;transform:translateX(calc(-100% - 90px));visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
 body.setup-open .drawer{transform:none;visibility:visible;transition:transform .22s ease}
@@ -585,6 +590,7 @@ body:not(.setup-open) .scrim{display:none}
         </select></label>
         <div id="goalRanked" hidden><ol class="rank" id="rankList"></ol></div>
         <div id="goalRv" class="grid" hidden>
+          <label class="inline" style="grid-column:1/-1"><input type="checkbox" id="unlockCost" checked>Also save for building and upgrading what the next RV unlocks <i class="tip" tabindex="0" data-tip="New plots, machines, climate units and the land plot the next RV adds, plus the machine, plot and module levels it opens, as if everything your current RV allows is already built and upgraded. The time to the next RV then covers being fully set up there, not just the upgrade itself.">?</i></label>
           <label class="f"><span>Home Coin you have</span><input type="number" id="haveCoin" min="0" step="1000" value="0"></label>
           <label class="f"><span id="haveTierLbl">Wood you have</span><input type="number" id="haveTier" min="0" value="0"></label>
           <label class="f" id="haveWBWrap"><span>Loose Wood Blocks</span><input type="number" id="haveWB" min="0" value="0"></label>
@@ -645,7 +651,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Oct, 11:00am</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Oct, 1:30pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -1102,6 +1108,34 @@ function woodCap(rv){ return rv<2 ? 0 : Math.min(20, rv+1); }
 // Exact packings: for each number of Woodland (index), the most Farmland that also fits.
 // "small" = Heat Furnace or Sunlamp (1x1); "cool" = Cooling Unit (2x2). Unit sits at tile (0,0).
 const FRONTIER = {"small":[{"farm":[[-5,-1],[-5,3],[-4,-5],[-4,-3],[-4,1],[-3,3],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-1,4],[0,-5],[0,-3],[0,2],[1,-1],[1,4],[2,-5],[2,-3],[2,2],[4,-5],[4,-3],[4,-1],[4,2],[4,4]],"wood":[]},{"farm":[[-5,0],[-4,-5],[-4,-3],[-4,2],[-4,4],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-4],[0,-2],[0,2],[0,4],[1,0],[2,-5],[2,-2],[2,2],[2,4],[4,-3],[4,-1],[4,1],[4,4]],"wood":[[4,-7]]},{"farm":[[-5,0],[-4,-3],[-4,2],[-4,4],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-4],[0,-2],[0,2],[0,4],[1,0],[2,-5],[2,-2],[2,2],[2,4],[4,-3],[4,-1],[4,1],[4,4]],"wood":[[-6,-7],[4,-7]]},{"farm":[[-5,0],[-4,-3],[-4,2],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-4],[0,-2],[0,2],[0,4],[1,0],[2,-5],[2,-2],[2,2],[2,4],[3,0],[4,-3],[4,2],[4,4]],"wood":[[-6,-7],[-6,4],[4,-7]]},{"farm":[[-5,2],[-4,-3],[-4,-1],[-3,2],[-2,-5],[-2,-3],[-2,-1],[-2,4],[-1,1],[0,-4],[0,-2],[0,4],[1,0],[1,2],[2,-4],[2,-2],[2,4],[3,0],[3,2],[4,-3]],"wood":[[-7,4],[-6,-7],[4,-7],[4,4]]},{"farm":[[-4,-3],[-4,-1],[-4,2],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-4],[0,-2],[0,2],[0,4],[1,0],[2,-5],[2,-2],[2,2],[2,4],[4,-3]],"wood":[[-7,4],[-6,-7],[4,-7],[4,0],[4,4]]},{"farm":[[-4,-3],[-4,-1],[-4,2],[-2,-5],[-2,-3],[-2,-1],[-2,1],[-2,3],[0,-2],[0,2],[0,4],[1,0],[2,-2],[2,2],[2,4],[4,-3]],"wood":[[-7,4],[-6,-7],[0,-7],[4,-7],[4,0],[4,4]]},{"farm":[[-5,1],[-4,-3],[-4,-1],[-3,2],[-2,-5],[-2,-3],[-2,-1],[-1,1],[0,-2],[1,0],[2,-2],[2,2],[2,4],[4,-3]],"wood":[[-7,4],[-6,-7],[-2,4],[0,-7],[4,-7],[4,0],[4,4]]},{"farm":[[-4,-3],[-3,2],[-2,-5],[-2,-3],[-2,-1],[-1,1],[0,-2],[1,0],[2,-2],[2,2],[2,4],[4,-3]],"wood":[[-7,-1],[-6,-7],[-6,4],[-2,4],[0,-7],[4,-7],[4,0],[4,4]]}],"cool":[{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,1],[-5,3],[-5,5],[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-4],[-1,-2],[-1,2],[-1,4],[1,-4],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3],[5,5]],"wood":[]},{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,3],[-3,5],[-2,-1],[-2,1],[-1,-5],[-1,-3],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3],[5,5]],"wood":[[-7,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3],[5,5]],"wood":[[-7,-7],[-7,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3]],"wood":[[-7,-7],[-7,5],[5,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[1,5],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[3,5],[5,-3],[5,-1],[5,1],[5,3]],"wood":[[-7,-7],[-7,5],[5,-7],[5,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[5,-3],[5,-1],[5,1],[5,3]],"wood":[[-7,-7],[-7,5],[1,5],[5,-7],[5,5]]},{"farm":[[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,5],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-5,-3],[-5,-1],[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,1],[-7,5],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-2],[1,3],[2,1],[3,-5],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-5],[-1,-2],[-1,3],[-1,5],[1,-2],[1,3],[2,1],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[1,-7],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-2],[-1,3],[-1,5],[1,-2],[1,3],[2,1],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[-3,-7],[1,-7],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-3],[-3,-1],[-3,1],[-3,3],[-1,-2],[-1,3],[1,-2],[1,3],[2,1],[3,-3],[3,-1],[3,3],[5,-3],[5,-1]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[-3,-7],[-3,5],[1,-7],[1,5],[5,-7],[5,1],[5,5]]},{"farm":[[-3,-3],[-3,-1],[-3,1],[-3,3],[-1,-2],[-1,3],[1,-2],[1,3],[2,1],[3,-3],[3,-1],[3,3]],"wood":[[-7,-7],[-7,-3],[-7,1],[-7,5],[-3,-7],[-3,5],[1,-7],[1,5],[5,-7],[5,-3],[5,1],[5,5]]}]};
+
+// ===== Build and upgrade costs (Home Coin) =====
+// FAC_COST[name] = [build, cost to reach Lv 2, Lv 3, ...]: wikily.gg facility pages, every number matching AniimoTools'
+// crops-and-facilities list (Oct 2026). Each placed copy (and each Farmland/Woodland plot) is built and upgraded on its own.
+const FAC_COST = {"Farmland":[10,60,700,6200,23500,107000,480000],"Woodland":[90,400,8200,49000,199000,910000],"Mine":[320,4200,31000,143000,340000,910000],"Nimbus Bed":[18100,81000,320000],"Dewy House":[4200,269000],"Starfall Hammock":[54000],"Tidewhisper Sandcastle":[1500,9800,81000],"Floral Windmill":[453000],"Well":[1100,20000,98000,240000,720000],"Carousel Mill":[170,1800,16000,81000,320000,910000],"Crafting Table":[320,1800,8200,31000,143000,340000,910000,1450000],"Jukebox Dryer":[540,1800,8200,36000,143000,300000,910000],"Claw Game Cooker":[540,1800,8200,31000,143000,480000,960000],"Joy Wheel Loom":[8200,16300,85000,360000],"Phonolfactory Table":[4200,12300,27000,149000,400000,720000],"Bouncy Brew Keg":[4200,14000,61000,270000,720000],"Simmering Pot":[1200,12300,16000,72000,230000,910000],"Blazing Stove":[5900,16300,61000,240000,680000],"Woodworking Bench":[4200,16300,75000,340000],"Chimney Kiln":[4200,16300,75000,340000],"Pickling Jar":[5900,16300,61000,240000,720000],"Aniipod Maker":[400,4200,24000],"Dance Pad Polisher":[170,2900,12000],"Crackle Power Pole":[3600],"Crackle Generator":[21000,45000,120000,340000,720000],"Heat Furnace":[8200],"Cooling Unit":[8200],"Sunlamp":[15700],"Hatchinator":[320]};
+// RV modules: [RV that opens the level, cost] for each level (game data via Shinumino's planner, build 3668494)
+const MODULE_COST = {"Crafting Module":[[5,690],[7,1900],[10,4000],[12,8700],[17,22000],[18,28000],[19,30000]],"Ecological Module":[[3,180],[7,1900],[8,2300],[11,5500],[12,8700],[14,12000],[17,22000],[18,28000]],"Incubation Reaction Module":[[9,3600]],"Kitchen Module":[[2,0],[4,310],[8,2300],[10,4000],[13,9800],[16,20000],[19,30000]],"Plant Research Module":[[6,960],[9,3600],[12,8700],[15,14000]],"Power Module":[[12,8700],[14,12000],[16,20000],[18,28000],[20,30000]],"Resource Detector":[[5,310],[8,2300],[11,5600],[12,8800],[13,10000],[15,14000],[17,22000],[19,30000]],"Rest Module":[[1,0],[3,180],[5,1400]],"Signal Transmitter":[[6,0],[11,5500],[16,20000]]};
+// Production Zone land plots: plot N opens at RV N (aniimo.gg/homeland/plots, quoting the game)
+const LAND_COST = {"2":2000,"3":4000,"4":6000,"5":14000,"6":19000,"7":38000,"8":46000,"9":72000,"10":80000,"11":110000,"12":170000,"13":200000,"14":240000,"15":270000,"16":390000};
+// What it costs, once RV n+1 is reached, to build and upgrade everything it adds, if everything RV n allows is built
+function unlockCosts(n){
+  const to=n+1, items=[];
+  const up=(t,a,b)=>{ let s=0; for (let l=a+1;l<=b;l++) s+=t[l-1]||0; return s; };
+  const step=(label,name,c0,l0,c1,l1)=>{ const t=FAC_COST[name]; if (!t) return;
+    const coin=c0*up(t,Math.max(1,l0),l1) + Math.max(0,c1-c0)*(t[0]+up(t,1,l1)); if (!(coin>0)) return;
+    const what=[c1>c0?`${c1-c0} new`:'', l1>l0&&c0>0?`${c0>1?'all '+c0+' ':''}to Lv ${l1}`:(c1>c0&&l1>1?`at Lv ${l1}`:'')].filter(Boolean).join(', ');
+    items.push({label, what, coin}); };
+  step('Farmland plots','Farmland', farmCap(n), maxLevel(FARM_RV,n), farmCap(to), maxLevel(FARM_RV,to));
+  step('Woodland plots','Woodland', woodCap(n), maxLevel(WOOD_RV,n), woodCap(to), maxLevel(WOOD_RV,to));
+  const gens=r=>r>=12?genCount(r):0;
+  for (const k of Object.keys(MACH)) step(MACH[k].name, MACH[k].name, k==='gen'?gens(n):placeAt(k,n), facLevelAt(k,n), k==='gen'?gens(to):placeAt(k,to), facLevelAt(k,to));
+  for (const [k,name] of [['heat','Heat Furnace'],['cool','Cooling Unit'],['lamp','Sunlamp']]) step(name+'s', name, limitAt(k,n), 1, limitAt(k,to), 1);
+  for (const [name,lv] of Object.entries(MODULE_COST)) lv.forEach(([rv,coin],i)=>{ if (rv===to && coin>0) items.push({label:name, what:`Lv ${i+1}`, coin}); });
+  if (LAND_COST[to]) items.push({label:`Land plot ${to}`, what:'buy', coin:LAND_COST[to]});
+  items.sort((a,b)=>b.coin-a.coin);
+  return {total:items.reduce((t,x)=>t+x.coin,0), items};
+}
+
 // Coin an hour a climate unit must add to be worth its worker (see plan)
 const UNIT_COST = 100;
 // How wide the product shortlist is (one recipe per machine): extra recipes per machine kind beyond what you can place,
@@ -1736,7 +1770,7 @@ const moduleAt = (k,rv) => { let l=0; MODULE_RV[k].forEach((r,i)=>{ if(i&&rv>=r)
 const ORE_TIER = {'Mineral Sand':1,'Coarse-Sifted Ore':8,'Sintered Ore Brick':64,'Refined Ore':512,'Microcrystalline Ore Plate':2048};
 const FRONTIER_CLEAN = {"small": [{"w": 0, "f": 24, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2], [4, 4]], "wood": []}, {"w": 1, "f": 23, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[4, 4]]}, {"w": 2, "f": 22, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, 4], [4, 4]]}, {"w": 3, "f": 21, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, 4]]}, {"w": 4, "f": 20, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, 4]]}, {"w": 5, "f": 18, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 6, "f": 16, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 7, "f": 14, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 8, "f": 12, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -2], [0, 2], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, -6], [0, 4], [4, -6], [4, -2], [4, 4]]}], "cool": [{"w": 0, "f": 32, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-5, 5], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": []}, {"w": 1, "f": 31, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, 5]]}, {"w": 2, "f": 30, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, -7], [-7, 5]]}, {"w": 3, "f": 29, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, 5]]}, {"w": 4, "f": 28, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, -7], [5, 5]]}, {"w": 5, "f": 26, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 5]]}, {"w": 6, "f": 24, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 7, "f": 22, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 8, "f": 20, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 9, "f": 18, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 10, "f": 16, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 11, "f": 14, "farm": [[-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 12, "f": 12, "farm": [[-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, -7], [-3, 5], [1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}]};
 const FORM_IDS = ['sv','rv','farmPlots','woodPlots','farmLvl','woodLvl','eco','heat','cool','lamp','mines','kilns','benches','useHeat','useCool','useLamp','extras','pairs','fillUnits','freeze',
-  'watering','hauling','persona','events','slotCost','autoProd','switchRec','power','gens','usePower','feed','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
+  'watering','hauling','persona','events','slotCost','unlockCost','autoProd','switchRec','power','gens','usePower','feed','hours','woodValue','capSmall','capCool','fill','session','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand',
   'needCoin','needWood','needSand','haveHab','kitchen','crafting','detector','reserve'];
 const DEFAULT_STATE = {requests:[], custom:[], noFill:[],
   products:[], crewLvl:3, tab:'layout', layoutView:'map', mode:'quick'};
@@ -2099,9 +2133,10 @@ function goalSpec(){
   const needWood=Math.max(0, wood.raw - (tier==='Wood Block'?0:num('haveWB',0,1e9)));
   let oreP={chain:[],raw:0}, needSand=0;
   if (ore){ oreP=procNeed(ore, oreAmt, num('haveOre',0,1e9), ctx); needSand=Math.max(0, oreP.raw - (ore==='Mineral Sand'?0:num('haveSand',0,1e9))); }
-  const needCoin=Math.max(0, coin-num('haveCoin',0,1e12));
+  const unlock=$('unlockCost').checked ? unlockCosts(rv) : {total:0, items:[]};
+  const needCoin=Math.max(0, coin+unlock.total-num('haveCoin',0,1e12));
   return {goal:{mode:'target',coin:needCoin,wood:needWood,sand:needSand}, need:{coin:needCoin,wood:needWood,sand:needSand},
-    rv:{next:rv+1,coin,tier,amt,ore,oreAmt,woodChain:wood.chain,oreChain:oreP.chain}};
+    rv:{next:rv+1,coin,tier,amt,ore,oreAmt,woodChain:wood.chain,oreChain:oreP.chain,unlock}};
 }
 function renderGoalInputs(){
   const m=$('goalMode').value, g=goalSpec();
@@ -2120,7 +2155,8 @@ function renderGoalInputs(){
       const wb=r.tier!=='Wood Block', ok=r.ore&&r.ore!=='Mineral Sand', noWood=woodCap(int('rv'))===0;
       note=`RV ${r.next} costs ${fmt(r.coin)} Home Coin, ${fmt(r.amt)} ${plMat(r.amt,r.tier)}`+(r.ore?` and ${fmt(r.oreAmt)} ${plMat(r.oreAmt,r.ore)}`:'')+'. '+
         (noWood?'Your RV has no Woodland yet, so bring the Wood Blocks from outside your Homeland.'+(r.ore?' The plan mines the Mineral Sand':''):'The plan grows the Wood Blocks'+(r.ore?', mines the Mineral Sand':''))+
-        (wb||ok?` and counts the ${[wb&&'Woodworking Bench',ok&&'Chimney Kiln'].filter(Boolean).join(' and ')} time to process ${wb&&ok?'them':'it'}.`:(noWood&&!r.ore?'':'.')); }
+        (wb||ok?` and counts the ${[wb&&'Woodworking Bench',ok&&'Chimney Kiln'].filter(Boolean).join(' and ')} time to process ${wb&&ok?'them':'it'}.`:(noWood&&!r.ore?'':'.'));
+      if (r.unlock && r.unlock.total) note+=` Building and upgrading what RV ${r.next} unlocks adds ${fmt(r.unlock.total)} Home Coin.`; }
   }
   $('goalNote').textContent=note;
 }
@@ -2182,6 +2218,29 @@ function renderTodo(){
   $('todo').querySelectorAll('[data-done]').forEach(cb=>cb.onchange=()=>{ if (cb.checked) done[cb.dataset.done]=1; else delete done[cb.dataset.done]; save(); renderTodo(); });
   if ($('todoClear')) $('todoClear').onclick=()=>{ state.done={}; save(); renderTodo(); };
 }
+
+// The coin the next RV's new plots, machines, levels and modules cost, item by item
+function unlockHtml(gs){ const u=gs.rv.unlock; if (!u || !u.total) return '';
+  return `<details class="unlock"><summary>${fmt(u.total)} Home Coin to build and upgrade what RV ${gs.rv.next} unlocks</summary>
+    <ul class="checks">${u.items.map(x=>`<li><span>${esc(x.label)} <small>${esc(x.what)}</small></span><span>${fmt(x.coin)}</span></li>`).join('')}</ul>
+    <p class="note">As if everything RV ${gs.rv.next-1} allows is already built and upgraded. Untick "Also save for…" under Goal to leave this out.</p></details>`; }
+// Ahead of the next RV: when Home Coin is covered before the materials are, the coin earned in between doesn't bring the
+// upgrade any closer, so goods the next RV's new recipes pay more for can be kept instead of sold
+function aheadHtml(gs, best, tCoin, total){
+  const spareH=total-(tCoin||0), next=gs.rv.next; if (!(spareH>1) || !isFinite(total)) return '';
+  const budget=best.coinRate*spareH;
+  const priceNow={}; for (const c of CROPS) priceNow[CROP_ITEM[c.id]||c.name]=c.price; for (const r of PROC) if (r.p>0) priceNow[r.n]=Math.max(priceNow[r.n]||0, r.p);
+  const later={};   // item -> best value per unit in a recipe that opens at the next RV
+  for (const r of PROC){ if (!r.i.length || !(r.p>0) || r.u.ev || MACH[r.m].lv[r.l]!==next) continue;
+    for (const [it,q] of r.i){ const others=r.i.filter(x=>x[0]!==it).reduce((t,[n,qq])=>t+(priceNow[n]||0)*qq,0), v=(r.p*r.q-others)/q;
+      if (!later[it] || v>later[it].v) later[it]={v, r}; } }
+  const {sell}=sellData(); let left=budget; const picks=[];
+  for (const row of sell.map(x=>({...x, now:x.coin/x.n, l:later[x.name]})).filter(x=>x.l && x.l.v>x.now*1.15).sort((a,b)=>b.l.v/b.now-a.l.v/a.now)){
+    if (left<=0) break; const n=Math.min(row.n*spareH, left/row.now); if (n<1) continue; left-=n*row.now; picks.push({...row, keep:n}); }
+  if (!picks.length) return `<p class="note ahead">Home Coin is covered ${etaText(spareH)} before the materials, but nothing you make now is worth more in RV ${next}'s new recipes. Keep selling.</p>`;
+  return `<div class="ahead"><h4>Ahead of RV ${next}</h4><p class="note">Home Coin is covered ${etaText(spareH)} before the materials, so the coin earned in that time doesn't bring RV ${next} any closer. Keep these instead of selling them then:</p>
+    <ul class="checks">${picks.slice(0,4).map(x=>`<li><span>${fmt(x.keep)} ${esc(x.name)} <small>worth ${fmt(x.now)} each now, about ${fmt(x.l.v)} in ${esc(x.l.r.n)}</small></span><span>+${fmt(x.keep*(x.l.v-x.now))}</span></li>`).join('')}</ul>
+    <p class="note">The gain assumes you'll have the machine time for those recipes after the upgrade; worth checking you have room to store them.</p></div>`; }
 function confidence(best){
   if (!best.exact) return {ok:false, text:'Close to best', tip:'Your browser couldn\'t run the fast solver, so this comes from a simpler one and may be a little short of the best.'};
   if (best.limited) return {ok:false, text:'Close to best', tip:'The solver stopped at its time limit with a very good plan, but couldn\'t prove nothing beats it.'};
@@ -3487,7 +3546,7 @@ function run(){
       }
     }
     const rows=[];
-    if (gs.need.coin>0) rows.push({label:'Home Coin', hrs:t.coin, sub:fmt(gs.need.coin)+' more at '+fmt(best.coinRate)+'/h'});
+    if (gs.need.coin>0) rows.push({label:gs.rv&&gs.rv.unlock&&gs.rv.unlock.total?'Home Coin, with setup':'Home Coin', hrs:t.coin, sub:fmt(gs.need.coin)+' more at '+fmt(best.coinRate)+'/h'+(gs.rv&&gs.rv.unlock&&gs.rv.unlock.total?` (RV ${gs.rv.next} ${fmt(gs.rv.coin)} + building and upgrading what it unlocks ${fmt(gs.rv.unlock.total)})`:'')});
     if (gs.rv){
       const r=gs.rv;
       const wH=Math.max(t.wood, procHrs.bench);
@@ -3503,6 +3562,7 @@ function run(){
     goalHtml=`<div class="card"><div class="head"><h3>${gs.rv?'Time to afford RV '+gs.rv.next:'Time to reach your target'}</h3><i class="tip" tabindex="0" data-tip="Each bar is one thing the upgrade asks for and how long this plan takes to get it. Wood and ore bars include gathering the raw Wood Blocks or Mineral Sand and the Bench or Kiln time to process them, whichever is longer. Hover a bar for the details. The slowest bar decides when you're done.">?</i></div>
       <div class="bars">${rows.map(r=>`<div class="bar${r.hrs===total&&total>0?' slow':''}" title="${r.sub}"><span>${r.label}</span><span class="track"><span class="fill" style="display:block;width:${isFinite(r.hrs)?Math.max(2,100*r.hrs/maxH):100}%"></span></span><span class="t">${etaText(r.hrs)}</span></div>`).join('')}</div>${gs.rv?rvChecks(gs.rv.next, best, chain, extras):''}</div>`;
     lastPlan.eta=total;
+    if (gs.rv) goalHtml=goalHtml.replace(/<\/div>$/, unlockHtml(gs)+aheadHtml(gs, best, t.coin, total)+'</div>');
   }
 
   // ----- Summary tiles -----
@@ -3813,8 +3873,9 @@ function renderShop(){
   $('shop').innerHTML=h;
 }
 // Everything the plan sells (or keeps), per hour and for the chosen session
-function sellHtml(hrs){
-  const {best, chain, extras, gs}=lastPlan, sell=[], keep=[];
+// What the plan sells an hour (and what it keeps), item by item
+function sellData(){
+  const {best, chain, extras}=lastPlan, sell=[], keep=[];
   const priceOf={}; for (const c of allCrops()){ const it=CROP_ITEM[c.id]||c.name; if (priceOf[it]===undefined) priceOf[it]=c.price; }
   for (const [it,made] of Object.entries(best.made||{})){
     const used=((chain.crops||{})[it]||0)+((best.autoUse||{})[it]||0), left=made-used;
@@ -3839,6 +3900,10 @@ function sellHtml(hrs){
   if (best.woodRate>0) keep.push({name:'Wood Block', n:best.woodRate});
   if (best.sandRate>0) keep.push({name:'Mineral Sand', n:best.sandRate});
   sell.sort((a,b)=>b.coin-a.coin);
+  return {sell, keep};
+}
+function sellHtml(hrs){
+  const {best}=lastPlan, {sell, keep}=sellData();
   const tot=sell.reduce((t,r)=>t+r.coin,0);
   let h=`<div class="head" style="margin-top:18px"><h3>What you sell</h3><i class="tip" tabindex="0" data-tip="Sold at the Co-op Store. Crops your items use are taken out first. Coin here is before seed costs.">?</i></div>
     <div class="tablewrap"><table><thead><tr><th>Item</th><th class="from">From</th><th class="n">Per hour</th><th class="n">In ${hrs} h</th><th class="n">Coin / h</th></tr></thead><tbody>`;
@@ -3951,7 +4016,7 @@ function clampToRv(){ const rv=int('rv'), lim={farmPlots:farmCap(rv), woodPlots:
   CLAMP_MSG = n ? `Lowered ${n} setting${n>1?'s':''} to what RV ${rv} allows.` : ''; return n; }
 let CLAMP_MSG='';
 for (const id of ['farmPlots','woodPlots','farmLvl','woodLvl','eco','events','kitchen','crafting','detector','persona','useLamp','useHeat','useCool','watering','hauling','hours']) $(id).addEventListener('change',()=>{ renderRequests(); renderProducts(); renderFillChips(); });
-for (const id of ['goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand','needCoin','needWood','needSand']) $(id).addEventListener('input',renderGoalInputs);
+for (const id of ['unlockCost','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand','needCoin','needWood','needSand']) $(id).addEventListener('input',renderGoalInputs);
 $('goalMode').addEventListener('change',()=>{ renderGoalInputs(); updateMbar(); });
 // Quick: just RV level, crops and goal, as if everything the RV allows is built. Custom: every setting.
 function applyMode(){ const m=state.mode==='custom'?'custom':'quick'; document.body.classList.toggle('quick', m==='quick');
