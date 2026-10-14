@@ -396,6 +396,8 @@ body.setup-open .updatebar{display:none}
 .emode{display:inline-flex;align-items:center;gap:3px;font-size:.78rem;font-weight:700;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--j-lightning) 22%,var(--panel));border:1px solid var(--j-lightning);color:var(--ink);white-space:nowrap}
 .emode.big{font-size:.8rem;padding:2px 9px;margin-top:4px}
 .mc:has(.emode.big){border-color:color-mix(in srgb,var(--j-lightning) 60%,var(--line))}
+.mapside .ab{font-family:var(--font-mono);font-size:.72rem;padding:0 5px;border:1px solid var(--line);border-radius:4px;color:var(--muted);margin-left:4px}
+.wh{display:none;font-size:.78rem;color:var(--muted);margin-top:2px}
 .pill.vt{border-color:var(--leaf);color:var(--leaf);font-weight:700;margin-left:4px}
 /* setup drawer */
 .drawer{position:fixed;top:0;bottom:0;left:84px;width:min(460px,calc(100vw - 84px));z-index:20;background:var(--bg);border-right:1px solid var(--line);box-shadow:20px 0 40px rgba(0,0,0,.35);overflow:auto;padding:0 16px;transform:translateX(calc(-100% - 90px));visibility:hidden;transition:transform .22s ease,visibility 0s .22s}
@@ -430,6 +432,7 @@ body:not(.setup-open) .scrim{display:none}
   #tab-over{display:grid}
   #tab-data{display:none}
   th.from,td.from{display:none}
+  td .wh{display:block}
   #shop td[colspan="4"]{white-space:normal}
   .hdr{position:static;padding:10px 14px;gap:8px 12px;flex-wrap:wrap}
   #mbarBtn{display:none}
@@ -642,7 +645,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Oct, 7:30am</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Oct, 11:00am</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -2381,9 +2384,7 @@ const CLIM_ZONE = {warm:'warm', cool:'cool', light:'lamp'};
 
 // A cluster's local layout in tiles: its climate unit(s) with ranges, and its plots with what grows there.
 // A single unit sits at (0,0); an overlapping pair has the Heat Furnace at (0,0) and the Cooling Unit at (dx,0).
-function geomOf(u, style){ const G=withFaces(geomOf0(u, style));
-  if (style==='packed' && !u.pair && G.cores.some(q=>!q.face)) return withFaces(geomOf0(u, 'clean'));
-  return G; }
+function geomOf(u, style){ return withFaces(geomOf0(u, style)); }   // Packed is tightest: worker fronts may be covered
 // The tile in front of a climate unit, where its worker stands
 const coreFront=(q,d=q.face,k=1)=>{ const s=q.s; return d==='up'?{x:q.x,y:q.y-k,w:s,h:1} : d==='down'?{x:q.x,y:q.y+s+k-1,w:s,h:1} : d==='left'?{x:q.x-k,y:q.y,w:1,h:s} : {x:q.x+s+k-1,y:q.y,w:1,h:s}; };
 // Face each unit toward the most open ground beside it (up to 3 tiles deep), so its worker has room to stand
@@ -2454,7 +2455,6 @@ function planHomeland(real, openPlots, style, land, edge, things=[]){
     solid.push(...best.all); best.rr.forEach((r,i)=>{ r.zk=best.R.ranges[i].zk; r.unit=best.R.ranges[i].unit; }); ranges.push(...best.rr);
     const {ox,oy,R}=best;
     placed.push({u, cores:R.cores.map(q=>({...q,x:ox+q.x,y:oy+q.y})), ranges:R.ranges.map((q,i)=>({...q,...best.rr[i]})), plots:R.plots.map(q=>({...q,x:ox+q.x,y:oy+q.y})), guests:(R.guests||[]).map(q=>({...q,x:ox+q.x,y:oy+q.y}))});
-    for (const q of placed[placed.length-1].cores) if (q.face) solid.push(coreFront(q));   // keep the worker's tile clear
   }
   // Open-ground plots: outside every range, Woodland first, nearest the middle
   const open=[]; let openLeft=0;
@@ -2568,9 +2568,17 @@ function homelandSvg(H, land, edge, colorOf){
     for (const q of u.cores) s+=`<rect x="${X(q.x)}" y="${Y(q.y)}" width="${q.s*T}" height="${q.s*T}" fill="var(--unit-${q.unit})"><title>${UNITNAME[q.unit]} · ${SETTING[q.zk]}</title></rect>`+coreMark(q,X,Y,T); }
   if (H.openBox){ const b=H.openBox; s+=`<rect x="${X(b.x)-3}" y="${Y(b.y)-3}" width="${b.w*T+6}" height="${b.h*T+6}" rx="5" fill="none" stroke="var(--muted)" stroke-dasharray="5 4"><title>Open ground: crops with no temperature need</title></rect>`; }
   for (const p of H.open) s+=plot(p.x,p.y,p.s,p.p);
-  for (const b of H.builds){ const fs=Math.max(7,Math.min(10, b.w*T/5.2)), lbl=b.w*T>=40?b.short:b.short.slice(0,2);
+  H.labels={};
+  for (const b of H.builds){
+    // room for text: the box less the front arrow's side; the label slides away from the arrow
+    const hw=b.w*T/2, hh=b.h*T/2, a=b.face?Math.min(5, Math.min(hw,hh)*0.45)+2:0, side=b.face==='left'||b.face==='right';
+    const avail=b.w*T-5-(side?a:0), dx=b.face==='left'?a/2:b.face==='right'?-a/2:0, dy=b.face==='up'?a/2:b.face==='down'?-a/2:0;
+    let lbl=b.short, fs=Math.min(10, avail/(lbl.length*0.6));
+    if (fs<6.5){ lbl=b.short.slice(0,2); fs=Math.min(9, avail/(2*0.62)); }
+    H.labels[b.name]=H.labels[b.name]&&H.labels[b.name].length<lbl.length?H.labels[b.name]:lbl;
+    b._lx=dx; b._ly=dy;
     s+=`<g><title>${b.name}</title><rect x="${X(b.x)+.8}" y="${Y(b.y)+.8}" width="${b.w*T-1.6}" height="${b.h*T-1.6}" rx="3" fill="color-mix(in srgb,var(${jobVar(b.job)}) ${b.idle?10:30}%,var(--panel))" stroke="var(${jobVar(b.job)})" stroke-width="1.5"${b.idle?' stroke-dasharray="3 2"':''}/>`;
-    s+=`<text x="${X(b.x+b.w/2)}" y="${Y(b.y+b.h/2)+fs/3}" text-anchor="middle" font-size="${fs}" font-weight="700" fill="var(--ink)">${lbl}</text>`;
+    s+=`<text x="${X(b.x+b.w/2)+b._lx}" y="${Y(b.y+b.h/2)+fs/3+b._ly}" text-anchor="middle" font-size="${fs.toFixed(1)}" font-weight="700" fill="var(--ink)">${lbl}</text>`;
     if (b.face) s+=faceMark(b,X,Y,T);
     s+='</g>'; }
   return s+'</svg>';
@@ -2970,13 +2978,14 @@ function renderLayout(){
     const sens=open.some(p=>p.crop.temp!==0);
     cards.push(`<div class="ucard"><div class="top"><b>Open ground</b><i class="tip" tabindex="0" data-tip="${sens?'Keep these outside every dashed range. Crops that want heat or cold grow slower here, already counted in their speed.':'These crops ignore heat, cold and light, so they get a field of their own outside every range.'}">?</i></div>${openSvg(open, colorOf)}<div class="legend">${Object.values(t).map(x=>`<span><span class="sw" style="background:var(${colorOf(x.p)})"></span>${x.n} ${x.p.crop.name}</span>`).join('')}</div></div>`);
   }
-  const view=state.layoutView==='units'?'units':'map';
+  const view=['units','power'].includes(state.layoutView)?state.layoutView:'map';
   // Clean vs Packed only differs for full units; part-filled units always use their tightest layout
   const same=u=>JSON.stringify(unitPoints(u.zone.geo,u.w,u.farm.length,'clean',u.host))===JSON.stringify(unitPoints(u.zone.geo,u.w,u.farm.length,'packed',u.host));
   const anyFull=view==='map' || real.some(u=>!u.pair && !same(u));
-  const seg=`<div class="seg" role="group" aria-label="Layout view"><button type="button" data-view="units" aria-pressed="${view==='units'}">Each unit</button><button type="button" data-view="map" aria-pressed="${view==='map'}">Homeland map</button></div>
+  const seg=`<div class="seg" role="group" aria-label="Layout view"><button type="button" data-view="units" aria-pressed="${view==='units'}">Each unit</button><button type="button" data-view="map" aria-pressed="${view==='map'}">Homeland map</button><button type="button" data-view="power" aria-pressed="${view==='power'}">Power grid</button></div>
     <div class="seg" role="group" aria-label="Layout style"${anyFull?'':' title="Clean grid and Packed come out the same for these units."'}><button type="button" data-style="clean" aria-pressed="${style==='clean'}"${anyFull?'':' disabled'}>Clean grid</button><button type="button" data-style="packed" aria-pressed="${style==='packed'}"${anyFull?'':' disabled'}>Packed</button><button type="button" data-style="square" aria-pressed="${style==='square'}"${view==='map'?'':' hidden'}>Square</button></div>${anyFull?'':'<span class="note">Clean grid and Packed come out the same here.</span>'}`;
   if (view==='map'){ renderHomeMap(seg, style); return; }
+  if (view==='power'){ renderPowerMap(seg.replace(/<div class="seg" role="group" aria-label="Layout style"[\s\S]*$/,'')); return; }
   // what the last unit of each kind adds (worked out after drawing, once per plan)
   const wk={}; for (const [k,i] of Object.entries(lastOf)) (wk[i]||(wk[i]=[])).push(k);
   for (const [i,ks] of Object.entries(wk)) cards[i]=cards[i].replace(/<\/div>$/, ks.map(k=>`<p class="note worth" data-worth="${k}">Working out what this one adds…</p>`).join('')+'</div>');
@@ -3055,13 +3064,14 @@ function renderHomeMap(seg, style){
   if (H.squareFallback) warn.push('Everything won\'t fit in one block on the land you ticked, so this shows Clean grid. Tick more land for Square.');
   if (H.unplaced) warn.push(`${H.unplaced} climate unit${H.unplaced>1?'s':''} didn't fit on the land you ticked.`); if (H.openLeft) warn.push(`${H.openLeft} open-ground plot${H.openLeft>1?'s':''} didn't fit.`);
   const legend={}; for (const u of H.placed) for (const p of u.plots) legend[p.p.crop.id]=p.p; for (const p of H.open) legend[p.p.crop.id]=p.p;
+  const SVG=land.some(Boolean) ? homelandSvg(H, land, edge, colorOf) : '';   // first, so the Buildings list can show the map's short labels
   $('pane-layout').innerHTML=`<div class="layhead">${seg}<i class="tip" tabindex="0" data-tip="Packed: tightest, shortest walks. Clean grid: tidy blocks with a walkway between them. Square: one compact block, climate units on the corners with their plots round the outside, everything else pulled toward the edges, with a clear walkway in front of every machine.">?</i></div>
     <div class="mapwrap"><div class="mapside">
       <div><h3>Land you own</h3>${picker}</div>
       <div><h3>Buildings</h3><label class="inline" style="margin:4px 0 6px"><input type="checkbox" id="allMach"${state.allMach?' checked':''}>Place every one my RV allows <i class="tip" tabindex="0" data-tip="Adds every machine, Mine, Well and leisure spot your RV lets you place, even ones the plan doesn't use, so the map keeps room for them. Unused ones are drawn dashed and need no worker.">?</i></label>
-      ${H.builds.length?`<ul class="also">${Object.values(H.builds.reduce((m,b)=>{ const e=m[b.name]||(m[b.name]={b,n:0,idle:0}); e.n++; if (b.idle) e.idle++; return m; },{})).map(({b,n,idle})=>`<li><span><span class="sw" style="background:var(${jobVar(b.job)})"></span>${b.name}</span><b>${n}${idle?` <span class="muted">(${idle} idle)</span>`:''}</b></li>`).join('')}</ul>`:''}</div>
+      ${H.builds.length?`<ul class="also">${Object.values(H.builds.reduce((m,b)=>{ const e=m[b.name]||(m[b.name]={b,n:0,idle:0}); e.n++; if (b.idle) e.idle++; return m; },{})).map(({b,n,idle})=>`<li><span><span class="sw" style="background:var(${jobVar(b.job)})"></span>${b.name}${(H.labels||{})[b.name]&&H.labels[b.name]!==b.name?` <span class="ab">${H.labels[b.name]}</span>`:''}</span><b>${n}${idle?` <span class="muted">(${idle} idle)</span>`:''}</b></li>`).join('')}</ul>`:''}</div>
     </div>
-    <div class="mapmain">${land.some(Boolean) ? warn.map(w=>`<p class="warn">${esc(w)}</p>`).join('')+homelandSvg(H, land, edge, colorOf) : '<p class="note">Tick the land plots you own to see your map.</p>'}
+    <div class="mapmain">${land.some(Boolean) ? warn.map(w=>`<p class="warn">${esc(w)}</p>`).join('')+SVG : '<p class="note">Tick the land plots you own to see your map.</p>'}
       <div class="legend">${Object.values(legend).map(p=>`<span><span class="sw" style="background:var(${colorOf(p)})"></span>${p.crop.name}</span>`).join('')}</div>
       ${H.builds.length?`<p class="note">▲ marks each machine's front, where its worker stands. Turn it to match in build mode.${H.builds.some(b=>b.faceBlocked)?' Fronts that touch something still work; the worker just stands inside it.':''}</p>`:''}</div></div>`;
   wireLayoutSeg();
@@ -3145,9 +3155,7 @@ const ring = (p, s, c) => Math.max(Math.abs(p[0]+s/2-c), Math.abs(p[1]+s/2-c));
 const byNear = (pts, s, c) => pts.slice().sort((a,b)=>ring(a,s,c)-ring(b,s,c) || a[1]-b[1] || a[0]-b[0]);
 function fieldSvg(zone, un, colorOf, style){
   const g=UNIT[zone.geo], T=12, P=6, c=g.size/2;
-  const faceOf=L=>withFaces({cores:[{x:0,y:0,s:g.size}], plots:[...L.farm.map(([x,y])=>({x,y,s:2})), ...L.wood.map(([x,y])=>({x,y,s:4}))], guests:L.guest?[{x:L.guest[0],y:L.guest[1],s:5}]:[]}).cores[0].face;
   let L=unitPoints(zone.geo, un.w, un.farm.length, style, un.host);
-  if (style==='packed' && !faceOf(L)) L=unitPoints(zone.geo, un.w, un.farm.length, 'clean', un.host);   // walled in: leave its worker a side
   const farmPts=L.farm, woodPts=L.wood;
   let minX=Math.min(g.lo,0), maxX=Math.max(g.hi,g.size);
   for (const [x,y] of farmPts){ minX=Math.min(minX,x,y); maxX=Math.max(maxX,x+2,y+2); }
@@ -3258,6 +3266,73 @@ function layoutUnits(best, o){
   const left=[...loose.wood, ...loose.farm, ...rest], agg=new Map();
   for (const p of left){ const e=agg.get(p)||{...p, plots:0}; e.plots++; agg.set(p,e); }
   return {units, real:units.filter(u=>u.farm.length||u.wood.length||u.guest), distErr, openLeft:[...agg.values()]};
+}
+
+
+// ---------- Power grid: where E-mode machines go around each Crackle Generator ----------
+// A generator (2x2) powers anything that overlaps its 11x11 supply area; a Power Pole (1.5x1.5) that overlaps a powered
+// area relays power over its own 7x7 area (one source only: treat as approximate). E-mode machines need no worker, so
+// they pack tight; only the generator keeps a clear tile for its Lightning Aniimo.
+const POLE_CAP=rv=>rv<12?0:rv<14?6:rv<16?12:rv<18?18:rv<20?24:30;
+function powerLayout(items, maxPoles){
+  const G={x:0,y:0,w:2,h:2}, areas=[{x:-4.5,y:-4.5,w:11,h:11}], solid=[G,{x:0,y:2,w:2,h:1}], poles=[], placed=[], missed=[];
+  const ov=(a,b)=>Math.min(a.x+a.w,b.x+b.w)-Math.max(a.x,b.x)>1e-6 && Math.min(a.y+a.h,b.y+b.h)-Math.max(a.y,b.y)>1e-6;
+  const powered=r=>areas.some(A=>ov(r,A)), free=r=>!solid.some(q=>ov(r,q));
+  const spots=(w,h)=>{ let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; for (const A of areas){ x0=Math.min(x0,A.x); y0=Math.min(y0,A.y); x1=Math.max(x1,A.x+A.w); y1=Math.max(y1,A.y+A.h); }
+    const out=[]; for (let x=x0-w+0.5; x<=x1-0.5; x+=0.5) for (let y=y0-h+0.5; y<=y1-0.5; y+=0.5) out.push({x,y,w,h,d:Math.hypot(x+w/2-1,y+h/2-1)});
+    return out.sort((a,b)=>a.d-b.d); };
+  const fit=(w,h)=>{ for (const r of spots(w,h)) if (powered(r) && free(r)) return r; return null; };
+  for (const t of items.slice().sort((a,b)=>b.w*b.h-a.w*a.h)){
+    let r=fit(t.w,t.h);
+    while (!r && poles.length<maxPoles){
+      // a pole just inside the powered edge, as close to the middle as works, that makes room for this machine
+      let best=null;
+      for (const P of spots(1.5,1.5)){ if (!powered(P) || !free(P)) continue; const R={x:P.x-2.75,y:P.y-2.75,w:7,h:7};
+        if (areas.some(A=>R.x>=A.x&&R.y>=A.y&&R.x+R.w<=A.x+A.w&&R.y+R.h<=A.y+A.h)) continue;   // adds no new ground
+        areas.push(R); solid.push(P); const got=fit(t.w,t.h); areas.pop(); solid.pop();
+        if (got){ best={P,R}; break; } }
+      if (!best) break;
+      poles.push(best.P); areas.push(best.R); solid.push(best.P); r=fit(t.w,t.h); }
+    if (!r){ missed.push(t); continue; }
+    solid.push(r); placed.push({...t, x:r.x, y:r.y});
+  }
+  return {G, areas, poles, placed, missed};
+}
+function renderPowerMap(seg){
+  const L=lastPlan, P=L&&L.best.power, rv=int('rv');
+  const head=`<div class="layhead">${seg}</div>`;
+  if (!P || !P.gens){ $('pane-layout').innerHTML=head+`<p class="note">This plan has no machines on E-mode${rv<12?' (Crackle Generators come at RV 12)':''}. With a Power Module and generators set in Custom setup, the plan switches machines to E-mode when it pays.</p>`; wireLayoutSeg(); return; }
+  // every E-mode machine, with its size and draw
+  const W=k=>eWatts(k, P.rv||rv), list=[], add=(k,n)=>{ const sz=MACH_SIZE[k]||[2,2]; for (let i=0;i<n;i++) list.push({key:k, name:MACH[k].name, short:SHORT[k]||MACH[k].name.split(' ')[0], job:MACH[k].job, w:sz[0], h:sz[1], watts:W(k)}); };
+  for (const [k,n] of Object.entries(P.eMachK||{})) add(k,n);
+  for (const [k,n] of Object.entries(P.eChainK||{})) add(k,n);
+  for (const [k,n] of Object.entries(P.eRv||{})) add(k,n);
+  if (P.eMines) add('mine', P.eMines);
+  for (const e of P.eExtras||[]) add(e.key, e.count);
+  // share them out over the generators so no grid goes past its 120% limit
+  const capEach=P.out/1.2, grids=[...Array(P.gens)].map((_,i)=>({i, items:[], watts:0}));
+  for (const t of list.sort((a,b)=>b.watts-a.watts)){ const g=grids.slice().sort((a,b)=>a.watts-b.watts)[0]; g.items.push(t); g.watts+=t.watts; }
+  let polesLeft=POLE_CAP(rv); const T=12;
+  const cards=grids.map(g=>{ const Lp=powerLayout(g.items, polesLeft); polesLeft-=Lp.poles.length;
+    let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; for (const r of [...Lp.areas, ...Lp.placed]){ x0=Math.min(x0,r.x); y0=Math.min(y0,r.y); x1=Math.max(x1,r.x+r.w); y1=Math.max(y1,r.y+r.h); }
+    const X=v=>(v-x0)*T+4, Y=v=>(v-y0)*T+4;
+    let svg=`<svg viewBox="0 0 ${(x1-x0)*T+8} ${(y1-y0)*T+8}" role="img" aria-label="Power grid ${g.i+1}">`;
+    for (let x=Math.ceil(x0); x<=x1; x++) svg+=`<line x1="${X(x)}" y1="${Y(y0)}" x2="${X(x)}" y2="${Y(y1)}" stroke="var(--line)" stroke-width="0.4"/>`;
+    for (let y=Math.ceil(y0); y<=y1; y++) svg+=`<line x1="${X(x0)}" y1="${Y(y)}" x2="${X(x1)}" y2="${Y(y)}" stroke="var(--line)" stroke-width="0.4"/>`;
+    Lp.areas.forEach((A,i)=>{ svg+=`<rect x="${X(A.x)}" y="${Y(A.y)}" width="${A.w*T}" height="${A.h*T}" fill="color-mix(in srgb,var(--j-lightning) ${i?6:9}%,transparent)" stroke="var(--j-lightning)" stroke-dasharray="${i?'3 3':'6 4'}"><title>${i?'Power Pole relay area':'Generator supply area'}</title></rect>`; });
+    for (const t of Lp.placed){ const fs=Math.min(10,(t.w*T-4)/(t.short.length*0.6)), lbl=fs<6.5?t.short.slice(0,2):t.short;
+      svg+=`<g><title>${t.name} · ${t.watts} W</title><rect x="${X(t.x)+.8}" y="${Y(t.y)+.8}" width="${t.w*T-1.6}" height="${t.h*T-1.6}" rx="3" fill="color-mix(in srgb,var(${jobVar(t.job)}) 30%,var(--panel))" stroke="var(${jobVar(t.job)})" stroke-width="1.5"/><text x="${X(t.x+t.w/2)}" y="${Y(t.y+t.h/2)+3}" text-anchor="middle" font-size="${Math.max(6.5,Math.min(10,fs)).toFixed(1)}" font-weight="700" fill="var(--ink)">${lbl}</text></g>`; }
+    for (const q of Lp.poles) svg+=`<rect x="${X(q.x)}" y="${Y(q.y)}" width="${q.w*T}" height="${q.h*T}" rx="2" fill="var(--j-lightning)"><title>Power Pole</title></rect>`;
+    const G=Lp.G; svg+=`<g><title>Crackle Generator: its Lightning Aniimo stands below it</title><rect x="${X(G.x)}" y="${Y(G.y)}" width="${G.w*T}" height="${G.h*T}" rx="3" fill="var(--j-lightning)"/><text x="${X(1)}" y="${Y(1)+3.5}" text-anchor="middle" font-size="10" font-weight="800" fill="#1b1600">⚡</text>`
+      +`<polygon points="${X(1)},${Y(2)+2} ${X(1)-4},${Y(2)+7} ${X(1)+4},${Y(2)+7}" fill="var(--j-lightning)"/></g>`;
+    svg+='</svg>';
+    const counts=Object.values(g.items.reduce((m,t)=>{ (m[t.name]=m[t.name]||{t,n:0}).n++; return m; },{}));
+    return `<div class="ucard"><div class="top"><b><span class="dot" style="background:var(--j-lightning)"></span>Crackle Generator ${g.i+1}</b><span class="pill">${fmt(g.watts)} / ${fmt(capEach)} W</span></div>${svg}
+      <div class="legend">${counts.map(({t,n})=>`<span><span class="sw" style="background:var(${jobVar(t.job)})"></span>${n} ${t.name}${n>1?'s':''}</span>`).join('')}${Lp.poles.length?`<span><span class="sw" style="background:var(--j-lightning)"></span>${Lp.poles.length} Power Pole${Lp.poles.length>1?'s':''}</span>`:''}</div>
+      ${Lp.missed.length?`<p class="warn">No room near this generator for ${Lp.missed.map(t=>t.name).join(', ')}${polesLeft<=0?' (at the Power Pole limit for RV '+rv+')':''}.</p>`:''}</div>`; });
+  $('pane-layout').innerHTML=head+`<p class="note" style="max-width:75ch">Every machine on E-mode, grouped around the generator that powers it. A machine only has to touch the dashed supply area to get power, and E-mode machines need no Aniimo, so they can sit right up against each other. Power Poles (yellow squares) stretch the area when it runs out of room. The machines are shared out so each generator's load stays at or under its output ÷ 1.2, which keeps them at 120% speed. Build it as its own corner of your Homeland. The supply and pole areas come from one source, so check them in build mode.</p>
+    <div class="fields power">${cards.join('')}</div>`;
+  wireLayoutSeg();
 }
 
 // ---------- Run the plan ----------
@@ -3453,7 +3528,7 @@ function run(){
   // ----- Plant tab -----
   const rows={};
   for (const p of best.placed){ const k=p.crop.id+'|'+p.zone.key+'|'+p.requested; rows[k]=rows[k]||{...p,plots:0}; rows[k].plots+=p.plots; }
-  let h=`<div class="tablewrap"><table><thead><tr><th>Crop</th><th>Where</th><th class="n">Plots</th><th class="n">Speed</th><th class="n">Coin / h</th></tr></thead><tbody>`;
+  let h=`<div class="tablewrap"><table><thead><tr><th>Crop</th><th class="from">Where</th><th class="n">Plots</th><th class="n from">Speed</th><th class="n">Coin / h</th></tr></thead><tbody>`;
   for (const [kind,label] of [['farm','Farmland'],['wood','Woodland']]){
     const list=Object.values(rows).filter(r=>r.crop.kind===kind).sort((a,b)=>b.requested-a.requested||b.plots*b.pv.value-a.plots*a.pv.value);
     if (!list.length) continue;
@@ -3463,7 +3538,7 @@ function run(){
       const where = r.zone.key==='open' ? (o.neutralOk && r.crop.temp===0 && !r.crop.light ? 'Anywhere · fills spare unit space' : 'Open ground') : (best.pairSlots&&best.pairSlots[r.zone.key]&&(best.pairSlots[r.zone.key].farm+best.pairSlots[r.zone.key].wood)>0 ? TEMP_NAME[r.zone.temp]+' · unit or overlap' : UNITNAME[r.zone.unit]+(r.zone.key==='lamp'?'':' · '+SETTING[r.zone.key]));
       const it = CROP_ITEM[r.crop.id]||r.crop.name;
       const tag = r.requested ? '' : o.demand[it] ? '<span class="pill leaf">for items</span>' : (best.autoUse||{})[it]>1e-6 ? '<span class="pill leaf">for products</span>' : '<span class="pill">leftover</span>';
-      h+=`<tr title="${r.pv.cycle.toFixed(1)} min per harvest · ${fmt(coin)} coin/h per plot"><td><span class="sw" style="background:var(${colorOf(r)})"></span>${r.crop.name}${tag}</td><td>${where}</td><td class="n">${r.plots}</td><td class="n">${Math.round(r.pv.eff*100)}%</td><td class="n">${fmt(coin*r.plots)}</td></tr>`;
+      h+=`<tr title="${r.pv.cycle.toFixed(1)} min per harvest · ${fmt(coin)} coin/h per plot"><td><span class="sw" style="background:var(${colorOf(r)})"></span>${r.crop.name}${tag}<div class="wh">${where}${r.pv.eff<0.999?' · '+Math.round(r.pv.eff*100)+'% speed':''}</div></td><td class="from">${where}</td><td class="n">${r.plots}</td><td class="n from">${Math.round(r.pv.eff*100)}%</td><td class="n">${fmt(coin*r.plots)}</td></tr>`;
     }
   }
   if (best.mines.length){
@@ -3676,7 +3751,8 @@ function renderOrderOut(){
 }
 // ---------- Harvest Moon Festival ----------
 // Dates, tasks, points and seeds: AniimoTools Home Season page; dates, daily total, 2 Season Orders and the furniture tip also from ItemLevel.
-const EVENT = { start: Date.UTC(2026,8,15,16), end: Date.UTC(2026,9,27,16),   // 16 Sep to the end of 27 Oct, UTC+8
+const EVENT = { start: Date.UTC(2026,8,15,16), ends: Date.UTC(2026,9,27,16),   // 16 Sep to the end of 27 Oct, UTC+8 (the countdown)
+  end: Date.UTC(2026,9,28,16),   // switched off a day later: sources disagree on the hour it ends
   tasks: [['orders','Complete 3 Home orders',150],['sell','Sell Home produce once',150],['outing','Complete 1 Aniimo outing',150],['soil',"Loosen soil at a friend's Home",150],
           ['gather','Harvest Gathering (from 21 Oct)',300]],
   gatherFrom: Date.UTC(2026,9,20,16),
@@ -3684,7 +3760,7 @@ const EVENT = { start: Date.UTC(2026,8,15,16), end: Date.UTC(2026,9,27,16),   //
 const todayKey = () => { const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
 function renderEventBtn(){
   const b=$('eventBtn'), now=Date.now(); if (now<EVENT.start || now>EVENT.end){ b.hidden=true; return; }
-  const days=Math.ceil((EVENT.end-now)/864e5); b.hidden=false;
+  const days=Math.max(0,Math.ceil((EVENT.ends-now)/864e5)); b.hidden=false;
   b.innerHTML=`<span aria-hidden="true">🌙</span> Harvest Moon <span class="d">${days} day${days>1?'s':''} left</span>`;
 }
 function renderEvent(){
@@ -3692,7 +3768,7 @@ function renderEvent(){
   const now=Date.now(), tasks=EVENT.tasks.filter(t=>t[0]!=='gather' || now>=EVENT.gatherFrom);
   const wheat=tasks.filter(t=>ev.done.includes(t[0])).reduce((s,t)=>s+t[2],0), max=tasks.reduce((s,t)=>s+t[2],0);
   const pts=ev.points||0, next=EVENT.tiers.find(t=>t>pts), prev=[0,...EVENT.tiers].filter(t=>t<=pts).pop();
-  const left=Math.max(0,EVENT.end-now), d=Math.floor(left/864e5), h=Math.floor(left%864e5/36e5);
+  const left=Math.max(0,EVENT.ends-now), d=Math.floor(left/864e5), h=Math.floor(left%864e5/36e5);
   $('evBody').innerHTML=`<div class="evhead"><h2 id="evTitle">🌙 Harvest Moon Festival</h2><button type="button" class="icon" id="evClose" aria-label="Close">✕</button></div>
     <p class="note">Ends in <b>${d}d ${h}h</b> (end of 27 Oct, UTC+8).</p>
     <h3>Today's tasks <span class="note">${fmt(wheat)} / ${fmt(max)} Moonray Wheat</span></h3>
