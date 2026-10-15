@@ -651,7 +651,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Oct, 1:30pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Oct, 8:45pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -2200,6 +2200,7 @@ function renderTodo(){
   // buildings
   { const mc=(L.machCards||[]).filter(m=>!m.power && m.need>0), items=[];
     for (const m of mc.sort((a,b)=>(a.key==='mine'?-1:0)-(b.key==='mine'?-1:0) || b.need-a.need)){
+      if (m.forRv) m.e=Math.min(m.need, ((P||{}).eRv||{})[m.key]||0);
       const recs=m.forRv ? ['for the RV upgrade'] : [...new Set([...(m.lines||new Map()).values()].map(l=>varWord(l.r)+l.r.n))];
       items.push({t:plural(MACH[m.key].name, m.need), s:[short(recs), m.e?`⚡ ${m.e>=m.need?'all':m.e} on E-mode`:''].filter(Boolean).join(' · ')}); }
     if (P && P.gens) items.push({t:plural('Crackle Generator', P.gens), s:`${fmt(P.used)} of ${fmt(P.cap)} W in use`});
@@ -3664,7 +3665,8 @@ function run(){
           <p class="note">Each generator needs one Lightning Aniimo (Lv ${GEN.need[P.lvl]}+). Machines run at 120% while the load stays at or under output ÷ 1.2, which is ${fmt(P.cap)} W here. Link machines to it with Power Poles.</p>
           ${(()=>{ const full=GEN.w[P.lvl]; if (P.out>=full-1e-6) return ''; const lv=[1,2,3,4].find(w=>genOut(P.lvl,w)>=full-1e-6);
             return `<p class="warn">Your workers make each generator give ${fmt(P.out)} of its ${fmt(full)} W.${lv?` A Lv ${lv} Lightning Aniimo gives the full ${fmt(full)} W.`:''}</p>`; })()}</div>`; }
-      if (m.forRv) return `<div class="mc"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div><p class="note">For RV ${gs.rv.next}</p><ul>${m.forRv.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.batches)} total</span></li>`).join('')}</ul></div>`;
+      if (m.forRv){ const nE=Math.min(m.need, ((PWR||{}).eRv||{})[m.key]||0);
+        return `<div class="mc"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}${nE?` <span class="emode big" title="Runs on Crackle Generator power: switch it to E-mode in game. No Aniimo needed.">⚡ ${nE>=m.need?(m.need>1?'All on':'On'):nE+' of '+m.need+' on'} E-mode</span>`:''}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div><p class="note">For RV ${gs.rv.next}</p><ul>${m.forRv.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.batches)} total</span></li>`).join('')}</ul></div>`; }
       const ls=[...m.lines.values()].sort((a,b)=>(b.coin-a.coin)||(b.perHour-a.perHour));
       // one bar per machine, filled by how busy that machine is
       let segs=[];
