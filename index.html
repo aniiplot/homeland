@@ -569,7 +569,7 @@ body:not(.setup-open) .scrim{display:none}
             <div class="grid">
               <label class="f"><span>Keep Aniimo free <i class="tip" tabindex="0" data-tip="Slots you use elsewhere, like the Homebuilding Zone or trips. The plan leaves them free.">?</i></span><select id="reserve"></select></label>
               <label class="f"><span>Check-in every <i class="tip" tabindex="0" data-tip="Only used without Hauling. A plot stops when full: Farmland holds 5 harvests per level, Woodland 8 to 28.">?</i></span><select id="hours"></select></label>
-              <input type="hidden" id="woodValue" value="0"><input type="hidden" id="sv" value="2">
+              <input type="hidden" id="woodValue" value="0"><input type="hidden" id="sv" value="3">
               <label class="f"><span>Farmland per Furnace/Lamp <i class="tip" tabindex="0" data-tip="Most 2×2 Farmland that can touch one Heat Furnace or Sunlamp range is 24. Lower it if walls or paths are in the way.">?</i></span><select id="capSmall"></select></label>
               <label class="f"><span>Farmland per Cooling Unit <i class="tip" tabindex="0" data-tip="Most 2×2 Farmland that can touch one Cooling Unit range is 32. Lower it if walls or paths are in the way.">?</i></span><select id="capCool"></select></label>
             </div>
@@ -651,7 +651,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Oct, 8:45pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 16 Oct, 7:30pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -1842,7 +1842,10 @@ function readForm(){ const o={}; for (const k of FORM_IDS){ const el=$(k); o[k]=
 function migrateForm(f){ const rv=Math.max(1,Math.min(20,parseInt(f&&f.rv)||12));
   if (f && !('feed' in f)) $('feed').checked=true;
   // settings version 2: overlapping heat and cold became opt-in
-  if (f && !(parseInt(f.sv)>=2)){ $('pairs').checked=false; $('sv').value='2'; }
+  if (f && !(parseInt(f.sv)>=2)){ $('pairs').checked=false; }
+  // settings version 3: the old Quick-mode bug could leave either unit capacity at 1; put both back once
+  if (f && !(parseInt(f.sv)>=3) && (String(f.capSmall)==='1' || String(f.capCool)==='1')){ $('capSmall').value=DEFAULTS.capSmall; $('capCool').value=DEFAULTS.capCool; }
+  if (f) $('sv').value='3';
   // an earlier version reset these to 1 when switching to Quick; nobody means 1 Farmland per unit
   if (f && String(f.capSmall)==='1' && String(f.capCool)==='1'){ $('capSmall').value=DEFAULTS.capSmall; $('capCool').value=DEFAULTS.capCool; }
   if (f && !('power' in f)){ $('power').value=String(powerAt(rv)); $('gens').value=String(genCount(rv)); $('usePower').checked=true; } }
@@ -3520,6 +3523,10 @@ function run(){
   const usedF=best.placed.filter(p=>p.crop.kind==='farm').reduce((s,p)=>s+p.plots,0);
   const usedW=best.placed.filter(p=>p.crop.kind==='wood').reduce((s,p)=>s+p.plots,0);
 
+  // a lowered unit capacity changes the whole plan (a Sunlamp per plot, say), so say so whenever it's in play
+  { const used=z=>(best.counts||{})[z]>0, small=['scorch','warm','lamp'].some(used), cool=['cool','freeze'].some(used);
+    if (small && o.capSmall<24) warnings.push(`"Farmland per Furnace/Lamp" is set to ${o.capSmall} (most that fits is 24), so each Heat Furnace and Sunlamp here holds at most ${o.capSmall} Farmland. Change it in More settings if that's not what you meant.`);
+    if (cool && o.capCool<32) warnings.push(`"Farmland per Cooling Unit" is set to ${o.capCool} (most that fits is 32), so each Cooling Unit here holds at most ${o.capCool} Farmland. Change it in More settings if that's not what you meant.`); }
   if (o.feed && best.foodShort>1) warnings.push(`Nothing the plan makes covers ${fmt(best.foodShort)} of the ${fmt(best.foodNeed||best.foodShort)} food energy your Aniimo eat an hour. Stock the food bowl yourself or they work at 20% speed.`);
   // ----- Goal timing -----
   let goalHtml='';
