@@ -240,6 +240,17 @@ a{color:var(--leaf)}
 .cc .top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .cc .n{font-family:var(--font-mono);font-weight:600;font-size:1.6rem;line-height:1;color:var(--jc)}
 .cc .for{font-size:.8rem;color:var(--muted)}
+.cc .tj{display:grid;gap:7px}
+.cc .tj > div{display:grid;gap:2px;justify-items:start}
+.jobsum{margin:0 0 4px}
+.jobsum ul{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:0}
+.jobsum li{display:grid;grid-template-columns:minmax(120px,max-content) 4.5em 1fr;gap:4px 12px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:.86rem}
+.jobsum li:first-child{border-top:0}
+.jobsum li > .tot{text-align:right;color:var(--jc);font-family:var(--font-mono);font-weight:600;font-size:.95rem}
+.jobsum li > .job{justify-self:start}
+.jobsum .by{color:var(--muted)}
+.jobsum .by .sh{color:var(--ink);font-family:var(--font-mono);font-weight:600}
+@media (max-width:560px){ .jobsum li{grid-template-columns:1fr auto} .jobsum .by{grid-column:1/-1} }
 .cc .pick{font-size:.82rem}
 .cc .pick b{font-weight:700}
 .cc .pick.ok{color:var(--ink)}
@@ -651,7 +662,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 16 Oct, 7:30pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 29 Oct, 8:45pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -2331,8 +2342,22 @@ function fewestCrew(req, lv, owned){
     model.variables['x_'+n]={obj:1+(owned.has(n)?0:0.01)+(/Prismana/.test(n)?0.02:0)-0.001*use.length, [cx]:-1}; model.ints['x_'+n]=1; xs.push(n);
     for (const i of use) model.variables['y_'+n+'_'+i]={[cx]:1, ['d'+i]:1}; }
   const r=SOLVER.Solve(model); if (!r || r.feasible===false) return null;
-  return xs.map(n=>({name:n, n:Math.round(r['x_'+n]||0), jobs:req.map((q,i)=>({...q, share:r['y_'+n+'_'+i]||0})).filter(j=>j.share>1e-4)}))
+  return xs.map(n=>({name:n, n:Math.round(r['x_'+n]||0), jobs:req.map((q,i)=>({...q, i, share:r['y_'+n+'_'+i]||0})).filter(j=>j.share>1e-4)}))
     .filter(s=>s.n>0).sort((a,b)=>b.jobs.length-a.jobs.length || b.n-a.n); }
+// Tidy a Fewest Aniimo team for display: trim spare share so each job adds up to exactly what it needs, merge rows of
+// the same job, list each Aniimo's jobs biggest first (its card takes the colour of the first), and total each job.
+function teamByJob(team, req){
+  req.forEach((q,i)=>{ const js=team.flatMap(s=>s.jobs.filter(j=>j.i===i)), got=js.reduce((t,j)=>t+j.share,0); if (got>q.d+1e-6) js.forEach(j=>{ j.share*=q.d/got; }); });
+  for (const s of team){ const m=new Map();
+    for (const j of s.jobs){ const e=m.get(j.job); if (e){ e.share+=j.share; e.lvl=Math.max(e.lvl,j.lvl); if (j.does && !e.does.includes(j.does)) e.does+=' · '+j.does; } else m.set(j.job,{...j, does:j.does||''}); }
+    s.jobs=[...m.values()].sort((a,b)=>b.share-a.share); }
+  const jobs=new Map();
+  for (const s of team) for (const j of s.jobs){ const e=jobs.get(j.job)||{job:j.job, lvl:j.lvl, total:0, by:[]}; e.lvl=Math.max(e.lvl,j.lvl); e.total+=j.share; e.by.push({name:s.name, n:s.n, share:j.share}); jobs.set(j.job,e); }
+  const list=[...jobs.values()].sort((a,b)=>b.total-a.total); list.forEach(e=>e.by.sort((a,b)=>b.share-a.share));
+  const rank=new Map(list.map((e,k)=>[e.job,k]));
+  team.sort((a,b)=>rank.get(a.jobs[0].job)-rank.get(b.jobs[0].job) || b.jobs[0].share-a.jobs[0].share);
+  return list; }
+const pctOf = x => x<0.005 ? 'under 1%' : Math.round(100*x)+'%';
 
 function renderCrew(){
   const L=lastPlan; if (!L || !L.crewList) return;
@@ -2351,7 +2376,8 @@ function renderCrew(){
       assign.set(r,{got, short:need, letters:Ls}); } }
   // Fewest Aniimo: one Aniimo can split its time across jobs it knows, so shared work may need fewer of them
   const pooledRows=crewList.filter(r=>r.pooled), fixedRows=crewList.filter(r=>!r.pooled);
-  const team=fewest ? fewestCrew(pooledRows.map(r=>({job:r.job, lvl:r.lvl||1, d:Math.max(r.d||0, 0.01), does:r.does})), lv, owned) : null;
+  const req=pooledRows.map(r=>({job:r.job, lvl:r.lvl||1, d:Math.max(r.d||0, 0.01), does:r.does}));
+  const team=fewest ? fewestCrew(req, lv, owned) : null, jobSum=team ? teamByJob(team, req) : null;
   const crewMin = team ? fixedRows.reduce((t,r)=>t+r.n,0)+team.reduce((t,s)=>t+s.n,0) : L.crewMin;
   if (!crewList.length){ $('pane-crew').innerHTML='<p class="note">No workers needed yet.</p>'; return; }
   const card=(r,ri)=>{
@@ -2375,9 +2401,14 @@ function renderCrew(){
     <div class="seg" role="group" aria-label="Show workers"><button type="button" data-cm="job" aria-pressed="${!fewest}">By job</button><button type="button" data-cm="fewest" aria-pressed="${fewest}">Fewest Aniimo</button></div>
     ${fewest && !team ? '<p class="warn">No mix of the listed Aniimo covers every shared job at the level needed, so this shows workers by job.</p>' : ''}
     ${team ? `<p class="note">Machines and field work can share one Aniimo when it knows both jobs. ${L.crewMin-crewMin>0?`<b>${L.crewMin-crewMin} fewer</b> than by job.`:'No saving over by job here.'}</p>
+      <div class="card jobsum"><div class="head"><h3>Work needed by job</h3><span class="note">100% is one Aniimo working full time</span></div>
+        <ul>${jobSum.map(e=>`<li style="--jc:var(${jobVar(e.job)})">${jobChip(e.job, e.lvl>1?' Lv '+e.lvl+'+':'')}<b class="tot">${e.by.length>1 && e.total>=0.005 ? e.by.reduce((t,x)=>t+Math.round(100*x.share),0)+'%' : pctOf(e.total)}</b>
+          <span class="by">${e.by.map(x=>`${esc(x.name)}${x.n>1?' ×'+x.n:''}${e.by.length>1?' <span class="sh">'+pctOf(x.share)+'</span>':''}`).join(', ')}</span></li>`).join('')}</ul></div>
+      <div class="mgroup"><h3>Shared workers</h3><p class="note">Each card is coloured by the job it does most. Percentages are for all copies together.</p>
       <div class="crew">${team.map(s=>`<div class="cc" style="--jc:var(${jobVar(s.jobs[0].job)})"><div class="top"><b>${s.name}${owned.has(s.name)?' <span class="pill leaf">yours</span>':''}</b><span class="n">${s.n}</span></div>
-        <div class="oc">${s.jobs.map(j=>jobChip(j.job, ' '+Math.round(100*j.share)+'%')).join('')}</div>${s.n>1?`<div class="for">Work shared between ${s.n}, ${Math.round(100*s.jobs.reduce((t,j)=>t+j.share,0)/s.n)}% busy each</div>`:''}
-        <div class="for">${s.jobs.map(j=>j.does).join(' · ')}</div></div>`).join('')}${fixedRows.map(card).join('')}</div>` : `<div class="crew">${crewList.map(card).join('')}</div>`}`;
+        <div class="tj">${s.jobs.map(j=>`<div style="--jc:var(${jobVar(j.job)})">${jobChip(j.job, ' '+pctOf(j.share))}${j.does?`<div class="for">${j.does}</div>`:''}</div>`).join('')}</div>
+        ${s.n>1?`<div class="for">Work shared between ${s.n}, ${Math.round(100*s.jobs.reduce((t,j)=>t+j.share,0)/s.n)}% busy each</div>`:''}</div>`).join('')}</div></div>
+      ${fixedRows.length?`<div class="mgroup"><h3>One worker each</h3><p class="note">Each of these keeps its own Aniimo, so they aren't shared.</p><div class="crew">${fixedRows.map(card).join('')}</div></div>`:''}` : `<div class="crew">${crewList.map(card).join('')}</div>`}`;
   const openSet=L.openCards||(L.openCards=new Set());
   $('pane-crew').querySelectorAll('details.opts').forEach((d,i)=>{ if(openSet.has(i)) d.open=true; d.addEventListener('toggle',()=>{ d.open?openSet.add(i):openSet.delete(i); }); });
   $('pane-crew').querySelectorAll('button.an').forEach(b=>b.onclick=()=>{ const n=b.dataset.an, R=state.roster||(state.roster=[]), i=R.findIndex(x=>x.n===n);
