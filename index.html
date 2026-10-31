@@ -566,7 +566,7 @@ body:not(.setup-open) .scrim{display:none}
           <label class="inline"><input type="checkbox" id="usePower" checked>E-mode <i class="tip" tabindex="0" data-tip="Lets the plan put machines, Mines and Wells on generator power (RV 12+). They need no Aniimo and run at their E-mode speed, 20% faster while the load stays under 5/6 of the generators' output. The plan picks which ones are worth it.">?</i></label>
           <label class="inline"><input type="checkbox" id="extras" checked>Leisure &amp; Wells <i class="tip" tabindex="0" data-tip="Fills spare Aniimo slots with Wells and leisure spots (Sandcastle, Dewy House, Nimbus Bed, Starfall Hammock, Floral Windmill). They need no land or ingredients, just one Aniimo each, and their coin counts toward your goal. Leisure spots need a specific species.">?</i></label>
           <label class="inline"><input type="checkbox" id="pairs">Overlap heat &amp; cold <i class="tip" tabindex="0" data-tip="Where a Heat Furnace and Cooling Unit ranges overlap, temperatures add: Scorching + Cool makes Warm, Warm + Freeze makes Cool. One pair can then serve three climates.">?</i></label>
-          <label class="inline"><input type="checkbox" id="freeze" checked>Freeze <i class="tip" tabindex="0" data-tip="The Cooling Unit's colder setting, needed at full speed by Cranberry and Maple Syrup. Needs an Ice Lv 2 worker.">?</i></label>
+          <label class="inline"><input type="checkbox" id="freeze" checked>Freeze <i class="tip" tabindex="0" data-tip="The Cooling Unit's colder setting, needed at full speed by Cranberry and Maple Syrup, and by a Sandcastle making Sweet Cone (RV 22). Needs an Ice Lv 2 worker.">?</i></label>
         </div>
         <details class="adv">
           <summary>More settings</summary>
@@ -663,7 +663,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 31 Oct, 12:45pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 31 Oct, 1:25pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -910,8 +910,9 @@ const PROC = [
 // Game data from Shinumino's Aniimo Homeland Planner (MIT licence, game build 3634150), checked against Wikily.
 const EMODE_S = [54,54,54,54,108,54,54,54,54,108,108,108,108,108,162,108,162,108,162,162,162,108,108,108,378,378,162,108,108,162,162,162,162,162,162,162,108,108,162,162,162,216,162,270,108,162,108,108,54,108,54,54,108,54,162,216,216,108,54,54,54,54,54,54,108,54,54,54,54,54,54,270,54,108,108,162,108,162,108,108,108,162,108,108,162,54,108,54,108,108,108,162,108,216,108,108,108,108,108,108,108,162,162,108,108,108,108,108,108,108,54,108,216,108,108,162,108,108,54,108,108,108,162,108,108,162,216,54,216,108,108,108,108,162,54,54,54,54,54,162,27,27,27,27,27,27,27,27,1200,2400,3600,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,900,1800,1800,1800,1800,1800,0,0,0,0,0,0,0,0,0,0,0];
 PROC.forEach((r,i)=>{ if (EMODE_S[i]) r.es=EMODE_S[i]; });
-// Recipes added in the 29 Oct 2026 update (game build 1.1.3846247): AniimoGuide's recipe list (from the game files) and
-// AniimoTools' station and RV pages agree on every one; aniimo.th.gl's database settles Magic Pumpkin Cake (Milled Rice).
+// Recipes added in the 29 Oct 2026 update (game build 1.1.3846247), from AniimoGuide's recipe list (the game files). A second
+// source confirms nearly all: AniimoTools' station pages, or in-game cards noted in Zudin987's Aniimax fork. Only AniimoGuide
+// has the Brew Keg Lv 6 recipes and Sorghum Fermented Mash so far. aniimo.th.gl settles Magic Pumpkin Cake (Milled Rice).
 // Appended after the older rows so their ids, and saved setups, stay the same. es: E-mode seconds (workload / 1, 1.25
 // or 1.5 by recipe level, the same rule every older row follows).
 const ES = (w,j) => Math.round(w/[0,1,1.25,1.5][j]);
@@ -971,7 +972,8 @@ const EAT_PER_H = 600;
 // The planner's best Home Coin an hour at each RV level: everything that level allows, Lv 3 workers, no item list,
 // E-mode and food on, no event crops (worked out with a 20-second limit per level).
 const BEST_RV = {1:400,2:1133,3:3198,4:5724,5:11972,6:14672,7:25701,8:39303,9:47225,10:54856,11:78398,12:112105,13:132556,14:156738,15:185894,16:233200,17:308045,18:375236,19:420912,20:430124,21:657848,22:709453};
-// Habitability an RV upgrade asks for (from RV 10). Besides it, reaching RV N needs every plot, Mine and Well RV N-1 allows.
+// Habitability an RV upgrade asks for (from RV 10). Besides it, reaching RV N (up to 20) needs every plot, Mine and Well
+// RV N-1 allows; RV 21 asks for a title and a quest instead, and RV 22 for 40 Farmland at Lv 8 and 4 Wells (see rvChecks).
 const HAB_NEED = {10:13000, 11:13500, 12:14000, 13:14500, 14:15000, 15:15500, 16:16000, 17:17000, 18:18000, 19:19000, 20:20000, 21:22000, 22:24000};
 // Crackle Generators: output by level (Power Module level n allows generator Lv n), how many you can place, and the
 // Lightning job they need. A generator's output scales with its worker: (ATK[worker Lv] - DEF[needed Lv]) / workload.
@@ -1015,10 +1017,9 @@ const LEISURE_LINE = {
   Dewy:      [['Dewy',1],['Fragrancier',3]],
   Celestis:  [['Celestis',1],['Stellarys',3],['Stellarys Prismana',4]],
   Flutternym:[['Flutternym',1],['Gracewing',3],['Somniwing',4]],
-  // New with the 29 Oct update. Coinwisp line: AniimoTools Starfall Hammock page. Sugarfish line: AniimoTools Sandcastle
-  // page names the family; its forms' Leisure levels aren't published, so they follow the usual 1 / 3 / Prismana 4 pattern.
+  // New with the 29 Oct update: AniimoTools' Starfall Hammock and Tidewhisper Sandcastle pages
   Coinwisp:  [['Coinwisp',1],['Pouchwisp',3],['Pouchwisp Prismana',4]],
-  Sugarfish: [['Sugarfish',1],['Sugarslime',3],['Sugartini',3],['Sugartini Prismana',4]],
+  Sugarfish: [['Sugarfish',1],['Sugarslime',3],['Sugartini',3]],
 };
 // Best form of the line within the chosen worker level: {name, lvl, line}
 function leisurePick(r, ctx){
@@ -1039,7 +1040,7 @@ function batchMinutes(r, ctx){
   let rate = RATE[k][r.j][wl] * (ctx.persona ? 1.2 : 1);
   if (r.clim==='cool' && !ctx.cool) rate *= 0.8;
   if (r.clim==='warm' && !ctx.heat) rate *= 0.8;
-  if (r.clim==='freeze' && !ctx.cool) rate *= 0.5;
+  if (r.clim==='freeze' && !(ctx.cool && ctx.freezeOk!==false)) rate *= 0.5;
   if (r.clim==='light' && !ctx.lamp) rate = 0;
   return rate>0 ? r.w/rate : Infinity;
 }
@@ -1885,7 +1886,7 @@ function cleanState(raw){
       seed:nb(c.seed,0,1e6,0), base:nb(c.base,1,1e4,40), temp:light?0:Math.round(nb(c.temp,-2,2,0)), light, wood:kind==='wood'?Math.round(nb(c.wood,0,1e4,0)):0, jobs:'EGD'}); }
   st.custom=[];   // custom crops were removed; old saves drop theirs
   const ids=new Set(CROPS.filter(c=>!offSeason(c.event)).map(c=>c.id));
-  if (Array.isArray(d.requests)) st.requests=arr(d.requests,60).filter(r=>r&&ids.has(r.id)).map(r=>({id:r.id, plots:Math.round(nb(r.plots,1,40,1))}));
+  if (Array.isArray(d.requests)) st.requests=arr(d.requests,60).filter(r=>r&&ids.has(r.id)).map(r=>({id:r.id, plots:Math.round(nb(r.plots,1,42,1))}));
   st.noFill=arr(d.noFill,100).filter(x=>ids.has(x));
   if (Array.isArray(d.products)) st.products=arr(d.products,40).filter(w=>w&&PRODUCT_NAMES.includes(w.n)).map(w=>({n:w.n, amt:nb(w.amt,0,1e6,1), unit:['h','d','p'].includes(w.unit)?w.unit:'h'}));
   st.crewLvl=d.crewLvl==4?4:3; st.allMach=!!d.allMach;
@@ -1903,7 +1904,7 @@ function cleanState(raw){
     if (!Array.isArray(d.roster)) for (const n of st.owned) if (known.has(n) && !seen.has(n)){ seen.add(n); st.roster.push({n, c:1, p:'', away:0}); }
     st.owned=[]; }
   st.orders=arr(d.orders,50).filter(x=>x&&typeof x==='object').map(x=>({n:cleanName(x.n,60), q:nb(x.q,0,1e7,1), r:nb(x.r,0,1e10,0)}));
-  if (d.event&&typeof d.event==='object') st.event={day:String(d.event.day||'').slice(0,12), done:arr(d.event.done,10).filter(x=>typeof x==='string'), points:nb(d.event.points,0,1e7,0)};
+  if (d.event&&typeof d.event==='object') st.event={day:String(d.event.day||'').slice(0,12), done:arr(d.event.done,10).filter(x=>typeof x==='string'), points:nb(d.event.points,0,1e7,0), key:String(d.event.key||'').slice(0,8)};
   for (const k of ['layoutStyle','layoutView','cmpKey','crewMode']) if (typeof d[k]==='string' && /^[a-z]{1,10}$/.test(d[k])) st[k]=d[k];
   st.mode = d.mode==='quick' ? 'quick' : 'custom';
   return st;
@@ -2101,7 +2102,7 @@ function renderFillChips(){
 // ---------- Item rows ----------
 const PRODUCT_NAMES = [...new Set(PROC.filter(r=>!offSeason(r.u.ev)).map(r=>r.n))];
 function chainCtx(o){ return {avoid:new Set(state.avoid||[]), choose:state.recipeFor||{}, rv:int('rv'), workerLvl:state.crewLvl===4?4:3, persona:$('persona').checked, kitchen:int('kitchen'), crafting:int('crafting'),
-  detector:int('detector'), events:$('events').checked, heat:o.heat>0, cool:o.cool>0, lamp:o.lamp>0, oneRecipe:!$('switchRec').checked}; }
+  detector:int('detector'), events:$('events').checked, heat:o.heat>0, cool:o.cool>0, freezeOk:$('freeze').checked, lamp:o.lamp>0, oneRecipe:!$('switchRec').checked}; }
 // Plots of crops needed per 1 item an hour, assuming each crop gets its best climate
 function plotsPerItem(recipe, ctx, o){
   const ch=expandChain([{recipe, perHour:1}], ctx); let plots=0; const parts=[];
@@ -2235,7 +2236,7 @@ function goalSpec(){
   let oreP={chain:[],raw:0}, needSand=0;
   if (ore){ oreP=procNeed(ore, oreAmt, num('haveOre',0,1e9), ctx); needSand=Math.max(0, oreP.raw - (ore==='Mineral Sand'?0:num('haveSand',0,1e9))); }
   const unlock=$('unlockCost').checked ? unlockCosts(rv) : {total:0, items:[]};
-  const needCoin=Math.max(0, coin+unlock.total-num('haveCoin',0,1e12));
+  const needCoin=Math.max(0, coin+unlock.total+(rv+1===22 ? farmLv8Cost() : 0)-num('haveCoin',0,1e12));
   return {goal:{mode:'target',coin:needCoin,wood:needWood,sand:needSand}, need:{coin:needCoin,wood:needWood,sand:needSand},
     rv:{next:rv+1,coin,tier,amt,ore,oreAmt,woodChain:wood.chain,oreChain:oreP.chain,unlock}};
 }
@@ -2265,14 +2266,20 @@ function renderGoalInputs(){
 function rvChecks(next, best, chain, extras){
   const rv=next-1, P=best.power||{};
   const wells=((chain.machines.find(m=>m.key==='well')||{}).need||0)+extras.filter(e=>e.key==='well').length+(P.eExtras||[]).filter(e=>e.key==='well').reduce((t,e)=>t+e.count,0)+((best.autoMach||{}).well||0)+((P.eMachK||{}).well||0);
-  const rows=[['Farmland plots', int('farmPlots'), farmCap(rv)], ['Woodland plots', int('woodPlots'), woodCap(rv)], ['Mines', int('mines'), placeAt('mine',rv)], ['Wells', wells, placeAt('well',rv), 'the plan places']];
+  const rows = next===21 ? []
+    : next===22 ? [['Farmland plots at Lv 8', int('farmLvl')>=8 ? int('farmPlots') : 0, 40, int('farmLvl')>=8 ? '' : 'yours are Lv '+int('farmLvl')], ['Wells', wells, 4, 'the plan places']]
+    : [['Farmland plots', int('farmPlots'), farmCap(rv)], ['Woodland plots', int('woodPlots'), woodCap(rv)], ['Mines', int('mines'), placeAt('mine',rv)], ['Wells', wells, placeAt('well',rv), 'the plan places']];
   if (HAB_NEED[next]) rows.push(['Habitability', num('haveHab',0,1e9), HAB_NEED[next], 'you have']);
-  lastPlan.rvUnmet=rows.filter(r=>r[2]>0 && r[1]<r[2] && !(r[0]==='Habitability' && !(r[1]>0))).map(([lbl,have,need])=>`${fmt(need-have)} more ${lbl==='Habitability'?'Habitability':lbl.replace(/s$/,need-have===1?'':'s')}`);
+  lastPlan.rvUnmet=rows.filter(r=>r[2]>0 && r[1]<r[2] && !(r[0]==='Habitability' && !(r[1]>0))).map(([lbl,have,need])=>`${fmt(need-have)} more ${lbl==='Habitability'?'Habitability':lbl.replace(/s( at Lv 8)?$/,(m,a)=>(need-have===1?'':'s')+(a||''))}`);
   return `<ul class="checks">${rows.filter(r=>r[2]>0).map(([lbl,have,need,how])=>{ const ok=have>=need, unk=lbl==='Habitability'&&!(have>0);
     if (unk) return `<li class="unk" title="Enter the Habitability on your RV screen under Goal in the setup"><span>? ${lbl}</span><span>? / ${fmt(need)}</span></li>`;
     return `<li class="${ok?'ok':'no'}"><span>${ok?'✓':'✗'} ${lbl}</span><span>${fmt(have)} / ${fmt(need)}${how&&!ok?` <small>(${how})</small>`:''}</span></li>`; }).join('')}</ul>
-    ${HAB_NEED[next] && num('haveHab',0,1e9)>0 && num('haveHab',0,1e9)<HAB_NEED[next] ? '<p class="note">Raise Habitability with furniture bought with Bud Tickets; each Aniimo living at Home adds some too.</p>' : ''}`;
+    ${HAB_NEED[next] && num('haveHab',0,1e9)>0 && num('haveHab',0,1e9)<HAB_NEED[next] ? '<p class="note">Raise Habitability with furniture bought with Bud Tickets; each Aniimo living at Home adds some too.</p>' : ''}
+    ${next===21 ? '<p class="note">RV 21 also asks for the Trailblazer I title and the quest “RV to the Future”.</p>' : ''}
+    ${next===22 && farmLv8Cost()>0 ? `<p class="note">Upgrading your Farmland to Lv 8 costs ${fmt(farmLv8Cost())} Home Coin. It's counted in the Home Coin above.</p>` : ''}`;
 }
+// RV 22 asks for 40 Farmland at Lv 8: what upgrading yours costs (Home Coin), when they're below that
+function farmLv8Cost(){ const lv=Math.max(1,int('farmLvl')); if (lv>=8) return 0; const t=FAC_COST.Farmland; let one=0; for (let l=lv+1;l<=8;l++) one+=t[l-1]||0; return 40*one; }
 const fmtK = v => v>=1e6 ? (Math.round(v/1e5)/10)+'M' : v>=1e4 ? Math.round(v/1e3)+'k' : fmt(v);
 // Under the tiles: how sure the plan is, and how it compares with the planner's best at this RV
 function statusHtml(best, gs){
@@ -3943,7 +3950,7 @@ function renderOrderOut(){
 const EVENT = { key:'wn', start: Date.UTC(2026,9,29,2), ends: Date.UTC(2026,11,9,20),   // 29 Oct to 10 Dec 04:00 UTC+8 (the countdown)
   end: Date.UTC(2026,11,10,20),   // switched off a day later: servers in other regions end at a different hour
   tasks: [['orders','Complete 3 Home orders',200],['sell','Sell Home produce once',200],['outing','Complete 1 Aniimo outing',200],['soil',"Loosen soil at a friend's Home",200],
-          ['gather','Hand in 1 Nighttime Gathering item (from 12 Nov)',200]],
+          ['gather','Hand in 1 Nighttime Gathering item (from 12 Nov)',200],['gift',"Claim the Pumpkin God's Thank-You Gift (from 3 Dec)",0]],
   gatherFrom: Date.UTC(2026,10,11,20), giftFrom: Date.UTC(2026,11,2,20),
   tiers: [2000,6000,15000,25000,60000,100000,140000,180000,220000,280000] };
 const todayKey = () => { const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
@@ -3953,24 +3960,25 @@ function renderEventBtn(){
   b.innerHTML=`<span aria-hidden="true">🎃</span> Wonder Night <span class="d">${days} day${days===1?'':'s'} left</span>`;
 }
 function renderEvent(){
-  const ev=state.event||(state.event={}); if (ev.day!==todayKey()){ ev.day=todayKey(); ev.done=[]; }
-  const now=Date.now(), tasks=EVENT.tasks.filter(t=>t[0]!=='gather' || now>=EVENT.gatherFrom);
+  const ev=state.event||(state.event={}); if (ev.key!==EVENT.key){ ev.key=EVENT.key; ev.points=0; ev.done=[]; }   // last season's points don't carry over
+  if (ev.day!==todayKey()){ ev.day=todayKey(); ev.done=[]; }
+  const now=Date.now(), tasks=EVENT.tasks.filter(t=>(t[0]!=='gather' || now>=EVENT.gatherFrom) && (t[0]!=='gift' || now>=EVENT.giftFrom));
   const beans=tasks.filter(t=>ev.done.includes(t[0])).reduce((s,t)=>s+t[2],0), max=tasks.reduce((s,t)=>s+t[2],0);
   const pts=ev.points||0, next=EVENT.tiers.find(t=>t>pts), prev=[0,...EVENT.tiers].filter(t=>t<=pts).pop();
   const left=Math.max(0,EVENT.ends-now), d=Math.floor(left/864e5), h=Math.floor(left%864e5/36e5);
   $('evBody').innerHTML=`<div class="evhead"><h2 id="evTitle">🎃 Magical Wonder Night</h2><button type="button" class="icon" id="evClose" aria-label="Close">✕</button></div>
     <p class="note">Ends in <b>${d}d ${h}h</b> (10 Dec, 04:00 UTC+8). Opens at RV 10 after the quest “Act Seven: Festivals of Astra”.</p>
     <h3>Today's tasks <span class="note">${fmt(beans)} / ${fmt(max)} Weird Jelly Beans</span></h3>
-    <ul class="evtasks">${tasks.map(t=>`<li><label class="inline"><input type="checkbox" data-task="${t[0]}"${ev.done.includes(t[0])?' checked':''}>${t[1]}</label><span class="note">${t[2]}</span></li>`).join('')}</ul>
-    <p class="note">Pumpkin God season orders on the order board pay 300 beans each.${now>=EVENT.giftFrom?' The Pumpkin God’s Thank-You Gift can be claimed once a day.':' From 3 Dec the Pumpkin God’s Thank-You Gift adds a daily claim.'} Ticks reset each day.</p>
+    <ul class="evtasks">${tasks.map(t=>`<li><label class="inline"><input type="checkbox" data-task="${t[0]}"${ev.done.includes(t[0])?' checked':''}>${t[1]}</label><span class="note">${t[2]||'gift'}</span></li>`).join('')}</ul>
+    <p class="note">Pumpkin God season orders on the order board pay 300 beans each.${now>=EVENT.giftFrom?'':' From 3 Dec the Pumpkin God’s Thank-You Gift adds a daily claim.'} Ticks reset each day.</p>
     <h3>Whimsy points</h3>
     <label class="f" style="max-width:200px"><span>Points you have</span><input type="number" id="evPts" min="0" step="100" value="${pts||''}"></label>
     ${next?`<div class="evbar"><span style="width:${Math.min(100,100*(pts-prev)/(next-prev))}%"></span></div><p class="note">${fmt(next-pts)} to the next reward at ${fmt(next)}${EVENT.tiers.indexOf(next)===EVENT.tiers.length-1?' (the last one)':''}.</p>`:'<p class="note"><b>All rewards claimed.</b></p>'}
     <ol class="evtiers">${EVENT.tiers.map(t=>`<li class="${t<=pts?'got':''}">${fmt(t)}</li>`).join('')}</ol>
     <h3>Tips</h3>
-    <ul class="evtips"><li>Event furniture earns about 8–10 Whimsy points per bean. A seed is worth 2 points and each crop 1, so planting earns about 2 per bean.</li>
-      <li>Magic Pumpkin and Memory Lanternfruit seeds cost 4 beans. They need Farmland Lv 5 inside a Sunlamp range, grow in 30 min and give 8 each.</li>
-      <li>Formula Notes for the event dishes cost 80 beans each in the Season Exchange (Glowfruit Lantern Set 120).</li>
+    <ul class="evtips"><li>Event furniture earns about 8–10 Whimsy points per bean. A seed is worth 2 points and each crop 1, so planting earns about 2.5 per bean.</li>
+      <li>Magic Pumpkin and Memory Lanternfruit seeds cost 4 beans, and each crop first needs its own Formula Note (Magic Pumpkin, Memoryglow Fruit). They need Farmland Lv 5 inside a Sunlamp range, grow in 30 min and give 8 each.</li>
+      <li>The dishes' Formula Notes cost 80 beans each in the Season Exchange (Glowfruit Lantern Set 120).</li>
       <li>There are 16 mutated crops to collect, 8 of each.</li></ul>
     <div class="btnrow"><button type="button" class="primary" id="evPlant">${$('events').checked?'Wonder Night crops are on':'Plant Wonder Night crops'}</button></div>`;
   $('evClose').onclick=()=>$('eventDlg').close();
@@ -4190,7 +4198,7 @@ document.addEventListener('change',e=>{ if(e.target.id==='crewLvl'){ state.crewL
 $('addProd').onclick=()=>{ (state.products||(state.products=[])).push({n:'Bread',amt:5,unit:'h'}); renderProducts(); markDirty(); };
 // Crops with mutated forms (AniimoTools item list and the Mutated Plant Exchange agree). Trees have none (Wikily).
 // Quick and Premium versions: Wikily lists the same mutated items as the plain crop, AniimoTools says none, so the plain crop is used.
-const MUTATES=['wheat','potato','rice','soybean','cotton','rose','lavender','strawberry','sugarcane','ginseng','grapes','agave','cranberry','moondew','pepper','mpumpkin','lantern'];
+const MUTATES=['wheat','potato','rice','soybean','cotton','rose','lavender','strawberry','sugarcane','ginseng','grapes','agave','cranberry','sorghum','moondew','pepper','mpumpkin','lantern'];
 $('addAll').onclick=()=>{ const o=opts(); for (const id of MUTATES){ const c=cropById(id); if (!c || !available(c).ok || state.requests.some(r=>r.id===id)) continue;
     if (c.light && o.lamp===0) continue; if (plotRoom(-1).left[kindOf(id)]<1) break; state.requests.push({id,plots:1}); }
   renderRequests(); markDirty(); };
