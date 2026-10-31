@@ -519,6 +519,7 @@ body:not(.setup-open) .scrim{display:none}
           <p id="solverNote" class="note" hidden>Your browser couldn't run the fast solver, so very large setups may come out close to best rather than exact.</p>
           <ul class="src">
             <li><a href="https://aniimotools.dev/systems/homeland/stations/" target="_blank" rel="noopener">AniimoTools stations</a> · <a href="https://aniimoguide.com/homeland/recipes" target="_blank" rel="noopener">AniimoGuide recipes</a> · <a href="https://wikily.gg/aniimo/homeland-furniture" target="_blank" rel="noopener">Wikily</a> · <a href="https://aniimo.gg/homeland/object/woodland-level-1/" target="_blank" rel="noopener">Aniimo.gg</a> · <a href="https://ae-bii.github.io/aniimax/" target="_blank" rel="noopener">Aniimax</a> · <a href="https://www.aniimoverse.com/guides/homeland" target="_blank" rel="noopener">AniimoVerse</a> · <a href="https://metaforge.app/aniimo/database/shops/seed-shop" target="_blank" rel="noopener">MetaForge</a></li>
+            <li>29 Oct 2026 update (RV 21–22, new recipes, Magical Wonder Night): <a href="https://aniimoguide.com/homeland/rv-levels" target="_blank" rel="noopener">AniimoGuide RV levels</a> and recipes (game build 1.1.3846247), checked against <a href="https://aniimotools.dev/systems/homeland/rv-levels/" target="_blank" rel="noopener">AniimoTools RV levels</a>, its station and <a href="https://aniimotools.dev/systems/homeland/home-season/" target="_blank" rel="noopener">Home Season</a> pages, and <a href="https://aniimo.th.gl/" target="_blank" rel="noopener">aniimo.th.gl</a>. Where they disagree, the game-file numbers are used.</li>
             <li>E-mode times, generator output and power draw: <a href="https://github.com/Shinumino/aniimo-homeland-planner" target="_blank" rel="noopener">Shinumino's Aniimo Homeland Planner</a> (MIT licence, Copyright (c) 2026 Shinumino), checked against <a href="https://wikily.gg/aniimo/homeland-crafting" target="_blank" rel="noopener">Wikily</a>.</li>
           </ul>
         </div>
@@ -572,7 +573,7 @@ body:not(.setup-open) .scrim{display:none}
           <div class="in">
             <div class="toggles">
               <label class="inline"><input type="checkbox" id="feed" checked>Feed my Aniimo <i class="tip" tabindex="0" data-tip="Every Aniimo at Home eats 10 energy a minute, working or not, and works at 20% speed when the food bowl is empty. The plan sets aside the cheapest food it makes: edible crops or dishes, taken off what it sells. Untick if you feed them from elsewhere.">?</i></label>
-              <label class="inline"><input type="checkbox" id="fillUnits">Fill spare unit space with no-climate crops <i class="tip" tabindex="0" data-tip="Crops with no temperature need (like the Harvest Moon crops, Quick Recipe: Rice and Quick Formula: Lemon) are drawn together on open ground. Tick to tuck them into spare space inside heat, cold and light ranges instead, for a more compact field.">?</i></label>
+              <label class="inline"><input type="checkbox" id="fillUnits">Fill spare unit space with no-climate crops <i class="tip" tabindex="0" data-tip="Crops with no temperature need (like Quick Recipe: Rice and Quick Formula: Lemon) are drawn together on open ground. Tick to tuck them into spare space inside heat, cold and light ranges instead, for a more compact field.">?</i></label>
               <label class="inline"><input type="checkbox" id="watering" checked>Watering <span class="fx">+33%</span> <i class="tip" tabindex="0" data-tip="Each crop asks for water twice while it grows, and each watering cuts an eighth off its grow time, so a 40 minute crop finishes in 30. Nobody has confirmed whether Aniimo water while you're offline. If you're away from your Homeland a lot, untick this to plan on the slower times.">?</i></label>
               <label class="inline"><input type="checkbox" id="hauling" checked>Hauling + Storage Unit <i class="tip" tabindex="0" data-tip="Hauling workers move full plots into a Storage Unit, so plots never stop. Untick if you collect by hand.">?</i></label>
               <label class="inline"><input type="checkbox" id="persona">Matching personalities <span class="fx">+20%</span> <i class="tip" tabindex="0" data-tip="Tick if each machine's and Mine's worker has that building's personality. They work 20% faster.">?</i></label>
@@ -580,7 +581,7 @@ body:not(.setup-open) .scrim{display:none}
             <div class="grid">
               <label class="f"><span>Keep Aniimo free <i class="tip" tabindex="0" data-tip="Slots you use elsewhere, like the Homebuilding Zone or trips. The plan leaves them free.">?</i></span><select id="reserve"></select></label>
               <label class="f"><span>Check-in every <i class="tip" tabindex="0" data-tip="Only used without Hauling. A plot stops when full: Farmland holds 5 harvests per level, Woodland 8 to 28.">?</i></span><select id="hours"></select></label>
-              <input type="hidden" id="woodValue" value="0"><input type="hidden" id="sv" value="3">
+              <input type="hidden" id="woodValue" value="0"><input type="hidden" id="sv" value="4">
               <label class="f"><span>Farmland per Furnace/Lamp <i class="tip" tabindex="0" data-tip="Most 2×2 Farmland that can touch one Heat Furnace or Sunlamp range is 24. Lower it if walls or paths are in the way.">?</i></span><select id="capSmall"></select></label>
               <label class="f"><span>Farmland per Cooling Unit <i class="tip" tabindex="0" data-tip="Most 2×2 Farmland that can touch one Cooling Unit range is 32. Lower it if walls or paths are in the way.">?</i></span><select id="capCool"></select></label>
             </div>
@@ -623,10 +624,10 @@ body:not(.setup-open) .scrim{display:none}
       <section class="step" aria-labelledby="h-crops">
         <header>
           <h2 id="h-crops"><span class="num"></span>Crops you want</h2>
-          <span class="btnrow"><button type="button" id="addAll">+ One of each to mutate</button><i class="tip" tabindex="0" data-tip="Adds one plot of every Farmland crop that can mutate, plus the Harvest Moon crops when they're switched on. Quick and Premium versions give the same mutated items as the plain crop (or none, sources disagree), so the plain crop covers each one. Trees have no mutated forms.">?</i></span>
+          <span class="btnrow"><button type="button" id="addAll">+ One of each to mutate</button><i class="tip" tabindex="0" data-tip="Adds one plot of every Farmland crop that can mutate, plus the event crops when they're switched on. Quick and Premium versions give the same mutated items as the plain crop (or none, sources disagree), so the plain crop covers each one. Trees have no mutated forms.">?</i></span>
         </header>
         <div class="rows" id="reqRows"></div>
-        <div class="toggles"><label class="inline"><input type="checkbox" id="fill" checked>Fill leftover ground</label><label class="inline"><input type="checkbox" id="events">Harvest Moon crops <i class="tip" tabindex="0" data-tip="Event crops and recipes. Their seeds cost Moonray Wheat, so they count as free. Switch on while the event runs.">?</i></label></div>
+        <div class="toggles"><label class="inline"><input type="checkbox" id="fill" checked>Fill leftover ground</label><label class="inline"><input type="checkbox" id="events">Wonder Night crops <i class="tip" tabindex="0" data-tip="Magical Wonder Night crops and recipes (RV 10, until 10 Dec). Magic Pumpkin and Memory Lanternfruit need a Sunlamp. Their seeds cost Weird Jelly Beans, so they count as free.">?</i></label></div>
         <details>
           <summary>Allowed on leftover ground <span id="fillCount" class="pill"></span></summary>
           <div class="in" id="fillChips"></div>
@@ -662,7 +663,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 29 Oct, 8:45pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 31 Oct, 12:45pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -683,31 +684,32 @@ body:not(.setup-open) .scrim{display:none}
 // kind: 'proc' processing machine, 'gather' gathering building. lv: RV needed for each facility level (index = level).
 // place: [[RV, how many you can place], ...]. persona: the personality letter that gives +20%.
 const MACH = {
-  mill:    {name:'Carousel Mill',       job:'Wind',        kind:'proc',   lv:[0,2,5,9,13,16,18],      place:[[2,1],[9,2]]},
-  table:   {name:'Crafting Table',      job:'Artisanship', kind:'proc',   lv:[0,3,5,7,9,12,15,18,20], place:[[3,1],[10,2]]},
+  mill:    {name:'Carousel Mill',       job:'Wind',        kind:'proc',   lv:[0,2,5,9,13,16,18,21],   place:[[2,1],[9,2]]},
+  table:   {name:'Crafting Table',      job:'Artisanship', kind:'proc',   lv:[0,3,5,7,9,12,15,18,20,22], place:[[3,1],[10,2]]},
   claw:    {name:'Claw Game Cooker',    job:'Fire',        kind:'proc',   lv:[0,4,5,7,9,12,16,19],    place:[[4,1],[11,2]]},
-  dryer:   {name:'Jukebox Dryer',       job:'Dark',        kind:'proc',   lv:[0,4,5,7,10,12,14,18],   place:[[4,1],[11,2]]},
-  pot:     {name:'Simmering Pot',       job:'Fire',        kind:'proc',   lv:[0,5,7,9,12,15,18],      place:[[5,1],[12,2]]},
-  perfume: {name:'Phonolfactory Table', job:'Perfumery',   kind:'proc',   lv:[0,6,7,10,14,17,19],     place:[[6,1],[13,2]]},
-  keg:     {name:'Bouncy Brew Keg',     job:'Water',       kind:'proc',   lv:[0,6,9,13,17,19],        place:[[6,1],[13,2]]},
-  stove:   {name:'Blazing Stove',       job:'Fire',        kind:'proc',   lv:[0,8,10,13,16,18],       place:[[8,1],[15,2]]},
-  jar:     {name:'Pickling Jar',        job:'Dark',        kind:'proc',   lv:[0,8,10,13,16,19],       place:[[8,1],[15,2]]},
-  loom:    {name:'Joy Wheel Loom',      job:'Wind',        kind:'proc',   lv:[0,7,10,15,19],          place:[[7,1],[14,2]]},
+  dryer:   {name:'Jukebox Dryer',       job:'Dark',        kind:'proc',   lv:[0,4,5,7,10,12,14,18,21], place:[[4,1],[11,2]]},
+  pot:     {name:'Simmering Pot',       job:'Fire',        kind:'proc',   lv:[0,5,7,9,12,15,18,21],   place:[[5,1],[12,2]]},
+  perfume: {name:'Phonolfactory Table', job:'Perfumery',   kind:'proc',   lv:[0,6,7,10,14,17,19,21],  place:[[6,1],[13,2]]},
+  keg:     {name:'Bouncy Brew Keg',     job:'Water',       kind:'proc',   lv:[0,6,9,13,17,19,22],     place:[[6,1],[13,2]]},
+  stove:   {name:'Blazing Stove',       job:'Fire',        kind:'proc',   lv:[0,8,10,13,16,18,22],    place:[[8,1],[15,2]]},
+  jar:     {name:'Pickling Jar',        job:'Dark',        kind:'proc',   lv:[0,8,10,13,16,19,21],    place:[[8,1],[15,2]]},
+  loom:    {name:'Joy Wheel Loom',      job:'Wind',        kind:'proc',   lv:[0,7,10,15,19,21],       place:[[7,1],[14,2]]},
   kiln:    {name:'Chimney Kiln',        job:'Fire',        kind:'proc',   lv:[0,6,10,14,18],          place:[[6,1],[10,2],[14,3],[18,4]]},
   bench:   {name:'Woodworking Bench',   job:'Artisanship', kind:'proc',   lv:[0,6,10,14,18],          place:[[6,1],[10,2],[14,3],[18,4]]},
   dance:   {name:'Dance Pad Polisher',  job:'Lightning',   kind:'gather', lv:[0,2,5,7],               place:[[2,1]]},
   pod:     {name:'Aniipod Maker',       job:'Lightning',   kind:'gather', lv:[0,3,6,9],               place:[[3,1]]},
-  well:    {name:'Well',                job:'Water',       kind:'gather', lv:[0,4,8,11,13,17],        place:[[4,1],[8,2],[14,3],[19,4]]},
-  mine:    {name:'Mine',                job:'Earth',       kind:'gather', lv:[0,3,6,9,12,15,18],      place:'mine'},
-  sand:    {name:'Tidewhisper Sandcastle', job:'Leisure',  kind:'gather', lv:[0,5,8,13],              place:[[5,1],[14,2]]},
+  well:    {name:'Well',                job:'Water',       kind:'gather', lv:[0,4,8,11,13,17,21],     place:[[4,1],[8,2],[14,3],[19,4]]},
+  mine:    {name:'Mine',                job:'Earth',       kind:'gather', lv:[0,3,6,9,12,15,18,21],   place:'mine'},
+  sand:    {name:'Tidewhisper Sandcastle', job:'Leisure',  kind:'gather', lv:[0,5,8,13,20,22],        place:[[5,1],[14,2]]},
   dewy:    {name:'Dewy House',          job:'Leisure',     kind:'gather', lv:[0,6,11],                place:[[6,1],[17,2]]},
   nimbus:  {name:'Nimbus Bed',          job:'Leisure',     kind:'gather', lv:[0,10,13,16],            place:[[10,1],[16,2]]},
-  hammock: {name:'Starfall Hammock',    job:'Leisure',     kind:'gather', lv:[0,12],                  place:[[12,1],[18,2]]},
+  hammock: {name:'Starfall Hammock',    job:'Leisure',     kind:'gather', lv:[0,12,21],               place:[[12,1],[18,2]]},
   windmill:{name:'Floral Windmill',     job:'Leisure',     kind:'gather', lv:[0,18],                  place:[[18,1]]},
   gen:     {name:'Crackle Generator',   job:'Lightning',   kind:'power',  lv:[0,12,14,16,18,20],      place:[[12,1],[15,2],[18,3]]},
 };
 // n product, m machine, l facility level, j job level, w workload, q made per batch, p sell price each, i inputs,
-// u unlock: k Kitchen Module, c Crafting Module, d Resource Detector, note Recipe Note, ev event season.
+// u unlock: k Kitchen Module, c Crafting Module, d Resource Detector, note Recipe Note, ev the Home season it belongs to.
+// es: seconds a batch takes in E-mode (rows added after the E-mode table below carry their own).
 // fam: species a Leisure building needs. clim: climate the building's range must give.
 const R = (m,l,j,w,n,q,p,i,u={},x={}) => Object.assign({m,l,j,w,n,q,p,i,u},x);
 const PROC = [
@@ -725,7 +727,7 @@ const PROC = [
   // Claw Game Cooker
   R('claw',1,1,108,'Bread',1,280,[['Wheatmeal',2],['Well Water',5]]),
   R('claw',1,1,108,'Premium Bread',1,330,[['Wheatmeal',2],['Well Water',5]],{k:2}),
-  R('claw',1,3,162,'Roasted Waxing Moon Pepper',1,1520,[['Waxing Moon Pepper',8],['Sea Salt',23]],{note:1,ev:1}),
+  R('claw',1,3,162,'Roasted Waxing Moon Pepper',1,1520,[['Waxing Moon Pepper',8],['Sea Salt',23]],{note:1,ev:'hm'}),
   R('claw',2,1,108,'Roasted Soybeans',1,450,[['Soybean',16],['Sea Salt',10]]),
   R('claw',3,2,203,'Maple Candy Roasted Potatoes',1,850,[['Potato',8],['Maple Syrup',9],['Sea Salt',10]]),
   R('claw',3,2,135,'Apple Tart',1,590,[['Wheatmeal',1],['Apple',8]]),
@@ -744,8 +746,8 @@ const PROC = [
   R('stove',1,2,135,'Creamy Potato Soup',1,750,[['Potato',15],['Plain Fresh Water',8]]),
   R('stove',1,2,135,'Premium Potato Soup',1,880,[['Potato',15],['Plain Fresh Water',8]],{k:3}),
   R('stove',1,2,203,'Soy Sauce Fried Rice',1,1280,[['Milled Rice',1],['Soy Sauce',1]]),
-  R('stove',1,2,203,'Umbral Hot Pot',1,2150,[['Moondew Radish',8],['Waxing Moon Pepper',8],['Plain Fresh Water',8]],{note:1,ev:1}),
-  R('stove',1,2,203,'Moondew Radish Slices',1,2370,[['Moondew Radish',8],['Rock Candy',1]],{note:1,ev:1}),
+  R('stove',1,2,203,'Umbral Hot Pot',1,2150,[['Moondew Radish',8],['Waxing Moon Pepper',8],['Plain Fresh Water',8]],{note:1,ev:'hm'}),
+  R('stove',1,2,203,'Moondew Radish Slices',1,2370,[['Moondew Radish',8],['Rock Candy',1]],{note:1,ev:'hm'}),
   R('stove',2,2,203,'Soy Sauce Tofu',1,1470,[['Tofu',1],['Soy Sauce',1]]),
   R('stove',2,2,203,'Sugar-Roasted Chestnuts',1,2470,[['Chestnut',7],['Rock Candy',1]]),
   R('stove',2,2,203,'Tanghulu',1,2260,[['Strawberry',8],['Rock Candy',1]]),
@@ -760,7 +762,7 @@ const PROC = [
   R('stove',5,3,405,'Cranberry Chocolate',1,13480,[['Cocoa Spread',1],['Dried Cranberries',1]]),
   // Simmering Pot
   R('pot',1,1,108,'Plain Rice Porridge',1,660,[['Milled Rice',2],['Well Water',5]]),
-  R('pot',1,3,243,'Umbral Sweet Spicy Sauce',1,2390,[['Moondew Radish',8],['Waxing Moon Pepper',8],['Sea Salt',23]],{note:1,ev:1}),
+  R('pot',1,3,243,'Umbral Sweet Spicy Sauce',1,2390,[['Moondew Radish',8],['Waxing Moon Pepper',8],['Sea Salt',23]],{note:1,ev:'hm'}),
   R('pot',2,2,135,'Rose Concentrate',1,770,[['Rose',12],['Well Water',8]]),
   R('pot',3,2,135,'Rock Candy',1,1180,[['Sugarcane',6],['Plain Fresh Water',8]]),
   R('pot',3,2,68,'Strawberry Jam',1,650,[['Strawberry',8]]),
@@ -788,7 +790,7 @@ const PROC = [
   R('dryer',7,3,81,'Dried Flowers',1,1990,[['Petals',6]]),
   // Crafting Table
   R('table',1,1,54,'Wood Sculpture',1,90,[['Willow Wood',19]]),
-  R('table',1,3,405,'Harvest Platter',1,5290,[['Roasted Waxing Moon Pepper',1],['Moondew Radish Slices',1]],{note:1,ev:1}),
+  R('table',1,3,405,'Harvest Platter',1,5290,[['Roasted Waxing Moon Pepper',1],['Moondew Radish Slices',1]],{note:1,ev:'hm'}),
   R('table',2,1,54,'Bamboo Ware',1,190,[['Bamboo',10]]),
   R('table',2,1,108,'River-Washed Stones',1,300,[['Rock',18],['Well Water',5]]),
   R('table',2,1,108,'Premium River-Washed Stones',1,360,[['Rock',18],['Well Water',5]],{c:1}),
@@ -845,7 +847,7 @@ const PROC = [
   // Pickling Jar
   R('jar',1,2,135,'Salted Cherry Blossom',1,780,[['Cherry Blossom',7],['Sea Salt',13]]),
   R('jar',1,2,135,'Soy Sauce',1,650,[['Soybean',16],['Sea Salt',13]]),
-  R('jar',1,2,203,'Umbral Pickle',1,2290,[['Moondew Radish',8],['Waxing Moon Pepper',8],['Cider Vinegar',1]],{note:1,ev:1}),
+  R('jar',1,2,203,'Umbral Pickle',1,2290,[['Moondew Radish',8],['Waxing Moon Pepper',8],['Cider Vinegar',1]],{note:1,ev:'hm'}),
   R('jar',2,2,270,'Sweet Rice Drink',1,2580,[['Milled Rice',1],['Plain Fresh Water',8],['Rock Candy',1]]),
   R('jar',2,2,68,'Cider Vinegar',1,510,[['Apple',8]]),
   R('jar',2,2,270,'Premium Sweet Rice Wine',1,2980,[['Milled Rice',1],['Plain Fresh Water',8],['Rock Candy',1]],{k:4}),
@@ -908,15 +910,69 @@ const PROC = [
 // Game data from Shinumino's Aniimo Homeland Planner (MIT licence, game build 3634150), checked against Wikily.
 const EMODE_S = [54,54,54,54,108,54,54,54,54,108,108,108,108,108,162,108,162,108,162,162,162,108,108,108,378,378,162,108,108,162,162,162,162,162,162,162,108,108,162,162,162,216,162,270,108,162,108,108,54,108,54,54,108,54,162,216,216,108,54,54,54,54,54,54,108,54,54,54,54,54,54,270,54,108,108,162,108,162,108,108,108,162,108,108,162,54,108,54,108,108,108,162,108,216,108,108,108,108,108,108,108,162,162,108,108,108,108,108,108,108,54,108,216,108,108,162,108,108,54,108,108,108,162,108,108,162,216,54,216,108,108,108,108,162,54,54,54,54,54,162,27,27,27,27,27,27,27,27,1200,2400,3600,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,1800,900,1800,1800,1800,1800,1800,0,0,0,0,0,0,0,0,0,0,0];
 PROC.forEach((r,i)=>{ if (EMODE_S[i]) r.es=EMODE_S[i]; });
+// Recipes added in the 29 Oct 2026 update (game build 1.1.3846247): AniimoGuide's recipe list (from the game files) and
+// AniimoTools' station and RV pages agree on every one; aniimo.th.gl's database settles Magic Pumpkin Cake (Milled Rice).
+// Appended after the older rows so their ids, and saved setups, stay the same. es: E-mode seconds (workload / 1, 1.25
+// or 1.5 by recipe level, the same rule every older row follows).
+const ES = (w,j) => Math.round(w/[0,1,1.25,1.5][j]);
+const R2 = (m,l,j,w,n,q,p,i,u={},x={}) => R(m,l,j,w,n,q,p,i,u, MACH[m].kind==='proc' || m==='well' || m==='mine' ? {es:ES(w,j), ...x} : x);
+PROC.push(
+  // RV 18 and 20 (new to levels you may already have)
+  R2('mill',6,3,81,'Pearl Powder',1,1810,[['Pearl',2]]),
+  R2('table',8,3,243,'Pearl Face Cream',1,11130,[['Pearl Powder',1],['Lotion',1]]),
+  R2('table',8,3,162,'Star Diamond',1,3990,[['Gem',2],['Star',2]]),
+  R2('sand',4,3,2700,'Pearl',4,450,[],{d:9},{fam:'Shelly'}),
+  // RV 21
+  R2('mine',7,3,2700,'Silver Ore',2,1155,[],{},{by:['Mineral Sand',165]}),
+  R2('well',6,3,2700,'Snowmelt Cold Spring',6,385,[]),
+  R2('hammock',2,3,2700,'Gold-Speck Cap',8,289,[],{},{fam:'Coinwisp',clim:'warm'}),
+  R2('mill',7,3,81,'Bright Silver Powder',1,3140,[['Silver Ore',2]]),
+  R2('mill',7,3,81,'Gold Dust',1,3140,[['Gold-Speck Cap',8]]),
+  R2('mill',7,3,81,'Sorghum Flour',1,3310,[['Sorghum',10]]),
+  R2('dryer',8,3,81,'Agave Fiber',1,2280,[['Agave',6]]),
+  R2('dryer',8,3,81,'Dried Orange Flower',1,2660,[['Orange Flower',8]]),
+  R2('pot',7,3,243,'Orange Flower Syrup',1,7400,[['Orange Flower',8],['Agave Syrup',1]]),
+  R2('pot',7,3,162,'Potato Starch',1,6280,[['Premium Potato',6],['Snowmelt Cold Spring',6]]),
+  R2('pot',7,3,162,'Sorghum Porridge',1,6440,[['Sorghum',10],['Snowmelt Cold Spring',6]]),
+  R2('perfume',7,3,243,'Coconut Milk Lotion',1,7030,[['Coconut Milk',1],['Aromathyst',8]]),
+  R2('perfume',7,3,162,'Gold Dust Sachet',1,6920,[['Dried Flowers',1],['Gold Dust',1]]),
+  R2('perfume',7,3,243,'Orange Flower Skin Balm',1,8130,[['Dried Orange Flower',1],['Aromathyst',8],['Snowmelt Cold Spring',6]]),
+  R2('jar',6,3,162,'Sorghum Fermented Mash',1,6440,[['Sorghum',10],['Snowmelt Cold Spring',6]]),
+  R2('loom',5,3,162,'Sisal Plush Mat',1,4680,[['Agave Fiber',1],['Woolen Yarn',1]]),
+  // RV 22
+  R2('well',6,3,2700,'Snowmelt Cold Spring',9,385,[],{d:10}),
+  R2('sand',5,3,2700,'Sweet Cone',2,1266,[],{},{fam:'Sugarfish',clim:'freeze'}),
+  R2('table',9,3,243,'Glitter Powder',1,11560,[['Gold Dust',1],['Bright Silver Powder',1],['Scales',12]]),
+  R2('table',9,3,243,'Orange Flower Scented Mat',1,10050,[['Dried Orange Flower',1],['Sisal Plush Mat',1]]),
+  R2('table',9,3,162,'Quicksilver Springstone',1,6430,[['Silver Ore',2],['Snowmelt Cold Spring',6]]),
+  R2('table',9,3,162,'Premium Quicksilver Springstone',1,7330,[['Silver Ore',2],['Snowmelt Cold Spring',6]],{c:8}),
+  R2('keg',6,3,405,'Cocoa Sweet Cone',1,15380,[['Sweet Cone',2],['Cocoa Spread',1]]),
+  R2('keg',6,3,162,'Red Sorghum Rice Drink',1,8250,[['Sorghum Fermented Mash',1]]),
+  R2('keg',6,3,243,'Sugar Core Sweet Cone',1,8340,[['Sweet Cone',2],['Agave Syrup',1]]),
+  R2('stove',6,3,243,'Cranberry Soft Cake',1,11060,[['Potato Starch',1],['Dried Cranberries',1]]),
+  R2('stove',6,3,243,'Shredded Coconut Cake',1,10480,[['Potato Starch',1],['Shredded Coconut',1]]),
+  R2('stove',6,3,243,'Orange Flower Rice Drink',1,13170,[['Sorghum Fermented Mash',1],['Dried Orange Flower',1]],{note:1}),
+  // Magical Wonder Night (29 Oct to 10 Dec 2026), each made with a Formula Note from the Season Exchange
+  R2('claw',4,2,135,'Sea Salt Roasted Pumpkin',1,1180,[['Magic Pumpkin',8],['Sea Salt',23]],{note:1,ev:'wn'}),
+  R2('table',4,2,68,'Magic Pumpkin Lantern',1,650,[['Magic Pumpkin',8]],{note:1,ev:'wn'}),
+  R2('table',4,2,135,'Memory Lantern',1,1220,[['Memory Lanternfruit',8],['Cotton Thread',1]],{note:1,ev:'wn'}),
+  R2('table',5,3,243,'Glowfruit Lantern Set',1,2710,[['Memory Lantern',1],['Magic Pumpkin Lantern',1]],{note:1,ev:'wn'}),
+  R2('pot',3,2,203,'Golden Lantern Pumpkin Soup',1,1830,[['Magic Pumpkin',8],['Memory Lanternfruit',8],['Plain Fresh Water',8]],{note:1,ev:'wn'}),
+  R2('keg',2,2,135,'Gleam Fruit Nectar',1,1180,[['Memory Lanternfruit',8],['Plain Fresh Water',8]],{note:1,ev:'wn'}),
+  R2('stove',2,2,338,'Honey-Glazed Pumpkin Cup',1,4430,[['Sea Salt Roasted Pumpkin',1],['Candied Lanternfruit',1]],{note:1,ev:'wn'}),
+  R2('stove',2,2,135,'Magic Pumpkin Cake',1,1120,[['Magic Pumpkin',8],['Milled Rice',1]],{note:1,ev:'wn'}),
+  R2('jar',2,2,203,'Candied Lanternfruit',1,2260,[['Memory Lanternfruit',8],['Rock Candy',1]],{note:1,ev:'wn'}),
+);
 // Food: energy per item (every Aniimo at Home eats 10 a minute; an unfed one works at 20% speed). Game data via
-// Shinumino's planner (MIT), checked against Wikily. Crops not listed (Lemon, Chestnut, woods...) can't be eaten.
-const FOOD_E = {"Premium Berry Chocolate Coconut Pudding":142560,"Berry Chocolate Coconut Pudding":126360,"Cranberry Chocolate":90420,"Strawberry Candy":65050,"Walnut Cake":50910,"Premium Jello":47440,"Rose Shortbread":46200,"Soy Sauce Fried Rice":45650,"Cherry Blossom Rice Ball":45650,"Caramel Nut Chips":45570,"Grape Candy":45570,"Apple Candy":45360,"Tanghulu":45280,"Soy Sauce Tofu":45280,"Sugar-Roasted Chestnuts":45280,"Moondew Radish Slices":45280,"Jello":42690,"Rich Grape Compote":42690,"Strawberry Cream Puff":42200,"Maple Candy Roasted Potatoes":39600,"Umbral Hot Pot":38810,"Steamed Vermicelli Roll":33940,"Apple Tart":30800,"Lavender Cookies":30240,"Ginseng Chestnut Cake":29700,"Maple Candy Star":28460,"Flower Bread":28080,"Bread":26740,"Premium Bread":26740,"Roasted Soybeans":26230,"Roasted Waxing Moon Pepper":26040,"Coconut Milk":24110,"Rice Drink":23760,"Creamy Potato Soup":23470,"Premium Potato Soup":23470,"Dried Bean Curd":15400,"Tofu":13110,"Dried Ginseng":13020,"Ginseng Powder":12730,"Dried Grapes":12500,"Refined Flour":12200,"Cocoa Powder":12060,"Dried Cranberries":12060,"Coconut Oil":10980,"Shredded Coconut":10000,"Wheatmeal":9370,"Dried Strawberries":9060,"Milled Rice":7870,"Dried Lemon Slices":6560,"Potato Chips":6370,"Energy Bites":1000,"Ginseng":3620,"Sugarcane":1800,"Cranberry":1450,"Moondew Radish":1350,"Waxing Moon Pepper":1350,"Grapes":1210,"Strawberry":950,"Soybean":680,"Captain Spud":600,"Rice":360,"Potato":220,"Wheat":140};
+// Shinumino's planner (MIT), checked against Wikily; items from the 29 Oct update from AniimoGuide (game files), the
+// event ones also on in-game item cards. Crops not listed (Lemon, Chestnut, woods...) can't be eaten.
+const FOOD_E = {"Premium Berry Chocolate Coconut Pudding":142560,"Berry Chocolate Coconut Pudding":126360,"Cranberry Chocolate":90420,"Strawberry Candy":65050,"Walnut Cake":50910,"Premium Jello":47440,"Rose Shortbread":46200,"Soy Sauce Fried Rice":45650,"Cherry Blossom Rice Ball":45650,"Caramel Nut Chips":45570,"Grape Candy":45570,"Apple Candy":45360,"Tanghulu":45280,"Soy Sauce Tofu":45280,"Sugar-Roasted Chestnuts":45280,"Moondew Radish Slices":45280,"Jello":42690,"Rich Grape Compote":42690,"Strawberry Cream Puff":42200,"Maple Candy Roasted Potatoes":39600,"Umbral Hot Pot":38810,"Steamed Vermicelli Roll":33940,"Apple Tart":30800,"Lavender Cookies":30240,"Ginseng Chestnut Cake":29700,"Maple Candy Star":28460,"Flower Bread":28080,"Bread":26740,"Premium Bread":26740,"Roasted Soybeans":26230,"Roasted Waxing Moon Pepper":26040,"Coconut Milk":24110,"Rice Drink":23760,"Creamy Potato Soup":23470,"Premium Potato Soup":23470,"Dried Bean Curd":15400,"Tofu":13110,"Dried Ginseng":13020,"Ginseng Powder":12730,"Dried Grapes":12500,"Refined Flour":12200,"Cocoa Powder":12060,"Dried Cranberries":12060,"Coconut Oil":10980,"Shredded Coconut":10000,"Wheatmeal":9370,"Dried Strawberries":9060,"Milled Rice":7870,"Dried Lemon Slices":6560,"Potato Chips":6370,"Candied Lanternfruit":86250,"Cranberry Soft Cake":52060,"Shredded Coconut Cake":52060,"Orange Flower Rice Drink":52060,"Magic Pumpkin Cake":30190,"Sorghum Porridge":29810,"Sea Salt Roasted Pumpkin":25920,"Sorghum Flour":14900,"Magic Pumpkin":1350,"Memory Lanternfruit":1350,"Energy Bites":1000,"Ginseng":3620,"Sugarcane":1800,"Cranberry":1450,"Moondew Radish":1350,"Waxing Moon Pepper":1350,"Grapes":1210,"Strawberry":950,"Soybean":680,"Captain Spud":600,"Rice":360,"Potato":220,"Wheat":140};
 const EAT_PER_H = 600;
 // The planner's best Home Coin an hour at each RV level: everything that level allows, Lv 3 workers, no item list,
 // E-mode and food on, no event crops (worked out with a 20-second limit per level).
-const BEST_RV = {1:400,2:1133,3:3198,4:5724,5:11972,6:14672,7:25701,8:39303,9:47225,10:54856,11:78398,12:112105,13:132556,14:153429,15:185894,16:233200,17:307625,18:375236,19:420912,20:420930};
+const BEST_RV = {1:400,2:1133,3:3198,4:5724,5:11972,6:14672,7:25701,8:39303,9:47225,10:54856,11:78398,12:112105,13:132556,14:156738,15:185894,16:233200,17:308045,18:375236,19:420912,20:430124,21:657848,22:709453};
 // Habitability an RV upgrade asks for (from RV 10). Besides it, reaching RV N needs every plot, Mine and Well RV N-1 allows.
-const HAB_NEED = {10:13000, 11:13500, 12:14000, 13:14500, 14:15000, 15:15500, 16:16000, 17:17000, 18:18000, 19:19000, 20:20000};
+const HAB_NEED = {10:13000, 11:13500, 12:14000, 13:14500, 14:15000, 15:15500, 16:16000, 17:17000, 18:18000, 19:19000, 20:20000, 21:22000, 22:24000};
 // Crackle Generators: output by level (Power Module level n allows generator Lv n), how many you can place, and the
 // Lightning job they need. A generator's output scales with its worker: (ATK[worker Lv] - DEF[needed Lv]) / workload.
 const GEN = {w:[0,600,800,1000,1200,1500], need:[0,1,2,3,3,3], wl:[0,60,60,75,90,105], rv:[0,12,14,16,18,20]};
@@ -938,6 +994,7 @@ const RATE = {
 const CROP_ITEM = {wheat:'Wheat',qwheat:'Wheat',potato:'Potato',qpotato:'Potato',rice:'Rice',qrice:'Rice',soybean:'Soybean',cotton:'Cotton',
   rose:'Rose',lavender:'Lavender',strawberry:'Strawberry',qstraw:'Strawberry',sugarcane:'Sugarcane',ginseng:'Ginseng',grapes:'Grapes',
   pwheat:'Premium Wheat',agave:'Agave',cranberry:'Cranberry',moondew:'Moondew Radish',pepper:'Waxing Moon Pepper',willow:'Willow Wood',
+  ppotato:'Premium Potato',sorghum:'Sorghum',qagave:'Agave',mpumpkin:'Magic Pumpkin',lantern:'Memory Lanternfruit',
   bamboo:'Bamboo',qbamboo:'Bamboo',lemon:'Lemon',qlemon:'Lemon',cherry:'Cherry Blossom',apple:'Apple',maple:'Maple Syrup',qmaple:'Maple Syrup',
   palm:'Palm Bark',chestnut:'Chestnut',walnut:'Walnut',rubber:'Natural Rubber',coconut:'Coconut',qcoconut:'Coconut',cocoa:'Cocoa',orange:'Orange Flower'};
 const CROP_ITEMS = new Set(Object.values(CROP_ITEM));
@@ -958,6 +1015,10 @@ const LEISURE_LINE = {
   Dewy:      [['Dewy',1],['Fragrancier',3]],
   Celestis:  [['Celestis',1],['Stellarys',3],['Stellarys Prismana',4]],
   Flutternym:[['Flutternym',1],['Gracewing',3],['Somniwing',4]],
+  // New with the 29 Oct update. Coinwisp line: AniimoTools Starfall Hammock page. Sugarfish line: AniimoTools Sandcastle
+  // page names the family; its forms' Leisure levels aren't published, so they follow the usual 1 / 3 / Prismana 4 pattern.
+  Coinwisp:  [['Coinwisp',1],['Pouchwisp',3],['Pouchwisp Prismana',4]],
+  Sugarfish: [['Sugarfish',1],['Sugarslime',3],['Sugartini',3],['Sugartini Prismana',4]],
 };
 // Best form of the line within the chosen worker level: {name, lvl, line}
 function leisurePick(r, ctx){
@@ -978,19 +1039,25 @@ function batchMinutes(r, ctx){
   let rate = RATE[k][r.j][wl] * (ctx.persona ? 1.2 : 1);
   if (r.clim==='cool' && !ctx.cool) rate *= 0.8;
   if (r.clim==='warm' && !ctx.heat) rate *= 0.8;
+  if (r.clim==='freeze' && !ctx.cool) rate *= 0.5;
   if (r.clim==='light' && !ctx.lamp) rate = 0;
   return rate>0 ? r.w/rate : Infinity;
 }
 // Why a recipe can't be used yet ('' when it can)
-// The Harvest Moon festival and its seeds open at RV 10 (game seed shop; AniimoTools; AniimoGuide)
+// Home seasons open at RV 10 (game seed shop; AniimoTools; AniimoGuide). Only the current season's crops and recipes
+// can be used; the others stay in the data for when the game brings them back.
 const EVENT_RV = 10;
+const SEASON_KEY = 'wn';
+const SEASON_NAME = {hm:'Harvest Moon', wn:'Magical Wonder Night'};
+const offSeason = ev => !!ev && ev!==SEASON_KEY;
 function lockReason(r, ctx){
   const need = MACH[r.m].lv[r.l];
   if (need===undefined || ctx.rv < need) return `${MACH[r.m].name} Lv ${r.l} (RV ${need})`;
   if (r.u.k && ctx.kitchen < r.u.k) return `Kitchen Module Lv ${r.u.k}`;
   if (r.u.c && ctx.crafting < r.u.c) return `Crafting Module Lv ${r.u.c}`;
   if (r.u.d && ctx.detector < r.u.d) return `Resource Detector Lv ${r.u.d}`;
-  if (r.u.ev && ctx.rv<EVENT_RV) return `RV ${EVENT_RV} (Harvest Moon)`;
+  if (offSeason(r.u.ev)) return `the ${SEASON_NAME[r.u.ev]} season, which has ended`;
+  if (r.u.ev && ctx.rv<EVENT_RV) return `RV ${EVENT_RV} (${SEASON_NAME[SEASON_KEY]})`;
   if (r.u.ev && !ctx.events) return 'event recipes on';
   return '';
 }
@@ -1041,7 +1108,7 @@ function expandChain(wants, ctx){
     s.busy = isFinite(mins) ? s.batches * mins / 60 : 0;   // machine-hours per hour (0 when it can't run at all)
     const m = machines[s.r.m] || (machines[s.r.m] = {key:s.r.m, busy:0, steps:[], maxLvl:0});
     m.busy += s.busy; m.steps.push(s); m.maxLvl = Math.max(m.maxLvl, s.r.l);
-    if (s.r.clim) warnings.add(`${MACH[s.r.m].name} making ${s.r.n} needs to sit inside a ${s.r.clim==='light'?'Sunlamp':s.r.clim==='cool'?'Cooling Unit (Cool)':'Heat Furnace (Warm)'} range.`);
+    if (s.r.clim) warnings.add(`${MACH[s.r.m].name} making ${s.r.n} needs to sit inside a ${s.r.clim==='light'?'Sunlamp':s.r.clim==='cool'?'Cooling Unit (Cool)':s.r.clim==='freeze'?'Cooling Unit (Freeze)':'Heat Furnace (Warm)'} range.`);
   }
   for (const s of steps.values()) s.need = Math.max(1, Math.ceil(s.busy - 1e-9));
   for (const m of Object.values(machines)){
@@ -1078,8 +1145,15 @@ const CROPS = [
   {id:'agave',     name:'Agave',                    kind:'farm', lvl:7, eco:0, yield:6,  price:240, seed:97,  base:40,   temp:2,  light:false},
   {id:'cranberry', name:'Cranberry',                kind:'farm', lvl:7, eco:0, yield:7,  price:210, seed:97,  base:40,   temp:-2, light:false},
   {id:'qstraw',    name:'Quick Recipe: Strawberry', kind:'farm', lvl:7, eco:7, yield:26, price:61,  seed:32,  base:40,   temp:-1, light:false},
-  {id:'moondew',   name:'Moondew Radish (event)',   kind:'farm', lvl:1, eco:0, yield:8,  price:74,  seed:0,   base:40,   temp:0,  light:false, event:true},
-  {id:'pepper',    name:'Waxing Moon Pepper (event)',kind:'farm',lvl:1, eco:0, yield:8,  price:74,  seed:0,   base:40,   temp:0,  light:false, event:true},
+  // Farmland Lv 8 (RV 21): AniimoGuide (game files) and AniimoTools agree on 30 min; one in-game card read 40 for Premium Potato
+  {id:'ppotato',   name:'Premium Potato',           kind:'farm', lvl:8, eco:0, yield:6,  price:386, seed:1,   base:30,   temp:0,  light:false},
+  {id:'sorghum',   name:'Sorghum',                  kind:'farm', lvl:8, eco:0, yield:10, price:248, seed:165, base:30,   temp:0,  light:true},
+  {id:'qagave',    name:'Quick Formula: Agave',     kind:'farm', lvl:8, eco:9, yield:10, price:240, seed:97,  base:30,   temp:2,  light:false},
+  // Home season crops: event = the season they belong to. Seeds cost the season's currency, not Home Coin.
+  {id:'moondew',   name:'Moondew Radish (event)',   kind:'farm', lvl:1, eco:0, yield:8,  price:74,  seed:0,   base:40,   temp:0,  light:false, event:'hm'},
+  {id:'pepper',    name:'Waxing Moon Pepper (event)',kind:'farm',lvl:1, eco:0, yield:8,  price:74,  seed:0,   base:40,   temp:0,  light:false, event:'hm'},
+  {id:'mpumpkin',  name:'Magic Pumpkin (event)',    kind:'farm', lvl:5, eco:0, yield:8,  price:61,  seed:0,   base:30,   temp:0,  light:true,  event:'wn'},
+  {id:'lantern',   name:'Memory Lanternfruit (event)',kind:'farm',lvl:5,eco:0, yield:8,  price:61,  seed:0,   base:30,   temp:0,  light:true,  event:'wn'},
   // Woodland
   {id:'willow',    name:'Willow Wood',              kind:'wood', lvl:1, eco:0, yield:5,  price:3,   seed:1,   base:32/3, temp:0,  light:false, wood:1},
   {id:'bamboo',    name:'Bamboo',                   kind:'wood', lvl:2, eco:0, yield:10, price:13,  seed:8,   base:40,   temp:0,  light:false, wood:8},
@@ -1101,10 +1175,10 @@ const CROPS = [
 ];
 
 // RV level needed for each facility level (index = facility level)
-const FARM_RV = [0,1,2,5,7,9,12,16];
+const FARM_RV = [0,1,2,5,7,9,12,16,21];
 const WOOD_RV = [0,2,4,7,11,14,18];
 // Ecological Module: highest level open at each RV. Levels 7 and 8 use the later of the RV levels sources give.
-const ECO_RV = [[3,1],[7,2],[8,3],[11,4],[12,5],[14,6],[17,7],[18,8]];
+const ECO_RV = [[3,1],[7,2],[8,3],[11,4],[12,5],[14,6],[17,7],[18,8],[21,9]];
 // Climate unit placement limits by RV level
 const UNIT_LIMITS = { heat:[[7,1],[12,2],[17,3]], cool:[[7,1],[13,2],[17,3]], lamp:[[9,1],[13,2],[19,3]] };
 
@@ -1112,9 +1186,10 @@ function stepAt(table, rv){ let n=0; for(const [r,c] of table) if(rv>=r) n=c; re
 function limitAt(kind, rv){ return stepAt(UNIT_LIMITS[kind], rv); }
 function ecoAt(rv){ return stepAt(ECO_RV, rv); }
 function maxLevel(table, rv){ let l=0; for(let i=1;i<table.length;i++) if(rv>=table[i]) l=i; return l; }
-// Most plots you can place: what the next RV upgrade asks you to place (Farmland 2 per level, Woodland 1 per level)
-function farmCap(rv){ return Math.min(40, 2*(rv+1)); }
-function woodCap(rv){ return rv<2 ? 0 : Math.min(20, rv+1); }
+// Most plots you can place: what the next RV upgrade asks you to place (Farmland 2 per level, Woodland 1 per level),
+// up to 40 and 20 from RV 19; RV 22 adds 2 Farmland and 1 Woodland
+function farmCap(rv){ return rv>=22 ? 42 : Math.min(40, 2*(rv+1)); }
+function woodCap(rv){ return rv<2 ? 0 : rv>=22 ? 21 : Math.min(20, rv+1); }
 
 // Exact packings: for each number of Woodland (index), the most Farmland that also fits.
 // "small" = Heat Furnace or Sunlamp (1x1); "cool" = Cooling Unit (2x2). Unit sits at tile (0,0).
@@ -1122,10 +1197,12 @@ const FRONTIER = {"small":[{"farm":[[-5,-1],[-5,3],[-4,-5],[-4,-3],[-4,1],[-3,3]
 
 // ===== Build and upgrade costs (Home Coin) =====
 // FAC_COST[name] = [build, cost to reach Lv 2, Lv 3, ...]: wikily.gg facility pages, every number matching AniimoTools'
-// crops-and-facilities list (Oct 2026). Each placed copy (and each Farmland/Woodland plot) is built and upgraded on its own.
-const FAC_COST = {"Farmland":[10,60,700,6200,23500,107000,480000],"Woodland":[90,400,8200,49000,199000,910000],"Mine":[320,4200,31000,143000,340000,910000],"Nimbus Bed":[18100,81000,320000],"Dewy House":[4200,269000],"Starfall Hammock":[54000],"Tidewhisper Sandcastle":[1500,9800,81000],"Floral Windmill":[453000],"Well":[1100,20000,98000,240000,720000],"Carousel Mill":[170,1800,16000,81000,320000,910000],"Crafting Table":[320,1800,8200,31000,143000,340000,910000,1450000],"Jukebox Dryer":[540,1800,8200,36000,143000,300000,910000],"Claw Game Cooker":[540,1800,8200,31000,143000,480000,960000],"Joy Wheel Loom":[8200,16300,85000,360000],"Phonolfactory Table":[4200,12300,27000,149000,400000,720000],"Bouncy Brew Keg":[4200,14000,61000,270000,720000],"Simmering Pot":[1200,12300,16000,72000,230000,910000],"Blazing Stove":[5900,16300,61000,240000,680000],"Woodworking Bench":[4200,16300,75000,340000],"Chimney Kiln":[4200,16300,75000,340000],"Pickling Jar":[5900,16300,61000,240000,720000],"Aniipod Maker":[400,4200,24000],"Dance Pad Polisher":[170,2900,12000],"Crackle Power Pole":[3600],"Crackle Generator":[21000,45000,120000,340000,720000],"Heat Furnace":[8200],"Cooling Unit":[8200],"Sunlamp":[15700],"Hatchinator":[320]};
-// RV modules: [RV that opens the level, cost] for each level (game data via Shinumino's planner, build 3668494)
-const MODULE_COST = {"Crafting Module":[[5,690],[7,1900],[10,4000],[12,8700],[17,22000],[18,28000],[19,30000]],"Ecological Module":[[3,180],[7,1900],[8,2300],[11,5500],[12,8700],[14,12000],[17,22000],[18,28000]],"Incubation Reaction Module":[[9,3600]],"Kitchen Module":[[2,0],[4,310],[8,2300],[10,4000],[13,9800],[16,20000],[19,30000]],"Plant Research Module":[[6,960],[9,3600],[12,8700],[15,14000]],"Power Module":[[12,8700],[14,12000],[16,20000],[18,28000],[20,30000]],"Resource Detector":[[5,310],[8,2300],[11,5600],[12,8800],[13,10000],[15,14000],[17,22000],[19,30000]],"Rest Module":[[1,0],[3,180],[5,1400]],"Signal Transmitter":[[6,0],[11,5500],[16,20000]]};
+// crops-and-facilities list (Oct 2026; levels from the 29 Oct update from AniimoTools, 30 Oct). Each placed copy (and each
+// Farmland/Woodland plot) is built and upgraded on its own.
+const FAC_COST = {"Farmland":[10,60,700,6200,23500,107000,480000,2180000],"Woodland":[90,400,8200,49000,199000,910000],"Mine":[320,4200,31000,143000,340000,910000,2550000],"Nimbus Bed":[18100,81000,320000],"Dewy House":[4200,269000],"Starfall Hammock":[54000,546000],"Tidewhisper Sandcastle":[1500,9800,81000,486800,2280000],"Floral Windmill":[453000],"Well":[1100,20000,98000,240000,720000,1820000],"Carousel Mill":[170,1800,16000,81000,320000,910000,2180000],"Crafting Table":[320,1800,8200,31000,143000,340000,910000,1450000,3040000],"Jukebox Dryer":[540,1800,8200,36000,143000,300000,910000,2180000],"Claw Game Cooker":[540,1800,8200,31000,143000,480000,960000],"Joy Wheel Loom":[8200,16300,85000,360000,1090000],"Phonolfactory Table":[4200,12300,27000,149000,400000,720000,2850000],"Bouncy Brew Keg":[4200,14000,61000,270000,720000,2850000],"Simmering Pot":[1200,12300,16000,72000,230000,910000,2180000],"Blazing Stove":[5900,16300,61000,240000,680000,2850000],"Woodworking Bench":[4200,16300,75000,340000],"Chimney Kiln":[4200,16300,75000,340000],"Pickling Jar":[5900,16300,61000,240000,720000,1640000],"Aniipod Maker":[400,4200,24000],"Dance Pad Polisher":[170,2900,12000],"Crackle Power Pole":[3600],"Crackle Generator":[21000,45000,120000,340000,720000],"Heat Furnace":[8200],"Cooling Unit":[8200],"Sunlamp":[15700],"Hatchinator":[320]};
+// RV modules: [RV that opens the level, cost] for each level (game data via Shinumino's planner, build 3668494; levels from
+// the 29 Oct update from AniimoGuide's RV pages, game build 1.1.3846247)
+const MODULE_COST = {"Crafting Module":[[5,690],[7,1900],[10,4000],[12,8700],[17,22000],[18,28000],[19,30000],[22,48000]],"Ecological Module":[[3,180],[7,1900],[8,2300],[11,5500],[12,8700],[14,12000],[17,22000],[18,28000],[21,46000]],"Incubation Reaction Module":[[9,3600]],"Kitchen Module":[[2,0],[4,310],[8,2300],[10,4000],[13,9800],[16,20000],[19,30000]],"Plant Research Module":[[6,960],[9,3600],[12,8700],[15,14000]],"Power Module":[[12,8700],[14,12000],[16,20000],[18,28000],[20,30000]],"Resource Detector":[[5,310],[8,2300],[11,5600],[12,8800],[13,10000],[15,14000],[17,22000],[19,30000],[20,31000],[22,48000]],"Rest Module":[[1,0],[3,180],[5,1400]],"Signal Transmitter":[[6,0],[11,5500],[16,20000]]};
 // Production Zone land plots: plot N opens at RV N (aniimo.gg/homeland/plots, quoting the game)
 const LAND_COST = {"2":2000,"3":4000,"4":6000,"5":14000,"6":19000,"7":38000,"8":46000,"9":72000,"10":80000,"11":110000,"12":170000,"13":200000,"14":240000,"15":270000,"16":390000};
 // What it costs, once RV n+1 is reached, to build and upgrade everything it adds, if everything RV n allows is built
@@ -1210,7 +1287,7 @@ function zonesFor(crop){
 // Jobs each crop needs besides watering (E Earth reclaims, G Grass sows, D Dark reaps; crops without D are collected by Grass)
 const JOBS = {wheat:'GD',potato:'EGD',qwheat:'GD',rice:'EGD',soybean:'EG',cotton:'EG',rose:'EG',qpotato:'EGD',lavender:'EGD',
   strawberry:'EG',sugarcane:'EGD',ginseng:'EGD',grapes:'EG',pwheat:'EGD',qrice:'EGD',agave:'EG',cranberry:'EG',qstraw:'EG',
-  moondew:'GD',pepper:'GD',willow:'EGD',bamboo:'EGD',lemon:'EG',cherry:'EGD',apple:'EGD',maple:'EGD',qbamboo:'EGD',
+  moondew:'GD',pepper:'GD',ppotato:'EGD',sorghum:'EGD',qagave:'EG',mpumpkin:'EG',lantern:'EG',willow:'EGD',bamboo:'EGD',lemon:'EG',cherry:'EGD',apple:'EGD',maple:'EGD',qbamboo:'EGD',
   palm:'EG',chestnut:'EG',walnut:'EG',qlemon:'EG',rubber:'EGD',coconut:'EG',qmaple:'EGD',cocoa:'EG',orange:'EG',qcoconut:'EG'};
 for (const c of CROPS) c.jobs = JOBS[c.id];
 
@@ -1226,9 +1303,12 @@ const RV_COST = {
   15:[3760000,'Laminated Beams',390,'Refined Ore',150], 16:[4900000,'Laminated Beams',480,'Refined Ore',310],
   17:[8630000,'Laminated Beams',630,'Refined Ore',380], 18:[11600000,'Laminated Beams',800,'Refined Ore',520],
   19:[17100000,'Densified Timber Component',400,'Microcrystalline Ore Plate',220], 20:[20800000,'Densified Timber Component',490,'Microcrystalline Ore Plate',270],
+  21:[34300000,'Densified Timber Component',830,'Microcrystalline Ore Plate',3720], 22:[52600000,'Densified Timber Component',1190,'Microcrystalline Ore Plate',10580],
 };
 const plMat=(n,x)=>n===1||!/(Block|Component|Brick|Plate)$/.test(x)?x:x+'s';
-const AN_CAP = [0,0,8,11,14,17,20,22,24,26,28,30,32,34,36,38,40,42,43,44,45];
+const AN_CAP = [0,0,8,11,14,17,20,22,24,26,28,30,32,34,36,38,40,42,43,44,45,46,47];
+// Highest RV level (RV 21 and 22 arrived with the 29 Oct 2026 update)
+const MAX_RV = 22;
 
 // Coin (Co-op sales minus seeds) and Wood Blocks per plot per hour
 const coinOf = (c,pv) => pv.rate*(c.yield*c.price - c.seed);
@@ -1642,10 +1722,14 @@ function planBest(requests, fillers, o, lp){
   // The model with every pair layout can also choose none, so when it's solved to the end it's the answer
   if (lp.exact && withPairs){
     const full = plan(requests, fillers, o, lp);
-    if (full.feasible && !(full.pairs||[]).length) return full;     // no pair in it: nothing for the pair-free plan to beat
+    // no pair in it: nothing for the pair-free plan to beat. Except with one recipe per machine, where each model
+    // shortlists its own products, so the pair-free model can find a better product mix: then solve both and keep the better.
+    const shortlists = o.oneRecipe && (o.auto||[]).length;
+    if (full.feasible && !(full.pairs||[]).length && !shortlists) return full;
     // A pair has to earn its keep: the solver may stop within a hair of the best, which can leave a pair whose
     // second unit does nothing. Keep it only when it clearly beats the plan without pairs.
     const base = plan(requests, fillers, {...o, pairs:false}, lp);
+    if (full.feasible && !(full.pairs||[]).length) return full.objective > base.objective + 1e-6 ? full : base;
     const tol = Math.max(1e-6, 3e-4*Math.abs(base.objective||0));
     return full.feasible && full.objective > base.objective + tol ? full : base;
   }
@@ -1776,7 +1860,7 @@ const SETTING = {scorch:'Scorching',warm:'Warm',cool:'Cool',freeze:'Freeze',lamp
 const WORKER = {scorch:'Fire',warm:'Fire',cool:'Ice',freeze:'Ice Lv 2',lamp:'Light'};
 const UNITNAME = {heat:'Heat Furnace',cool:'Cooling Unit',lamp:'Sunlamp'};
 // RV level that opens each module level (index = module level)
-const MODULE_RV = {kitchen:[0,2,4,8,10,13,16,19], crafting:[0,5,7,10,12,17,18,19], detector:[0,5,8,11,12,13,15,17,19]};
+const MODULE_RV = {kitchen:[0,2,4,8,10,13,16,19], crafting:[0,5,7,10,12,17,18,19,22], detector:[0,5,8,11,12,13,15,17,19,20,22]};
 const moduleAt = (k,rv) => { let l=0; MODULE_RV[k].forEach((r,i)=>{ if(i&&rv>=r) l=i; }); return l; };
 const ORE_TIER = {'Mineral Sand':1,'Coarse-Sifted Ore':8,'Sintered Ore Brick':64,'Refined Ore':512,'Microcrystalline Ore Plate':2048};
 const FRONTIER_CLEAN = {"small": [{"w": 0, "f": 24, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2], [4, 4]], "wood": []}, {"w": 1, "f": 23, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-4, 4], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[4, 4]]}, {"w": 2, "f": 22, "farm": [[-4, -4], [-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, 4], [4, 4]]}, {"w": 3, "f": 21, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, 4]]}, {"w": 4, "f": 20, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, -2], [4, 0], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, 4]]}, {"w": 5, "f": 18, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [0, 4], [2, -4], [2, -2], [2, 0], [2, 2], [2, 4], [4, 2]], "wood": [[-6, -6], [-6, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 6, "f": 16, "farm": [[-4, -2], [-4, 0], [-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 7, "f": 14, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -4], [0, -2], [0, 2], [2, -4], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, 4], [4, -6], [4, -2], [4, 4]]}, {"w": 8, "f": 12, "farm": [[-4, 2], [-2, -4], [-2, -2], [-2, 0], [-2, 2], [-2, 4], [0, -2], [0, 2], [2, -2], [2, 0], [2, 2], [4, 2]], "wood": [[-6, -6], [-6, -2], [-6, 4], [0, -6], [0, 4], [4, -6], [4, -2], [4, 4]]}], "cool": [{"w": 0, "f": 32, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-5, 5], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": []}, {"w": 1, "f": 31, "farm": [[-5, -5], [-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, 5]]}, {"w": 2, "f": 30, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3], [5, 5]], "wood": [[-7, -7], [-7, 5]]}, {"w": 3, "f": 29, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, 5]]}, {"w": 4, "f": 28, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [1, 5], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [5, -7], [5, 5]]}, {"w": 5, "f": 26, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1], [5, 1], [5, 3]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 5]]}, {"w": 6, "f": 24, "farm": [[-5, -3], [-5, -1], [-5, 1], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [-1, 5], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 7, "f": 22, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-3, 5], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [3, 5], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 8, "f": 20, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3], [5, -3], [5, -1]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, 1], [5, 5]]}, {"w": 9, "f": 18, "farm": [[-5, -3], [-5, -1], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -5], [-1, -3], [-1, 3], [1, -5], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, 1], [-7, 5], [-3, 5], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 10, "f": 16, "farm": [[-5, -3], [-5, 3], [-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 11, "f": 14, "farm": [[-3, -5], [-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -5], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, 5], [-1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}, {"w": 12, "f": 12, "farm": [[-3, -3], [-3, -1], [-3, 1], [-3, 3], [-1, -3], [-1, 3], [1, -3], [1, 3], [3, -3], [3, -1], [3, 1], [3, 3]], "wood": [[-7, -7], [-7, -3], [-7, 1], [-7, 5], [-3, -7], [-3, 5], [1, -7], [1, 5], [5, -7], [5, -3], [5, 1], [5, 5]]}]};
@@ -1800,7 +1884,7 @@ function cleanState(raw){
     custom.push({id, name, custom:true, kind, lvl:Math.round(nb(c.lvl,1,kind==='wood'?6:7,1)), eco:0, yield:nb(c.yield,1,1e4,1), price:nb(c.price,0,1e6,0),
       seed:nb(c.seed,0,1e6,0), base:nb(c.base,1,1e4,40), temp:light?0:Math.round(nb(c.temp,-2,2,0)), light, wood:kind==='wood'?Math.round(nb(c.wood,0,1e4,0)):0, jobs:'EGD'}); }
   st.custom=[];   // custom crops were removed; old saves drop theirs
-  const ids=new Set(CROPS.map(c=>c.id));
+  const ids=new Set(CROPS.filter(c=>!offSeason(c.event)).map(c=>c.id));
   if (Array.isArray(d.requests)) st.requests=arr(d.requests,60).filter(r=>r&&ids.has(r.id)).map(r=>({id:r.id, plots:Math.round(nb(r.plots,1,40,1))}));
   st.noFill=arr(d.noFill,100).filter(x=>ids.has(x));
   if (Array.isArray(d.products)) st.products=arr(d.products,40).filter(w=>w&&PRODUCT_NAMES.includes(w.n)).map(w=>({n:w.n, amt:nb(w.amt,0,1e6,1), unit:['h','d','p'].includes(w.unit)?w.unit:'h'}));
@@ -1832,12 +1916,12 @@ function fillSelect(id, values, label){ const s=$(id), cur=s.value; s.innerHTML=
 const range=(a,b)=>Array.from({length:b-a+1},(_,i)=>a+i);
 function buildSelects(){
   const rv=parseInt($('rv').value)||12;
-  fillSelect('rv', range(1,20));
+  fillSelect('rv', range(1,MAX_RV));
   for (const [id,cap] of [['farmPlots',farmCap(rv)],['woodPlots',woodCap(rv)]]){ const was=$(id).value; fillSelect(id, range(0,cap));
     if (was!=='' && parseInt(was)>cap) $(id).value=String(cap); }
-  fillSelect('farmLvl', range(1,7), l=>'Lv '+l+(rv<FARM_RV[l]?' · RV '+FARM_RV[l]:''));
+  fillSelect('farmLvl', range(1,8), l=>'Lv '+l+(rv<FARM_RV[l]?' · RV '+FARM_RV[l]:''));
   fillSelect('woodLvl', range(0,6), l=>l===0?'None':'Lv '+l+(rv<WOOD_RV[l]?' · RV '+WOOD_RV[l]:''));
-  fillSelect('eco', range(0,8), l=>l===0?'None':'Lv '+l);
+  fillSelect('eco', range(0,9), l=>l===0?'None':'Lv '+l);
   for (const k of ['heat','cool','lamp']) fillSelect(k, range(0,3));
   fillSelect('power', range(0,5), l=>l===0?'None':'Lv '+l+(rv<GEN.rv[l]?' · RV '+GEN.rv[l]:'')); fillSelect('gens', range(0,3));
   fillSelect('reserve', range(0,10)); fillSelect('mines', range(0,10)); fillSelect('kilns', range(0,4)); fillSelect('benches', range(0,4));
@@ -1845,22 +1929,24 @@ function buildSelects(){
   fillSelect('capSmall', range(1,24)); fillSelect('capCool', range(1,32));
   fillSelect('session', [1,2,4,6,8,12,24,48,72], h=>h+' h');
   
-  for (const [k,n] of [['kitchen',7],['crafting',7],['detector',8]]) fillSelect(k, range(0,n), l=>l?'Lv '+l+(rv<MODULE_RV[k][l]?' · RV '+MODULE_RV[k][l]:''):'None');
+  for (const [k,n] of [['kitchen',7],['crafting',8],['detector',10]]) fillSelect(k, range(0,n), l=>l?'Lv '+l+(rv<MODULE_RV[k][l]?' · RV '+MODULE_RV[k][l]:''):'None');
 }
 const DEFAULTS = {hours:'0', capSmall:'24', capCool:'32', session:'8', rv:'12'};
 function readForm(){ const o={}; for (const k of FORM_IDS){ const el=$(k); o[k]= el.type==='checkbox'?el.checked:el.value; } return o; }
 // Saves from before a setting existed: give it the default it would have had
-function migrateForm(f){ const rv=Math.max(1,Math.min(20,parseInt(f&&f.rv)||12));
+function migrateForm(f){ const rv=Math.max(1,Math.min(MAX_RV,parseInt(f&&f.rv)||12));
   if (f && !('feed' in f)) $('feed').checked=true;
   // settings version 2: overlapping heat and cold became opt-in
   if (f && !(parseInt(f.sv)>=2)){ $('pairs').checked=false; }
   // settings version 3: the old Quick-mode bug could leave either unit capacity at 1; put both back once
   if (f && !(parseInt(f.sv)>=3) && (String(f.capSmall)==='1' || String(f.capCool)==='1')){ $('capSmall').value=DEFAULTS.capSmall; $('capCool').value=DEFAULTS.capCool; }
-  if (f) $('sv').value='3';
+  // settings version 4: the event switch meant Harvest Moon; the new season starts switched off
+  if (f && !(parseInt(f.sv)>=4)) $('events').checked=false;
+  if (f) $('sv').value='4';
   // an earlier version reset these to 1 when switching to Quick; nobody means 1 Farmland per unit
   if (f && String(f.capSmall)==='1' && String(f.capCool)==='1'){ $('capSmall').value=DEFAULTS.capSmall; $('capCool').value=DEFAULTS.capCool; }
   if (f && !('power' in f)){ $('power').value=String(powerAt(rv)); $('gens').value=String(genCount(rv)); $('usePower').checked=true; } }
-function writeForm(o){ for (let [k,v] of Object.entries(o||{})){ if (!FORM_IDS.includes(k)) continue; const el=$(k); if(!el) continue; if (k==='rv') v=Math.max(1,Math.min(20,parseInt(v)||12));
+function writeForm(o){ for (let [k,v] of Object.entries(o||{})){ if (!FORM_IDS.includes(k)) continue; const el=$(k); if(!el) continue; if (k==='rv') v=Math.max(1,Math.min(MAX_RV,parseInt(v)||12));
   if (el.type==='checkbox') el.checked=!!v; else { const was=el.value; el.value=String(v); if (el.tagName==='SELECT' && el.selectedIndex<0){
       // a number this RV can't have (40 Farmland at RV 4): take the most it allows
       const n=parseFloat(v), opts=[...el.options].map(o=>parseFloat(o.value)).filter(x=>!isNaN(x));
@@ -1870,14 +1956,15 @@ function save(){ try{ localStorage.setItem('hfp6', JSON.stringify({form:readForm
 function int(id){ return parseInt($(id).value)||0; }
 function num(id, lo, hi){ let v=parseFloat($(id).value); if(isNaN(v)) v=lo; return Math.max(lo,Math.min(hi,v)); }
 
-function allCrops(){ return CROPS.concat(state.custom); }
+function allCrops(){ return CROPS.filter(c=>!offSeason(c.event)).concat(state.custom); }
 function cropById(id){ return allCrops().find(c=>c.id===id); }
 function available(c){
   const lvl = c.kind==='wood' ? int('woodLvl') : Math.max(1,int('farmLvl'));
   if (c.lvl>lvl) return {ok:false, why:`${c.kind==='wood'?'Woodland':'Farmland'} Lv ${c.lvl}`};
   if (c.eco>int('eco')) return {ok:false, why:`Eco Module Lv ${c.eco}`};
-  if (c.event && int('rv')<EVENT_RV) return {ok:false, why:`RV ${EVENT_RV} (the Harvest Moon festival opens there)`};
-  if (c.event && !$('events').checked) return {ok:false, why: Date.now()>EVENT.end ? 'the Harvest Moon event, which has ended' : 'Harvest Moon crops switched on'};
+  if (offSeason(c.event)) return {ok:false, why:`the ${SEASON_NAME[c.event]} season, which has ended`};
+  if (c.event && int('rv')<EVENT_RV) return {ok:false, why:`RV ${EVENT_RV} (the ${SEASON_NAME[SEASON_KEY]} season opens there)`};
+  if (c.event && !$('events').checked) return {ok:false, why: Date.now()>EVENT.end ? `the ${SEASON_NAME[SEASON_KEY]} season, which has ended` : 'event crops switched on'};
   return {ok:true};
 }
 // Settings only Custom shows: Quick and Start over put them back to how the page starts
@@ -2012,7 +2099,7 @@ function renderFillChips(){
 }
 
 // ---------- Item rows ----------
-const PRODUCT_NAMES = [...new Set(PROC.map(r=>r.n))];
+const PRODUCT_NAMES = [...new Set(PROC.filter(r=>!offSeason(r.u.ev)).map(r=>r.n))];
 function chainCtx(o){ return {avoid:new Set(state.avoid||[]), choose:state.recipeFor||{}, rv:int('rv'), workerLvl:state.crewLvl===4?4:3, persona:$('persona').checked, kitchen:int('kitchen'), crafting:int('crafting'),
   detector:int('detector'), events:$('events').checked, heat:o.heat>0, cool:o.cool>0, lamp:o.lamp>0, oneRecipe:!$('switchRec').checked}; }
 // Plots of crops needed per 1 item an hour, assuming each crop gets its best climate
@@ -2140,7 +2227,7 @@ function goalSpec(){
   if (m==='ranked') return {goal:{mode:'coin'}, ranked:rankOrder()};
   if (m==='custom'){ const c=num('needCoin',0,1e12), w=num('needWood',0,1e9), s=num('needSand',0,1e9);
     return {goal:{mode:'target',coin:c,wood:w,sand:s}, need:{coin:c,wood:w,sand:s}}; }
-  if (rv>=20) return {goal:{mode:'coin'}, maxed:true};
+  if (rv>=MAX_RV) return {goal:{mode:'coin'}, maxed:true};
   const [coin,tier,amt,ore,oreAmt]=RV_COST[rv+1];
   const ctx=chainCtx(opts());
   const wood=procNeed(tier, amt, num('haveTier',0,1e9), ctx);
@@ -2161,7 +2248,7 @@ function renderGoalInputs(){
   if (m==='wood') note='Uses every plot for Wood Blocks, then makes the most Home Coin it can.';
   if (m==='custom') note='Balances coins, Wood Blocks and Mineral Sand so they finish together.';
   if (m==='rv'){
-    if (g.maxed) note='You are at RV 20, the highest level. Planning for coins instead.';
+    if (g.maxed) note=`You are at RV ${MAX_RV}, the highest level. Planning for coins instead.`;
     else { const r=g.rv;
       $('haveTierLbl').textContent=r.tier+' you have'; $('haveWBWrap').hidden = r.tier==='Wood Block';
       $('haveOreWrap').hidden = !r.ore; $('haveSandWrap').hidden = !r.ore || r.ore==='Mineral Sand';
@@ -2474,7 +2561,7 @@ function crewRows(best, real, o){
 const MACH_SIZE = {gen:[2,2], mill:[5.5,5.5], table:[4,4], claw:[3.5,3.5], dryer:[2.5,2.5], pot:[2,2], perfume:[3.5,3.5], keg:[3,3], stove:[2.5,1.75],
   jar:[2.5,2], loom:[4,4], kiln:[5.5,5.5], bench:[2,2], dance:[2.5,2.5], pod:[4.5,4.5], well:[2,2], mine:[5,5], sand:[5,5], dewy:[2,2],
   nimbus:[5,5], hammock:[5,5], windmill:[5,5]};
-const CLIM_ZONE = {warm:'warm', cool:'cool', light:'lamp'};
+const CLIM_ZONE = {warm:'warm', cool:'cool', freeze:'freeze', light:'lamp'};
 
 // A cluster's local layout in tiles: its climate unit(s) with ranges, and its plots with what grows there.
 // A single unit sits at (0,0); an overlapping pair has the Heat Furnace at (0,0) and the Cooling Unit at (dx,0).
@@ -3433,7 +3520,7 @@ function renderPowerMap(seg){
 let lastPlan=null;
 // Buildings that need a unit's climate become "guests" the plan can host inside a lone unit's range.
 // Their coin counts at the outside speed (80%, or 0 for the Windmill) unless the plan hosts them.
-const GUEST_ZONE={cool:'cool', warm:'warm', light:'lamp'};
+const GUEST_ZONE={cool:'cool', warm:'warm', freeze:'freeze', light:'lamp'};
 // Extras (one option per kind, up to `free` of them) become choices in the plan. One needing a climate earns its
 // outside speed anywhere, plus a bonus when the plan hosts it inside a matching unit's range.
 function setExtras(o, opts, chain, ctx){
@@ -3678,7 +3765,7 @@ function run(){
   // dishes set aside as food aren't sold
   for (const f of best.food||[]) for (const m of kinds.values()) for (const l of m.lines.values()) if (l.r.n===f.item && l.coin>0){ l.coin=Math.max(0,l.coin-f.perHour*(l.r.p||0)); l.feeds.add('the food bowl'); }
   // Wells and leisure spots: no land, no ingredients, one Aniimo each, always running
-  const CLIM={cool:'Faster inside a Cooling Unit range', warm:'Faster inside a Heat Furnace range', light:'Must sit inside a Sunlamp range'};
+  const CLIM={cool:'Faster inside a Cooling Unit range', warm:'Faster inside a Heat Furnace range', freeze:'Twice as fast inside a Cooling Unit range on Freeze', light:'Must sit inside a Sunlamp range'};
   { const g={}; for (const e of extras){ const k=e.key+'|'+e.r.id; (g[k]=g[k]||{...e,n:0}).n++; }
     for (const e of Object.values(g)){ const m=K(e.key), l=L(e.key, e.r); m.need+=e.n; l.n+=e.n; l.busy+=e.n; l.perHour+=e.perHour*e.n; l.coin+=e.coin*e.n; l.extra=true;
       const note=(e.r.fam?famText(e.r, ctx):'Any Water Aniimo')+(e.r.clim?'. '+CLIM[e.r.clim]:''); if (!m.notes.includes(note)) m.notes.push(note); } }
@@ -3807,7 +3894,7 @@ function recipeCtl(r, ctx, pick=true){
   return `<span class="rc"><span>${r.n}${varTag(r)}</span>${sel}<button type="button" class="icon xs" data-avoid="${r.id}" aria-label="Don't use this recipe for ${r.n}" title="Don't use this recipe">✕</button></span>`;
 }
 // ---------- Daily Orders: deliver or sell? ----------
-const ORDER_ITEMS=[...new Set([...CROP_ITEMS, ...PROC.map(r=>r.n)])].sort();
+const ORDER_ITEMS=[...new Set([...CROPS.filter(c=>!offSeason(c.event)).map(c=>CROP_ITEM[c.id]||c.name), ...PROC.filter(r=>!offSeason(r.u.ev)).map(r=>r.n)])].sort();
 function itemPrice(n, ctx){ if (CROP_ITEMS.has(n)){ const c=allCrops().find(c=>(CROP_ITEM[c.id]||c.name)===n); return c?c.price:0; }
   const r=pickRecipe(n, ctx); return r?r.p:0; }
 function renderOrders(){
@@ -3849,40 +3936,43 @@ function renderOrderOut(){
   }
   out.innerHTML = rows.length ? `<div class="orders">${rows.join('')}</div>` : '';
 }
-// ---------- Harvest Moon Festival ----------
-// Dates, tasks, points and seeds: AniimoTools Home Season page; dates, daily total, 2 Season Orders and the furniture tip also from ItemLevel.
-const EVENT = { start: Date.UTC(2026,8,15,16), ends: Date.UTC(2026,9,27,16),   // 16 Sep to the end of 27 Oct, UTC+8 (the countdown)
-  end: Date.UTC(2026,9,28,16),   // switched off a day later: sources disagree on the hour it ends
-  tasks: [['orders','Complete 3 Home orders',150],['sell','Sell Home produce once',150],['outing','Complete 1 Aniimo outing',150],['soil',"Loosen soil at a friend's Home",150],
-          ['gather','Harvest Gathering (from 21 Oct)',300]],
-  gatherFrom: Date.UTC(2026,9,20,16),
-  tiers: [1000,3000,6000,10000,20000,40000,60000,80000,100000,120000] };
+// ---------- Home season: Magical Wonder Night ----------
+// Dates: the official 29 Oct update notice (until 10 Dec, 03:59 server time) and AniimoTools' Home Season page, which also
+// gives the daily tasks, stages, points ladder and seeds. Season orders paying 300 beans and the Formula Note prices come
+// from in-game screenshots noted in Zudin987's Aniimax fork (29 Oct). Times below are UTC; the game day starts 04:00 UTC+8.
+const EVENT = { key:'wn', start: Date.UTC(2026,9,29,2), ends: Date.UTC(2026,11,9,20),   // 29 Oct to 10 Dec 04:00 UTC+8 (the countdown)
+  end: Date.UTC(2026,11,10,20),   // switched off a day later: servers in other regions end at a different hour
+  tasks: [['orders','Complete 3 Home orders',200],['sell','Sell Home produce once',200],['outing','Complete 1 Aniimo outing',200],['soil',"Loosen soil at a friend's Home",200],
+          ['gather','Hand in 1 Nighttime Gathering item (from 12 Nov)',200]],
+  gatherFrom: Date.UTC(2026,10,11,20), giftFrom: Date.UTC(2026,11,2,20),
+  tiers: [2000,6000,15000,25000,60000,100000,140000,180000,220000,280000] };
 const todayKey = () => { const d=new Date(); return d.getFullYear()+'-'+(d.getMonth()+1)+'-'+d.getDate(); };
 function renderEventBtn(){
   const b=$('eventBtn'), now=Date.now(); if (now<EVENT.start || now>EVENT.end){ b.hidden=true; return; }
   const days=Math.max(0,Math.ceil((EVENT.ends-now)/864e5)); b.hidden=false;
-  b.innerHTML=`<span aria-hidden="true">🌙</span> Harvest Moon <span class="d">${days} day${days>1?'s':''} left</span>`;
+  b.innerHTML=`<span aria-hidden="true">🎃</span> Wonder Night <span class="d">${days} day${days===1?'':'s'} left</span>`;
 }
 function renderEvent(){
   const ev=state.event||(state.event={}); if (ev.day!==todayKey()){ ev.day=todayKey(); ev.done=[]; }
   const now=Date.now(), tasks=EVENT.tasks.filter(t=>t[0]!=='gather' || now>=EVENT.gatherFrom);
-  const wheat=tasks.filter(t=>ev.done.includes(t[0])).reduce((s,t)=>s+t[2],0), max=tasks.reduce((s,t)=>s+t[2],0);
+  const beans=tasks.filter(t=>ev.done.includes(t[0])).reduce((s,t)=>s+t[2],0), max=tasks.reduce((s,t)=>s+t[2],0);
   const pts=ev.points||0, next=EVENT.tiers.find(t=>t>pts), prev=[0,...EVENT.tiers].filter(t=>t<=pts).pop();
   const left=Math.max(0,EVENT.ends-now), d=Math.floor(left/864e5), h=Math.floor(left%864e5/36e5);
-  $('evBody').innerHTML=`<div class="evhead"><h2 id="evTitle">🌙 Harvest Moon Festival</h2><button type="button" class="icon" id="evClose" aria-label="Close">✕</button></div>
-    <p class="note">Ends in <b>${d}d ${h}h</b> (end of 27 Oct, UTC+8).</p>
-    <h3>Today's tasks <span class="note">${fmt(wheat)} / ${fmt(max)} Moonray Wheat</span></h3>
+  $('evBody').innerHTML=`<div class="evhead"><h2 id="evTitle">🎃 Magical Wonder Night</h2><button type="button" class="icon" id="evClose" aria-label="Close">✕</button></div>
+    <p class="note">Ends in <b>${d}d ${h}h</b> (10 Dec, 04:00 UTC+8). Opens at RV 10 after the quest “Act Seven: Festivals of Astra”.</p>
+    <h3>Today's tasks <span class="note">${fmt(beans)} / ${fmt(max)} Weird Jelly Beans</span></h3>
     <ul class="evtasks">${tasks.map(t=>`<li><label class="inline"><input type="checkbox" data-task="${t[0]}"${ev.done.includes(t[0])?' checked':''}>${t[1]}</label><span class="note">${t[2]}</span></li>`).join('')}</ul>
-    <p class="note">Plus 2 Season Orders a day, worth about 400–550 Moonray Wheat. Ticks reset each day.</p>
-    <h3>Festival points</h3>
+    <p class="note">Pumpkin God season orders on the order board pay 300 beans each.${now>=EVENT.giftFrom?' The Pumpkin God’s Thank-You Gift can be claimed once a day.':' From 3 Dec the Pumpkin God’s Thank-You Gift adds a daily claim.'} Ticks reset each day.</p>
+    <h3>Whimsy points</h3>
     <label class="f" style="max-width:200px"><span>Points you have</span><input type="number" id="evPts" min="0" step="100" value="${pts||''}"></label>
     ${next?`<div class="evbar"><span style="width:${Math.min(100,100*(pts-prev)/(next-prev))}%"></span></div><p class="note">${fmt(next-pts)} to the next reward at ${fmt(next)}${EVENT.tiers.indexOf(next)===EVENT.tiers.length-1?' (the last one)':''}.</p>`:'<p class="note"><b>All rewards claimed.</b></p>'}
     <ol class="evtiers">${EVENT.tiers.map(t=>`<li class="${t<=pts?'got':''}">${fmt(t)}</li>`).join('')}</ol>
     <h3>Tips</h3>
-    <ul class="evtips"><li>Event furniture earns about 5× more points per Moonray Wheat than seeds (about 11,600 vs 2,200 points per 1,000 Wheat).</li>
-      <li>Moondew Radish and Waxing Moon Pepper seeds cost 4 Moonray Wheat; they grow in 40 min and give 8 each.</li>
-      <li>There are 16 mutated Moondew crops to collect.</li></ul>
-    <div class="btnrow"><button type="button" class="primary" id="evPlant">${$('events').checked?'Harvest Moon crops are on':'Plant Harvest Moon crops'}</button></div>`;
+    <ul class="evtips"><li>Event furniture earns about 8–10 Whimsy points per bean. A seed is worth 2 points and each crop 1, so planting earns about 2 per bean.</li>
+      <li>Magic Pumpkin and Memory Lanternfruit seeds cost 4 beans. They need Farmland Lv 5 inside a Sunlamp range, grow in 30 min and give 8 each.</li>
+      <li>Formula Notes for the event dishes cost 80 beans each in the Season Exchange (Glowfruit Lantern Set 120).</li>
+      <li>There are 16 mutated crops to collect, 8 of each.</li></ul>
+    <div class="btnrow"><button type="button" class="primary" id="evPlant">${$('events').checked?'Wonder Night crops are on':'Plant Wonder Night crops'}</button></div>`;
   $('evClose').onclick=()=>$('eventDlg').close();
   $('evBody').querySelectorAll('[data-task]').forEach(c=>c.onchange=()=>{ const s=new Set(ev.done); c.checked?s.add(c.dataset.task):s.delete(c.dataset.task); ev.done=[...s]; save(); renderEvent(); });
   $('evPts').onchange=e=>{ ev.points=Math.max(0,parseFloat(e.target.value)||0); save(); renderEvent(); };
@@ -3905,7 +3995,7 @@ function renderShop(){
   for (const e of Object.values(list)){
     const seeds=Math.ceil(e.harvests-1e-9); cost+=seeds*e.c.seed; coin+=e.harvests*e.c.yield*e.c.price; wood+=e.harvests*(e.c.wood||0);
     const col=lastPlan.colorOf?lastPlan.colorOf({crop:e.c}):'--c0';
-    h+=`<div class="sc"><span class="sw" style="background:var(${col})"></span><span class="nm">${e.c.name}</span><span class="buy">${fmt(seeds)}</span><span class="sub"><span>${e.c.event?'Moonray Wheat':fmt(seeds*e.c.seed)+' coin'}</span><span>${fmt(e.harvests*e.c.yield)} harvested</span></span></div>`;
+    h+=`<div class="sc"><span class="sw" style="background:var(${col})"></span><span class="nm">${e.c.name}</span><span class="buy">${fmt(seeds)}</span><span class="sub"><span>${e.c.event?fmt(seeds*4)+' Weird Jelly Beans':fmt(seeds*e.c.seed)+' coin'}</span><span>${fmt(e.harvests*e.c.yield)} harvested</span></span></div>`;
   }
   h+=`</div><div class="tiles"><div class="tile"><b>${fmt(cost)}</b><span>seed cost</span></div><div class="tile"><b>${fmt(coin-cost)}</b><span>Home Coin from crops, after seeds</span></div></div>
   <p class="note">One seed per harvest.</p>`;
@@ -4016,7 +4106,7 @@ $('copyCode').onclick=async()=>{
 // A saved setup (from a code or a file): checked and rebuilt from known values before use
 function loadSetup(d){ if(!d||typeof d!=='object'||!d.form||!d.state||typeof d.form!=='object') throw 0;
   state=cleanState(d.state);
-  $('rv').value=String(Math.max(1,Math.min(20,parseInt(d.form.rv)||12))); buildSelects(); writeForm(PRISTINE); writeForm(d.form); migrateForm(d.form); applyMode(); refreshInputs(); run(); }
+  $('rv').value=String(Math.max(1,Math.min(MAX_RV,parseInt(d.form.rv)||12))); buildSelects(); writeForm(PRISTINE); writeForm(d.form); migrateForm(d.form); applyMode(); refreshInputs(); run(); }
 $('loadCode').onclick=async()=>{
   try{ loadSetup(await decodeSetup($('codeIn').value)); $('loadMsg').textContent='Loaded.'; }
   catch(e){ $('loadMsg').textContent="That code didn't work. Copy the whole code and try again."; }
@@ -4033,13 +4123,13 @@ $('loadFile').onchange=e=>{ const f=e.target.files&&e.target.files[0]; if (!f) r
 $('resetAll').onclick=()=>{ if (!confirm('Start over with a fresh setup? Your Aniimo list and orders stay.')) return; const mine={roster:state.roster, orders:state.orders, event:state.event}; state={...JSON.parse(JSON.stringify(DEFAULT_STATE)), ...mine}; writeForm(PRISTINE); $('rv').value='12'; maxAll(); for (const [k,v] of Object.entries(DEFAULTS)) if(k!=='rv') $(k).value=v; refreshInputs(); run(); selectTab('over'); $('loadMsg').textContent='Back to the example.'; };
 
 // ---------- Start ----------
-fillSelect('rv', range(1,20)); $('rv').value='12';
+fillSelect('rv', range(1,MAX_RV)); $('rv').value='12';
 buildSelects();
 for (const [k,v] of Object.entries(DEFAULTS)) $(k).value=v;   // the selects' own defaults, before anything is saved
 PRISTINE=readForm();
 let restored=false;
 try{ const s=JSON.parse(localStorage.getItem('hfp6')||localStorage.getItem('hfp3')||'null');
-  if (s&&s.form&&s.state){ state=cleanState(s.state); $('rv').value=String(Math.max(1,Math.min(20,parseInt(s.form.rv)||12))); buildSelects(); writeForm(s.form); migrateForm(s.form); restored=true;
+  if (s&&s.form&&s.state){ state=cleanState(s.state); $('rv').value=String(Math.max(1,Math.min(MAX_RV,parseInt(s.form.rv)||12))); buildSelects(); writeForm(s.form); migrateForm(s.form); restored=true;
     if (!s.form.mines){ const rv=int('rv'); $('mines').value=placeAt('mine',rv); $('kilns').value=placeAt('kiln',rv); $('benches').value=placeAt('bench',rv); } } }catch(e){}
 if (!restored){ maxAll(); for (const [k,v] of Object.entries(DEFAULTS)) if(k!=='rv') $(k).value=v; }
 else if (state.mode==='quick'){ quickDefaults(); maxAll(); }  // Quick always means everything the RV allows, other settings at default
@@ -4065,7 +4155,7 @@ function applyMode(){ const m=state.mode==='custom'?'custom':'quick'; document.b
   $('modeNote').textContent = m==='quick' ? `Plans as if everything RV ${int('rv')} allows is built and upgraded.` : (CLAMP_MSG || 'Set each facility, module and item to match your Homeland.');
   updateMbar(); }
 // The header chip names the RV and goal of the plan on screen; edits show once the plan is updated
-function updateMbar(){ $('rvDown').disabled=int('rv')<=1; $('rvUp').disabled=int('rv')>=20;
+function updateMbar(){ $('rvDown').disabled=int('rv')<=1; $('rvUp').disabled=int('rv')>=MAX_RV;
   const g=$('goalMode'), now=`RV ${int('rv')} · ${g.options[g.selectedIndex]?g.options[g.selectedIndex].text:''}`;
   $('mbarText').textContent = (lastPlan && lastPlan.ctxText) ? lastPlan.ctxText : now; }
 document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{ if (state.mode===b.dataset.mode) return; state.mode=b.dataset.mode;
@@ -4081,8 +4171,8 @@ const toggleSetup=()=>setSetup(!document.body.classList.contains('setup-open'));
 $('mbarBtn').onclick=toggleSetup; $('railSetup').onclick=toggleSetup; $('mbarText').onclick=()=>setSetup(true);
 $('setupClose').onclick=()=>setSetup(false); $('scrim').onclick=()=>setSetup(false);
 document.addEventListener('keydown',e=>{ if (e.key==='Escape' && document.body.classList.contains('setup-open') && !document.querySelector('dialog[open]') && $('tipBox').hidden && $('zoom').hidden) setSetup(false); }, true);   // first Esc closes an open tooltip
-const stepRv=d=>{ const el=$('rv'), v=Math.max(1,Math.min(20,int('rv')+d)); if (v===int('rv')) return; el.value=String(v); el.dispatchEvent(new Event('change',{bubbles:true})); };
-$('rv').addEventListener('change',()=>{ $('rvDown').disabled=int('rv')<=1; $('rvUp').disabled=int('rv')>=20; });
+const stepRv=d=>{ const el=$('rv'), v=Math.max(1,Math.min(MAX_RV,int('rv')+d)); if (v===int('rv')) return; el.value=String(v); el.dispatchEvent(new Event('change',{bubbles:true})); };
+$('rv').addEventListener('change',()=>{ $('rvDown').disabled=int('rv')<=1; $('rvUp').disabled=int('rv')>=MAX_RV; });
 $('rvDown').onclick=()=>stepRv(-1); $('rvUp').onclick=()=>stepRv(1);
 $('addOrder').onclick=()=>{ (state.orders||(state.orders=[])).push({n:'',q:1,r:0}); save(); renderOrders(); const i=state.orders.length-1; setTimeout(()=>$('ord-n-'+i)&&$('ord-n-'+i).focus(),0); };
 $('maxAll').onclick=()=>{ maxAll(); state.land=null; refreshInputs(); markDirty(); };
@@ -4100,7 +4190,7 @@ document.addEventListener('change',e=>{ if(e.target.id==='crewLvl'){ state.crewL
 $('addProd').onclick=()=>{ (state.products||(state.products=[])).push({n:'Bread',amt:5,unit:'h'}); renderProducts(); markDirty(); };
 // Crops with mutated forms (AniimoTools item list and the Mutated Plant Exchange agree). Trees have none (Wikily).
 // Quick and Premium versions: Wikily lists the same mutated items as the plain crop, AniimoTools says none, so the plain crop is used.
-const MUTATES=['wheat','potato','rice','soybean','cotton','rose','lavender','strawberry','sugarcane','ginseng','grapes','agave','cranberry','moondew','pepper'];
+const MUTATES=['wheat','potato','rice','soybean','cotton','rose','lavender','strawberry','sugarcane','ginseng','grapes','agave','cranberry','moondew','pepper','mpumpkin','lantern'];
 $('addAll').onclick=()=>{ const o=opts(); for (const id of MUTATES){ const c=cropById(id); if (!c || !available(c).ok || state.requests.some(r=>r.id===id)) continue;
     if (c.light && o.lamp===0) continue; if (plotRoom(-1).left[kindOf(id)]<1) break; state.requests.push({id,plots:1}); }
   renderRequests(); markDirty(); };
