@@ -410,6 +410,11 @@ body.setup-open .updatebar{display:none}
 .mapside .ab{font-family:var(--font-mono);font-size:.72rem;padding:0 5px;border:1px solid var(--line);border-radius:4px;color:var(--muted);margin-left:4px}
 .wh{display:none;font-size:.78rem;color:var(--muted);margin-top:2px}
 .pill.vt{border-color:var(--leaf);color:var(--leaf);font-weight:700;margin-left:4px}
+.genpick{display:grid;grid-template-columns:auto minmax(0,1fr);gap:8px;align-items:end}
+.genpick select{font-size:.84rem}
+.gencheck{border-top:1px dashed var(--line);padding-top:6px}
+.gencheck summary{font-weight:700}
+.gencheck .evtips{margin-top:6px}
 .unlock{margin-top:10px}
 .unlock summary{cursor:pointer;font-size:.86rem;font-weight:700}
 .unlock small,.ahead small{display:block;color:var(--muted);font-family:var(--font-body)}
@@ -555,8 +560,8 @@ body:not(.setup-open) .scrim{display:none}
           <label class="f"><span>Mines</span><select id="mines"></select></label>
           <label class="f"><span>Chimney Kilns <i class="tip" tabindex="0" data-tip="Turns Mineral Sand into the ore an RV upgrade asks for.">?</i></span><select id="kilns"></select></label>
           <label class="f"><span>Woodworking Benches <i class="tip" tabindex="0" data-tip="Turns Wood Blocks into the lumber an RV upgrade asks for.">?</i></span><select id="benches"></select></label>
-          <label class="f"><span>Power Module <i class="tip" tabindex="0" data-tip="From RV 12. Lets machines, Mines and Wells run in E-mode on Crackle Generator power: no Aniimo needed. Module level n allows generator level n (600, 800, 1000, 1200, 1500 W).">?</i></span><select id="power"></select></label>
-          <label class="f"><span>Crackle Generators <i class="tip" tabindex="0" data-tip="How many generators you have (1 at RV 12-14, 2 at RV 15-17, 3 from RV 18). Each needs one Lightning Aniimo.">?</i></span><select id="gens"></select></label>
+          <label class="f"><span>Generator level <i class="tip" tabindex="0" data-tip="The level your Crackle Generators are at: 600, 800, 1,000, 1,200 or 1,500 W. The Power Module only lets you upgrade them (Lv 2 at RV 14, 3 at 16, 4 at 18, 5 at 20): each generator is upgraded on its own in build mode, and a newly bought one starts at Lv 1. If yours differ, pick the lowest.">?</i></span><select id="power"></select></label>
+          <label class="f"><span>Crackle Generators <i class="tip" tabindex="0" data-tip="How many generators you have placed (up to 1 at RV 12-14, 2 at RV 15-17, 3 from RV 18). Each needs one Lightning Aniimo, and they need linking into one network with Power Poles.">?</i></span><select id="gens"></select></label>
         </div>
         <div class="toggles adv">
           <span class="lbl">Use</span>
@@ -663,7 +668,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 31 Oct, 1:25pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Nov, 10:10pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -980,6 +985,10 @@ const HAB_NEED = {10:13000, 11:13500, 12:14000, 13:14500, 14:15000, 15:15500, 16
 const GEN = {w:[0,600,800,1000,1200,1500], need:[0,1,2,3,3,3], wl:[0,60,60,75,90,105], rv:[0,12,14,16,18,20]};
 const genCount = rv => rv<12 ? 0 : rv<=14 ? 1 : rv<=17 ? 2 : 3;
 const powerAt = rv => GEN.rv.filter(x=>x && x<=rv).length;
+// The generators you actually have: their level (each is upgraded on its own, and a new one starts at Lv 1) and how many,
+// as set on the Crackle Generator card; null means as high as the RV allows
+const myGenLvl = rv => Math.min(powerAt(rv), (typeof state!=='undefined' && state.genLvl) || 9);
+const myGenN = rv => Math.min(genCount(rv), (typeof state!=='undefined' && state.genN!=null) ? state.genN : 9);
 function genOut(lvl, wl){ if (!lvl) return 0; const ATK=[0,120,150,180,210], DEF=[0,60,75,90,105];
   return GEN.w[lvl]*Math.max(0,Math.min(1,(ATK[Math.max(1,Math.min(4,wl))]-DEF[GEN.need[lvl]])/GEN.wl[lvl])); }
 // Watts a facility draws in E-mode (even when idle): 15 per facility level, 30 for Mines, Wells, Aniipod Maker, Dance Pad
@@ -1890,6 +1899,7 @@ function cleanState(raw){
   st.noFill=arr(d.noFill,100).filter(x=>ids.has(x));
   if (Array.isArray(d.products)) st.products=arr(d.products,40).filter(w=>w&&PRODUCT_NAMES.includes(w.n)).map(w=>({n:w.n, amt:nb(w.amt,0,1e6,1), unit:['h','d','p'].includes(w.unit)?w.unit:'h'}));
   st.crewLvl=d.crewLvl==4?4:3; st.allMach=!!d.allMach;
+  st.genLvl=[1,2,3,4,5].includes(+d.genLvl)?+d.genLvl:null; st.genN=[1,2,3].includes(+d.genN)?+d.genN:null;
   if (typeof d.tab==='string') st.tab=d.tab;
   st.done={}; if (d.done&&typeof d.done==='object') for (const k of Object.keys(d.done).slice(0,300)) if (typeof k==='string' && k.length<200) st.done[k]=1;
   const pids=new Set(PROC.map(r=>r.id));
@@ -1924,7 +1934,7 @@ function buildSelects(){
   fillSelect('woodLvl', range(0,6), l=>l===0?'None':'Lv '+l+(rv<WOOD_RV[l]?' · RV '+WOOD_RV[l]:''));
   fillSelect('eco', range(0,9), l=>l===0?'None':'Lv '+l);
   for (const k of ['heat','cool','lamp']) fillSelect(k, range(0,3));
-  fillSelect('power', range(0,5), l=>l===0?'None':'Lv '+l+(rv<GEN.rv[l]?' · RV '+GEN.rv[l]:'')); fillSelect('gens', range(0,3));
+  fillSelect('power', range(0,5), l=>l===0?'None':'Lv '+l+' · '+fmt(GEN.w[l])+' W'+(rv<GEN.rv[l]?' · RV '+GEN.rv[l]:'')); fillSelect('gens', range(0,3));
   fillSelect('reserve', range(0,10)); fillSelect('mines', range(0,10)); fillSelect('kilns', range(0,4)); fillSelect('benches', range(0,4));
   fillSelect('hours', [0,0.5,1,2,3,4,6,8,12,24], h=>h===0?'Always on':h+' h');
   fillSelect('capSmall', range(1,24)); fillSelect('capCool', range(1,32));
@@ -1946,7 +1956,7 @@ function migrateForm(f){ const rv=Math.max(1,Math.min(MAX_RV,parseInt(f&&f.rv)||
   if (f) $('sv').value='4';
   // an earlier version reset these to 1 when switching to Quick; nobody means 1 Farmland per unit
   if (f && String(f.capSmall)==='1' && String(f.capCool)==='1'){ $('capSmall').value=DEFAULTS.capSmall; $('capCool').value=DEFAULTS.capCool; }
-  if (f && !('power' in f)){ $('power').value=String(powerAt(rv)); $('gens').value=String(genCount(rv)); $('usePower').checked=true; } }
+  if (f && !('power' in f)){ $('power').value=String(myGenLvl(rv)); $('gens').value=String(myGenN(rv)); $('usePower').checked=true; } }
 function writeForm(o){ for (let [k,v] of Object.entries(o||{})){ if (!FORM_IDS.includes(k)) continue; const el=$(k); if(!el) continue; if (k==='rv') v=Math.max(1,Math.min(MAX_RV,parseInt(v)||12));
   if (el.type==='checkbox') el.checked=!!v; else { const was=el.value; el.value=String(v); if (el.tagName==='SELECT' && el.selectedIndex<0){
       // a number this RV can't have (40 Farmland at RV 4): take the most it allows
@@ -1980,7 +1990,7 @@ function maxAll(){
   $('heat').value=limitAt('heat',rv); $('cool').value=limitAt('cool',rv); $('lamp').value=limitAt('lamp',rv);
   for (const k of ['kitchen','crafting','detector']) $(k).value=moduleAt(k,rv);
   $('mines').value=placeAt('mine',rv); $('kilns').value=placeAt('kiln',rv); $('benches').value=placeAt('bench',rv);
-  $('power').value=String(powerAt(rv)); $('gens').value=String(genCount(rv));
+  $('power').value=String(myGenLvl(rv)); $('gens').value=String(myGenN(rv));
   $('useHeat').checked=$('useCool').checked=$('useLamp').checked=$('extras').checked=true;
   $('maxAll').style.boxShadow='';
 }
@@ -2311,7 +2321,7 @@ function renderTodo(){
       if (m.forRv) m.e=Math.min(m.need, ((P||{}).eRv||{})[m.key]||0);
       const recs=m.forRv ? ['for the RV upgrade'] : [...new Set([...(m.lines||new Map()).values()].map(l=>varWord(l.r)+l.r.n))];
       items.push({t:plural(MACH[m.key].name, m.need), s:[short(recs), m.e?`⚡ ${m.e>=m.need?'all':m.e} on E-mode`:''].filter(Boolean).join(' · ')}); }
-    if (P && P.gens) items.push({t:plural('Crackle Generator', P.gens), s:`${fmt(P.used)} of ${fmt(P.cap)} W in use`});
+    if (P && P.gens) items.push({t:plural('Crackle Generator', P.gens)+' at Lv '+P.lvl, s:`${fmt(P.used)} of ${fmt(P.cap)} W in use`});
     if (items.length) G.push({g:'Build', tab:'mach', items}); }
   // Aniimo by job
   if (L.crewMin){ const g=new Map(); for (const r of L.crewList){ const k=r.job+(r.lvl>1?' Lv '+r.lvl+'+':''); g.set(k,(g.get(k)||0)+r.n); }
@@ -3486,6 +3496,35 @@ function powerLayout(items, maxPoles){
   }
   return {G, areas, poles, placed, missed};
 }
+// Share whole machines over the generators so each stays at or under its own 120% line when it can; when no split fits,
+// the least-loaded share (then the generators must be linked into one network, where only the total counts)
+function splitGrids(list, k, cap){
+  const items=list.slice().sort((a,b)=>b.watts-a.watts), load=Array(k).fill(0), pick=Array(items.length); let nodes=0, found=false;
+  const dfs=i=>{ if (i===items.length) return true; if (++nodes>200000) return false; const seen=new Set();
+    for (let g=0; g<k; g++){ if (seen.has(load[g])) continue; seen.add(load[g]); if (load[g]+items[i].watts>cap+1e-6) continue;
+      load[g]+=items[i].watts; pick[i]=g; if (dfs(i+1)) return true; load[g]-=items[i].watts; } return false; };
+  if (k>0) found=dfs(0);
+  const grids=[...Array(k)].map((_,i)=>({i, items:[], watts:0}));
+  if (found) items.forEach((t,i)=>{ grids[pick[i]].items.push(t); grids[pick[i]].watts+=t.watts; });
+  else for (const t of items){ const g=grids.slice().sort((a,b)=>a.watts-b.watts)[0]; g.items.push(t); g.watts+=t.watts; }
+  return grids; }
+// The Crackle Generator card's own setting: the level and number of generators you really have. The plan counts on every
+// generator at that level, so one a level lower than planned drops the whole network under 120% (a Lv 1 generator where
+// the plan expects Lv 2 shows 90% in game).
+function genPickHtml(P){ const rv=int('rv'), top=powerAt(rv), most=genCount(rv), lv=Math.min(int('power')||P.lvl, top), n=int('gens');
+  const opt=(v,cur,txt)=>`<option value="${v}"${v===cur?' selected':''}>${txt}</option>`;
+  const up=lv<top ? `<p class="note">Upgrading to Lv ${top} makes ${fmt(GEN.w[top])} W each instead of ${fmt(GEN.w[lv])} W (${fmt(FAC_COST['Crackle Generator'].slice(lv,top).reduce((t,c)=>t+c,0))} Home Coin each).</p>` : '';
+  return `<div class="genpick"><label class="f"><span>Your generators</span><select id="genNPick" aria-label="How many Crackle Generators you have">${[...Array(most).keys()].map(i=>opt(i+1,n,String(i+1))).join('')}</select></label>
+    <label class="f"><span>at level</span><select id="genLvlPick" aria-label="Your Crackle Generators' level">${[...Array(top).keys()].map(i=>opt(i+1,lv,'Lv '+(i+1)+' · '+fmt(GEN.w[i+1])+' W')).join('')}</select></label></div>
+    <p class="note">The Power Module only unlocks each level: every generator is upgraded on its own in build mode, and a new one starts at Lv 1. Set yours here so the plan doesn't load them past what they make.</p>${up}
+    <details class="gencheck"><summary>The game shows under 120%?</summary><ul class="evtips">
+      <li>Check each generator's level matches the one above. A generator one level lower than planned is the usual cause: a Lv 1 generator where the plan expects Lv 2 shows exactly 90%.</li>
+      <li>Every generator needs a Lightning Aniimo of Lv ${GEN.need[P.lvl]} or higher working it, and fed. A higher level adds nothing once the generator makes its full output.</li>
+      <li>Link all generators into one network with Power Poles, so their output adds up.</li>
+      <li>Only the machines the plan marks ⚡ should be set to E-mode: a machine with an E-mode recipe set draws its power even while idle.</li></ul></details>`; }
+function wireGenPick(){ const a=$('genLvlPick'), b=$('genNPick');
+  if (a) a.onchange=()=>{ const v=parseInt(a.value), rv=int('rv'); state.genLvl = v>=powerAt(rv) ? null : v; $('power').value=String(myGenLvl(rv)); if (!$('usePower').checked) $('usePower').checked=true; save(); refreshInputs(); run(); };
+  if (b) b.onchange=()=>{ const v=parseInt(b.value), rv=int('rv'); state.genN = v>=genCount(rv) ? null : v; $('gens').value=String(myGenN(rv)); save(); refreshInputs(); run(); }; }
 function renderPowerMap(seg){
   const L=lastPlan, P=L&&L.best.power, rv=int('rv');
   const head=`<div class="layhead">${seg}</div>`;
@@ -3498,8 +3537,8 @@ function renderPowerMap(seg){
   if (P.eMines) add('mine', P.eMines);
   for (const e of P.eExtras||[]) add(e.key, e.count);
   // share them out over the generators so no grid goes past its 120% limit
-  const capEach=P.out/1.2, grids=[...Array(P.gens)].map((_,i)=>({i, items:[], watts:0}));
-  for (const t of list.sort((a,b)=>b.watts-a.watts)){ const g=grids.slice().sort((a,b)=>a.watts-b.watts)[0]; g.items.push(t); g.watts+=t.watts; }
+  const capEach=P.out/1.2, grids=splitGrids(list, P.gens, capEach);
+  const overAny=grids.some(g=>g.watts>capEach+1e-6);
   let polesLeft=POLE_CAP(rv); const T=12;
   const cards=grids.map(g=>{ const Lp=powerLayout(g.items, polesLeft); polesLeft-=Lp.poles.length;
     let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity; for (const r of [...Lp.areas, ...Lp.placed]){ x0=Math.min(x0,r.x); y0=Math.min(y0,r.y); x1=Math.max(x1,r.x+r.w); y1=Math.max(y1,r.y+r.h); }
@@ -3518,7 +3557,7 @@ function renderPowerMap(seg){
     return `<div class="ucard"><div class="top"><b><span class="dot" style="background:var(--j-lightning)"></span>Crackle Generator ${g.i+1}</b><span class="pill">${fmt(g.watts)} / ${fmt(capEach)} W</span></div>${svg}
       <div class="legend">${counts.map(({t,n})=>`<span><span class="sw" style="background:var(${jobVar(t.job)})"></span>${n} ${t.name}${n>1?'s':''}</span>`).join('')}${Lp.poles.length?`<span><span class="sw" style="background:var(--j-lightning)"></span>${Lp.poles.length} Power Pole${Lp.poles.length>1?'s':''}</span>`:''}</div>
       ${Lp.missed.length?`<p class="warn">No room near this generator for ${Lp.missed.map(t=>t.name).join(', ')}${polesLeft<=0?' (at the Power Pole limit for RV '+rv+')':''}.</p>`:''}</div>`; });
-  $('pane-layout').innerHTML=head+`<p class="note" style="max-width:75ch">Every machine on E-mode, grouped around the generator that powers it. A machine only has to touch the dashed supply area to get power, and E-mode machines need no Aniimo, so they can sit right up against each other. Power Poles (yellow squares) stretch the area when it runs out of room. The machines are shared out so each generator's load stays at or under its output ÷ 1.2, which keeps them at 120% speed. Build it as its own corner of your Homeland. The supply and pole areas come from one source, so check them in build mode.</p>
+  $('pane-layout').innerHTML=head+`<p class="note" style="max-width:75ch">Every machine on E-mode, grouped around the generator that powers it. A machine only has to touch the dashed supply area to get power, and E-mode machines need no Aniimo, so they can sit right up against each other. Power Poles (yellow squares) stretch the area when it runs out of room. ${overAny ? `These machines can't be split so each generator stays under its own ${fmt(capEach)} W, so <b>link the generators into one network with a Power Pole</b>: their output adds up and every machine runs at 120%.` : `The machines are shared out so each generator's load stays at or under its output ÷ 1.2 (${fmt(capEach)} W), which keeps them at 120% speed.${P.gens>1?' Linking the generators into one network with a Power Pole is safest: their output then adds up.':''}`} Build it as its own corner of your Homeland. The supply and pole areas come from one source, so check them in build mode.</p>
     <div class="fields power">${cards.join('')}</div>`;
   wireLayoutSeg();
 }
@@ -3795,6 +3834,7 @@ function run(){
         return `<div class="mc">${head}<div class="meter" style="--jc:${jc}"><i style="width:${Math.min(100,100*P.used/Math.max(1,P.cap))}%"></i></div>
           <ul><li><span>Power used</span><span>${fmt(P.used)} / ${fmt(P.cap)} W</span></li><li><span>E-mode speed</span><span>${rate}%</span></li><li><span>Each makes</span><span>${fmt(P.out)} W</span></li></ul>
           <p class="note">Each generator needs one Lightning Aniimo (Lv ${GEN.need[P.lvl]}+). Machines run at 120% while the load stays at or under output ÷ 1.2, which is ${fmt(P.cap)} W here. Link machines to it with Power Poles.</p>
+          ${genPickHtml(P)}
           ${(()=>{ const full=GEN.w[P.lvl]; if (P.out>=full-1e-6) return ''; const lv=[1,2,3,4].find(w=>genOut(P.lvl,w)>=full-1e-6);
             return `<p class="warn">Your workers make each generator give ${fmt(P.out)} of its ${fmt(full)} W.${lv?` A Lv ${lv} Lightning Aniimo gives the full ${fmt(full)} W.`:''}</p>`; })()}</div>`; }
       if (m.forRv){ const nE=Math.min(m.need, ((PWR||{}).eRv||{})[m.key]||0);
@@ -3820,7 +3860,7 @@ function run(){
   if (extrasCut>0) mh+=`<p class="note">${extrasCut} more Well${extrasCut>1?'s or leisure spots':' or leisure spot'} could go in, but the plan gets more from those Aniimo slots and buildings elsewhere.</p>`;
   const av=(state.avoid||[]).map(id=>PROC.find(r=>r.id===id)).filter(Boolean);
   if (av.length) mh=`<p class="note">Not using: ${av.map(r=>`<button type="button" class="chipbtn" data-unavoid="${r.id}" title="Use again">${r.n} · ${MACH[r.m].name} Lv ${r.l} ✕</button>`).join(' ')}</p>`+mh;
-  $('pane-mach').innerHTML=mh;
+  $('pane-mach').innerHTML=mh; wireGenPick();
   $('pane-mach').querySelectorAll('select[data-item]').forEach(el=>el.onchange=()=>{ const rf=state.recipeFor||(state.recipeFor={}); if (el.value) rf[el.dataset.item]=el.value; else delete rf[el.dataset.item]; renderProducts(); run(); });
   $('pane-mach').querySelectorAll('button[data-avoid]').forEach(b=>b.onclick=()=>{ const a=new Set(state.avoid||[]); a.add(b.dataset.avoid); state.avoid=[...a]; renderProducts(); run(); });
   $('pane-mach').querySelectorAll('button[data-unavoid]').forEach(b=>b.onclick=()=>{ state.avoid=(state.avoid||[]).filter(x=>x!==b.dataset.unavoid); renderProducts(); run(); });
@@ -4089,7 +4129,7 @@ matchMedia('(max-width:1180px)').addEventListener('change',()=>{ if (state.tab==
 // ---------- Share codes ----------
 // Setup codes: only what differs from a fresh page, squeezed (deflate) into a short code starting "2.".
 // Things that are yours alone (your Aniimo, ticked checklist, tabs, layout style, orders) stay out of the code.
-const SHARE_STATE=['requests','products','noFill','crewLvl','avoid','recipeFor','rank','land','mode','allMach'];
+const SHARE_STATE=['requests','products','noFill','crewLvl','avoid','recipeFor','rank','land','mode','allMach','genLvl','genN'];
 const b64u={ enc:u8=>{ let s=''; for (const c of u8) s+=String.fromCharCode(c); return btoa(s).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); },
   dec:t=>{ const s=atob(t.replace(/-/g,'+').replace(/_/g,'/')); return Uint8Array.from(s,c=>c.charCodeAt(0)); } };
 async function zip(str, inflate){ const cs=inflate?new DecompressionStream('deflate-raw'):new CompressionStream('deflate-raw');
