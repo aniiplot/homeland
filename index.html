@@ -668,7 +668,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 17 Nov, 5:55pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 17 Nov, 6:07pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -1666,6 +1666,8 @@ function plan(requests, fillers, o, lp){
     power={gens:val('gen'), out:o.power.out, lvl:o.power.lvl, used, cap:val('gen')*o.power.out/1.2, eMachR, eMachK, eChainR, eChainK, eMines:eVars.filter(v=>v.mine).reduce((t,v)=>t+val(v.name),0), eExtras, eh, eRv}; }
   const workers = {}; for (const pv of poolVars) workers[pv.j]=val(pv.name);
   const poolBusy = {}; for (const [j,P] of Object.entries((o.pool||{}).jobs||{})) poolBusy[j]=P.base;
+  // Benches and Kilns on the RV upgrade that run on power need no worker
+  if (power) for (const [k,n] of Object.entries(power.eRv)){ const j=MACH[k].job; if (poolBusy[j]!==undefined) poolBusy[j]=Math.max(0,poolBusy[j]-n); }
   for (const a of auto) for (const [k,h] of Object.entries(a.mh)) if (POOLED(k) && poolBusy[MACH[k].job]!==undefined) poolBusy[MACH[k].job]+=h*a.perHour;
   // hours done on power need no worker
   for (const n of Object.keys(res)) if (/^(eh|ch|chk)_/.test(n) && res[n]>1e-9){ const v=V[n]; for (const c of Object.keys(v)) if (c.startsWith('wb_') && poolBusy[c.slice(3)]!==undefined) poolBusy[c.slice(3)]=Math.max(0,poolBusy[c.slice(3)]-res[n]); }
@@ -3895,10 +3897,12 @@ function run(){
   const mineCount=best.mines.filter(m=>!m.e).reduce((s,m)=>s+m.count,0);
   if (PWR && PWR.gens) crew.push({job:'Lightning', lvl:GEN.need[PWR.lvl], n:PWR.gens, does:PWR.gens+' Crackle Generator'+(PWR.gens>1?'s':'')});
   if (mineCount) crew.push({job:'Earth', n:mineCount, keys:['mine'], does:mineCount+' Mine'+(mineCount>1?'s':'')});
-  if (gs.rv) for (const [key,stages,id] of [['bench',gs.rv.woodChain,'benches'],['kiln',gs.rv.oreChain,'kilns']]){ const n=int(id); if (!stages.length || !n) continue;
-    const M=MACH[key], lv=Math.max(...stages.map(s=>s.r.j));
-    if (pjobs.has(M.job)){ const p=P(M.job); p.parts.push(n+' '+plural(M.name,n)); p.keys.push(key); p.lvl=Math.max(p.lvl,lv); }
-    else crew.push({job:M.job, lvl:lv, n, keys:[key], does:n+' '+plural(M.name,n)}); }
+  // Benches and Kilns for the RV upgrade: only the ones worked by hand need an Aniimo (the rest are on E-mode)
+  if (gs.rv) for (const [key,stages,id] of [['bench',gs.rv.woodChain,'benches'],['kiln',gs.rv.oreChain,'kilns']]){ const all=int(id); if (!stages.length || !all) continue;
+    const n=all-Math.min(all, ((PWR||{}).eRv||{})[key]||0); if (!n) continue;
+    const M=MACH[key], lv=Math.max(...stages.map(s=>s.r.j)), does=n<all ? `${n} of the ${all} ${plural(M.name,all)}` : n+' '+plural(M.name,n);
+    if (pjobs.has(M.job)){ const p=P(M.job); p.parts.push(does); p.keys.push(key); p.lvl=Math.max(p.lvl,lv); }
+    else crew.push({job:M.job, lvl:lv, n, keys:[key], does}); }
   for (const e of extras){ const M=MACH[e.key]; crew.push({job:M.job, n:1, keys:[e.key], does:'1 '+M.name, fam:e.r.fam?leisurePick(e.r,ctx).name:'', line:e.r.fam?e.r:null}); }
   for (const p of Object.values(pooled)) crew.push({job:p.job, lvl:p.lvl, n:p.n, keys:p.keys, does:p.parts.join(' · '), busy:p.busy, pooled:true, d:p.busy+(p.field?FIELD_SHARE:0)});
   const byJob={}; for (const r of crew){ const k=r.job+'|'+(r.lvl&&r.lvl>1?r.lvl:0)+'|'+(r.fam||'')+(r.pooled?'|pool':'');
