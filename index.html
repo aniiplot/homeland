@@ -668,7 +668,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 15 Nov, 10:10pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 17 Nov, 4:50pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -3513,7 +3513,9 @@ function splitGrids(list, k, cap){
 // the plan expects Lv 2 shows 90% in game).
 function genPickHtml(P){ const rv=int('rv'), top=powerAt(rv), most=genCount(rv), lv=Math.min(int('power')||P.lvl, top), n=int('gens');
   const opt=(v,cur,txt)=>`<option value="${v}"${v===cur?' selected':''}>${txt}</option>`;
-  const up=lv<top ? `<p class="note">Upgrading to Lv ${top} makes ${fmt(GEN.w[top])} W each instead of ${fmt(GEN.w[lv])} W (${fmt(FAC_COST['Crackle Generator'].slice(lv,top).reduce((t,c)=>t+c,0))} Home Coin each).</p>` : '';
+  // a generator can't go past the Power Module's level, and the module is upgraded on its own on the RV screen
+  const modCoin=(MODULE_COST['Power Module']||[]).slice(lv,top).reduce((t,m)=>t+m[1],0);
+  const up=lv<top ? `<p class="note">Lv ${top} makes ${fmt(GEN.w[top])} W each instead of ${fmt(GEN.w[lv])} W. The game only lets a generator reach your Power Module's level, so if it shows Lv ${lv} as the most, upgrade the Power Module on the RV screen first (${fmt(modCoin)} Home Coin and a Toolkit a level, up to Lv ${top} at RV ${GEN.rv[top]}). Then each generator costs ${fmt(FAC_COST['Crackle Generator'].slice(lv,top).reduce((t,c)=>t+c,0))} Home Coin to upgrade.</p>` : '';
   return `<div class="genpick"><label class="f"><span>Your generators</span><select id="genNPick" aria-label="How many Crackle Generators you have">${[...Array(most).keys()].map(i=>opt(i+1,n,String(i+1))).join('')}</select></label>
     <label class="f"><span>at level</span><select id="genLvlPick" aria-label="Your Crackle Generators' level">${[...Array(top).keys()].map(i=>opt(i+1,lv,'Lv '+(i+1)+' · '+fmt(GEN.w[i+1])+' W')).join('')}</select></label></div>
     <p class="note">The Power Module only unlocks each level: every generator is upgraded on its own in build mode, and a new one starts at Lv 1. Set yours here so the plan doesn't load them past what they make.</p>${up}
