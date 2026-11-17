@@ -668,7 +668,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 17 Nov, 4:50pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 17 Nov, 5:40pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -3830,6 +3830,15 @@ function run(){
   lastPlan.machCards=cards;
   if (cards.length){
     mh+=`<p class="note">Everything your plan makes, machine by machine. ${one?'Each machine sticks to one recipe, so every recipe gets machines of its own (tick <b>Machines switch recipes</b> under Food &amp; goods in Custom setup if you swap them by hand).':'Machines take turns on their recipes (switching is on in Custom setup).'} Coin is what the goods sell for.</p>`;
+    // Benches and Kilns for the RV upgrade, some on E-mode: they're the same machine, so what matters is the step the one
+    // worked by hand runs. An Aniimo a level above a step's recipe works it about twice as fast as E-mode at 120%.
+    const handNote=(m, nE)=>{ const k=m.need-nE; if (!(nE>0 && k>0)) return '';
+      const rows=m.forRv.map(st=>({st, hand:batchMinutes(st.r,ctx)*60, e:st.r.es ? st.r.es/1.2 : Infinity})).filter(x=>isFinite(x.hand) && x.hand<x.e-0.5).sort((a,b)=>b.st.batches-a.st.batches);
+      const who=k>1?`the ${k} worked by hand`:'the one worked by hand', name=MACH[m.key].name;
+      if (!rows.length) return `<p class="note">It doesn't matter which ${name} you work by hand: E-mode is as fast at every step.</p>`;
+      const top=rows[0], also=rows.slice(1).map(x=>x.st.r.n), names=name.replace(/(ch|sh|s|x)$/,'$1e')+'s', x=top.e/top.hand;
+      const speed = x>=1.9 && x<2.1 ? 'twice as fast as' : x>=1.2 ? (Math.round(x*10)/10)+' times as fast as' : 'faster than';
+      return `<p class="note">The ${names} are all the same, but give ${who} <b>${top.st.r.n}</b>${also.length?` (then ${also.join(', ')})`:''}. A Lv ${workerLevel(top.st.r,ctx)} Aniimo makes it in ${Math.round(top.hand)} s, ${speed} E-mode (${Math.round(top.e)} s), and it's most of the work. Leave the other steps to the ones on E-mode. ${k>1?'The ones worked by hand need no power, so they':'The one worked by hand needs no power, so it'} can sit outside the generator's area.</p>`; };
     const cardHtml=m=>{ const M=MACH[m.key], over=m.need>m.can, jc=`var(${jobVar(M.job)})`;
       const head=`<div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}${m.e&&!m.power?` <span class="emode big" title="Runs on Crackle Generator power: switch it to E-mode in game. No Aniimo needed.">⚡ ${m.e>=m.need?(m.need>1?'All on':'On'):m.e+' of '+m.need+' on'} E-mode</span>`:''}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div>`;
       if (m.power){ const P=m.power, rate=P.used<=P.cap+1e-6?120:Math.round(120*P.cap/P.used);
@@ -3840,7 +3849,7 @@ function run(){
           ${(()=>{ const full=GEN.w[P.lvl]; if (P.out>=full-1e-6) return ''; const lv=[1,2,3,4].find(w=>genOut(P.lvl,w)>=full-1e-6);
             return `<p class="warn">Your workers make each generator give ${fmt(P.out)} of its ${fmt(full)} W.${lv?` A Lv ${lv} Lightning Aniimo gives the full ${fmt(full)} W.`:''}</p>`; })()}</div>`; }
       if (m.forRv){ const nE=Math.min(m.need, ((PWR||{}).eRv||{})[m.key]||0);
-        return `<div class="mc"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}${nE?` <span class="emode big" title="Runs on Crackle Generator power: switch it to E-mode in game. No Aniimo needed.">⚡ ${nE>=m.need?(m.need>1?'All on':'On'):nE+' of '+m.need+' on'} E-mode</span>`:''}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div><p class="note">For RV ${gs.rv.next}</p><ul>${m.forRv.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.batches)} total</span></li>`).join('')}</ul></div>`; }
+        return `<div class="mc"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}${nE?` <span class="emode big" title="Runs on Crackle Generator power: switch it to E-mode in game. No Aniimo needed.">⚡ ${nE>=m.need?(m.need>1?'All on':'On'):nE+' of '+m.need+' on'} E-mode</span>`:''}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div><p class="note">For RV ${gs.rv.next}</p><ul>${m.forRv.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.batches)} total</span></li>`).join('')}</ul>${handNote(m, nE)}</div>`; }
       const ls=[...m.lines.values()].sort((a,b)=>(b.coin-a.coin)||(b.perHour-a.perHour));
       // one bar per machine, filled by how busy that machine is
       let segs=[];
