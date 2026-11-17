@@ -267,7 +267,7 @@ button.an.on.away{border-style:dashed;font-weight:400;opacity:.8}
 button.an.on.away::before{content:""}
 .linkbtn{background:none;border:0;padding:0;color:var(--leaf);text-decoration:underline;font:inherit;cursor:pointer}
 .mach{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:10px}
-.mc{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel);display:grid;gap:8px;min-width:0}
+.mc{border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--panel);display:grid;gap:8px;align-content:start;min-width:0}
 .mc.over{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
 .muted{color:var(--muted);font-weight:400;font-size:.92em}
 .mc.extra{border-left:4px solid var(--jc)}
@@ -406,6 +406,14 @@ body.setup-open .updatebar{display:none}
 .zin svg{display:block;background:var(--bg);border-radius:10px}
 .emode{display:inline-flex;align-items:center;gap:3px;font-size:.78rem;font-weight:700;padding:1px 8px;border-radius:999px;background:color-mix(in srgb,var(--j-lightning) 22%,var(--panel));border:1px solid var(--j-lightning);color:var(--ink);white-space:nowrap}
 .emode.big{font-size:.8rem;padding:2px 9px;margin-top:4px}
+.mc .rvhead{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:4px 8px}
+.rvkey{display:inline-flex;gap:10px;font-size:.76rem;color:var(--muted)}
+.rvkey > span{display:inline-flex;align-items:center;gap:4px}
+.mk{width:16px;height:16px;padding:2px;border-radius:50%;background:var(--jc);fill:var(--panel);flex:none}
+.rvkey .mk{width:14px;height:14px}
+.mc ul.rvsteps{gap:5px}
+.mc .rvsteps li{display:grid;grid-template-columns:16px minmax(0,1fr) auto;gap:8px;align-items:start}
+.mc .rvsteps .mk{margin-top:1px}
 .mc:has(.emode.big){border-color:color-mix(in srgb,var(--j-lightning) 60%,var(--line))}
 .mapside .ab{font-family:var(--font-mono);font-size:.72rem;padding:0 5px;border:1px solid var(--line);border-radius:4px;color:var(--muted);margin-left:4px}
 .wh{display:none;font-size:.78rem;color:var(--muted);margin-top:2px}
@@ -668,7 +676,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 17 Nov, 6:07pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 17 Nov, 6:28pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -2389,6 +2397,8 @@ const JOB_ICON = {
   Hauling:'<path d="M3 7l9-4 9 4v10l-9 4-9-4zm9-1.8L6.2 7.7 12 10.3l5.8-2.6z"/>',
 };
 const jobIcon = j => `<svg class="ji" viewBox="0 0 24 24" aria-hidden="true">${JOB_ICON[j]||'<circle cx="12" cy="12" r="8"/>'}</svg>`;
+// A job's icon on a disc of its colour, marking a Bench or Kiln step as E-mode (Lightning) or by hand (the machine's job)
+const rvMark = (j,label='') => `<svg class="mk" viewBox="0 0 24 24" style="--jc:var(${jobVar(j)})" ${label?`role="img" aria-label="${label}"><title>${label}</title>`:'aria-hidden="true">'}${JOB_ICON[j]||''}</svg>`;
 const jobChip = (j,extra='') => `<span class="job" style="--jc:var(${jobVar(j)})">${jobIcon(j)}${j}${extra}</span>`;
 // Who can do each job, by job level. Regular forms: MetaBot job lists and AniimoTools station pages agree on the level.
 // Prismana (P): AniimoTools only. Regional forms usually share the base form's level and are left out to keep lists short.
@@ -3849,7 +3859,13 @@ function run(){
           ${(()=>{ const full=GEN.w[P.lvl]; if (P.out>=full-1e-6) return ''; const lv=[1,2,3,4].find(w=>genOut(P.lvl,w)>=full-1e-6);
             return `<p class="warn">Your workers make each generator give ${fmt(P.out)} of its ${fmt(full)} W.${lv?` A Lv ${lv} Lightning Aniimo gives the full ${fmt(full)} W.`:''}</p>`; })()}</div>`; }
       if (m.forRv){ const nE=Math.min(m.need, ((PWR||{}).eRv||{})[m.key]||0);
-        return `<div class="mc"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}${nE?` <span class="emode big" title="Runs on Crackle Generator power: switch it to E-mode in game. No Aniimo needed.">⚡ ${nE>=m.need?(m.need>1?'All on':'On'):nE+' of '+m.need+' on'} E-mode</span>`:''}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div><p class="note">For RV ${gs.rv.next}</p><ul>${(()=>{ const onE=stepsOnE(m, nE); return m.forRv.map((s,i)=>`<li><span>${s.r.n}${onE[i]?' <span class="emode">⚡ on E-mode</span>':''}</span><span>${fmt(s.batches)} total</span></li>`).join(''); })()}</ul></div>`; }
+        return `<div class="mc"><div class="top"><div><h4>${M.name}</h4><span class="pill">Lv ${m.maxLvl}+</span> ${jobChip(M.job)}${nE?` <span class="emode big" title="Runs on Crackle Generator power: switch it to E-mode in game. No Aniimo needed.">⚡ ${nE>=m.need?(m.need>1?'All on':'On'):nE+' of '+m.need+' on'} E-mode</span>`:''}</div><div class="cnt"><b>${m.need}</b> / ${m.can}<br>in use / max</div></div>${(()=>{ const onE=stepsOnE(m, nE), known=nE>0 && (m.need===m.forRv.length || nE>=m.need);
+          const head=`<p class="note">For RV ${gs.rv.next}</p>`;
+          if (!known) return head+`<ul>${m.forRv.map(s=>`<li><span>${s.r.n}</span><span>${fmt(s.batches)} total</span></li>`).join('')}</ul>`;
+          // one machine per step: a lightning mark in front of the steps on E-mode, the job's mark in front of those by hand
+          const eTip='On E-mode: runs on Crackle Generator power, no Aniimo needed', hTip=`By hand: needs ${/^[AEIOU]/.test(M.job)?'an':'a'} ${M.job} Aniimo`;
+          const key=`<span class="rvkey">${onE.some(Boolean)?`<span>${rvMark('Lightning')}E-mode</span>`:''}${onE.some(x=>!x)?`<span>${rvMark(M.job)}By hand</span>`:''}</span>`;
+          return `<div class="rvhead">${head}${key}</div><ul class="rvsteps">${m.forRv.map((s,i)=>`<li>${onE[i]?rvMark('Lightning',eTip):rvMark(M.job,hTip)}<span>${s.r.n}</span><span>${fmt(s.batches)} total</span></li>`).join('')}</ul>`; })()}</div>`; }
       const ls=[...m.lines.values()].sort((a,b)=>(b.coin-a.coin)||(b.perHour-a.perHour));
       // one bar per machine, filled by how busy that machine is
       let segs=[];
