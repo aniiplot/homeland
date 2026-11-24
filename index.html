@@ -756,7 +756,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 24 Nov, 7:58pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 24 Nov, 11:48pm</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -1800,7 +1800,7 @@ function plan(requests, fillers, o, lp){
     auto, autoMach, autoMachR, autoCoin, autoUse, goodsUse, extraCount, extrasCoin, workers, poolBusy, power, food, foodCoin, foodNeed, foodShort, limited:!!res.limited, exact:!!lp.exact, shortlisted:!!(o.oneRecipe && o.shortlisted && (o.auto||[]).length)};
 }
 
-// Spread one zone's plots over its units so every unit's layout really fits.
+// Spread one zone's plots over its units so every unit's layout really fits, and as tidily as the room allows.
 // Host units (the first `hosts` of them) keep room for one 5x5 building: 1 less Farmland, Woodland frontier shifted
 // What each hosted 5x5 building costs a unit, the first and the second: plot slots, the Woodland mix allowance and
 // Woodland plots. A Cooling Unit's second costs one more slot than its first (exact: 29 Farmland with two, 31 with one).
@@ -1810,23 +1810,28 @@ const hostFarm = (k, w, h=1) => { const c=hostCost(k,h); return w>UNIT[k].Wmax-c
 function distribute(zone, n, farmList, woodList, o, hosts=0){
   const u = UNIT[zone.geo], capF = Math.min(u.F0, zone.geo==='cool'?o.capCool:o.capSmall);
   const W = woodList.length, F = farmList.length;
-  let best = null;
+  if (n<=0) return null;
   const hOf = i => (i<hosts?1:0) + (i+n<hosts?1:0);   // a second guest goes in once every unit has one
   const capOf = (i,w) => hOf(i) ? Math.min(hostFarm(zone.geo,w,hOf(i)), capF) : Math.min(unitFarm(zone.geo,w),capF);
   const wmaxOf = i => u.Wmax-hostCost(zone.geo, hOf(i)).wmax;
-  const rec = (i, left, ws) => {
-    if (i===n-1){ if (left>wmaxOf(i)) return; const all=[...ws,left];
-      const caps = all.map((w,j)=>capOf(j,w)); if (caps.some(c=>c<0)) return;
-      const cap = caps.reduce((s,c)=>s+c,0);
-      if (!best || cap>best.cap) best={ws:all, cap}; return; }
-    for (let w=0; w<=Math.min(wmaxOf(i),left); w++) rec(i+1, left-w, [...ws,w]);
-  };
-  if (n>0) rec(0, W, []);
-  if (!best || best.cap < F) return null;
-  const units = best.ws.map((w,i)=>({w, host:hOf(i), farmCap:capOf(i,w), farm:[], wood:[]}));
-  let wi=0; units.forEach(un=>{ un.wood = woodList.slice(wi, wi+un.w); wi+=un.w; });
-  let fi=0; units.forEach(un=>{ const t=Math.min(un.farmCap, F-fi); un.farm = farmList.slice(fi, fi+t); fi+=t; });
-  return units;
+  // Each unit takes the next run of Woodland and of plots. Of every split that fits, the one whose units can each lay
+  // out their Woodland most tidily (see untidy), then with the fewest crops sharing a unit, then with the most room spare.
+  const runs=L=>{ const p=[0]; for (let j=1;j<L.length;j++) p.push(p[j-1]+(L[j].crop!==L[j-1].crop?1:0)); return p; };
+  const pW=runs(woodList), pF=runs(farmList), crops=(p,a,b)=>b>a ? 1+p[b-1]-p[a] : 0;
+  const restW=new Array(n+1).fill(0), restF=new Array(n+1).fill(0);
+  for (let i=n-1;i>=0;i--){ restW[i]=restW[i+1]+wmaxOf(i); restF[i]=restF[i+1]+Math.max(0,capOf(i,0)); }
+  const NF=F+1; let cost=new Float64Array((W+1)*NF).fill(Infinity); cost[0]=0; const back=[];
+  for (let i=0;i<n;i++){ const nx=new Float64Array(cost.length).fill(Infinity), bw=new Int16Array(cost.length), bf=new Int16Array(cost.length), h=hOf(i);
+    for (let wu=0; wu<=W; wu++) for (let fu=0; fu<=F; fu++){ const c0=cost[wu*NF+fu]; if (c0===Infinity) continue;
+      for (let w=0; w<=Math.min(wmaxOf(i), W-wu); w++){ if (W-wu-w>restW[i+1]) continue; const cap=capOf(i,w); if (cap<0) continue;
+        for (let f=Math.max(0, F-fu-restF[i+1]); f<=Math.min(cap, F-fu); f++){
+          const v=c0+untidy(zone.geo,Math.min(2,h),w,f)+0.6*Math.max(0, crops(pW,wu,wu+w)+crops(pF,fu,fu+f)-1)-0.01*cap, x=(wu+w)*NF+fu+f;
+          if (v<nx[x]-1e-9){ nx[x]=v; bw[x]=w; bf[x]=f; } } } }
+    back.push({bw,bf}); cost=nx; }
+  if (cost[W*NF+F]===Infinity) return null;
+  const ws=[], fs=[]; for (let i=n-1, wu=W, fu=F; i>=0; i--){ const x=wu*NF+fu, w=back[i].bw[x], f=back[i].bf[x]; ws.unshift(w); fs.unshift(f); wu-=w; fu-=f; }
+  let wi=0, fi=0;
+  return ws.map((w,i)=>{ const un={w, host:hOf(i), wood:woodList.slice(wi,wi+w), farm:farmList.slice(fi,fi+fs[i])}; wi+=w; fi+=fs[i]; return un; });
 }
 
 // Best plan with overlapping pairs. With HiGHS the model holding every pair layout is solved exactly in one go.
@@ -3467,13 +3472,15 @@ function cornerGeom(u, corner){
 // Every climate unit is laid out from what the plan needs and the room that leaves, on whole tiles. The full layouts
 // below (the most Farmland that fits round a unit with 0, 1 or 2 hosted 5x5 buildings, worked out exactly once) say
 // how much room there is. Hosted buildings go as far inside the range as the room allows (two side by side), Woodland
-// goes in the tidiest block that still leaves the plots needed, and the plots fill the rest nearest the unit.
+// goes in the tidiest arrangement that still leaves the plots needed (rows and columns, mirrored across the unit like
+// two columns either side, see neatScore), and the plots fill the rest nearest the unit. The plan also spreads Woodland
+// and plots over a climate's units so each has room for that (see distribute).
 const UNIT_TPL = {"clean":{"small":{"0":{"farm":[[-4,-4],[-4,-2],[-4,0],[-4,2],[-4,4],[-2,-4],[-2,-2],[-2,0],[-2,2],[-2,4],[0,-4],[0,-2],[0,2],[0,4],[2,-4],[2,-2],[2,0],[2,2],[2,4],[4,-4],[4,-2],[4,0],[4,2],[4,4]],"guests":[]},"1":{"farm":[[-4,-2],[-4,0],[-4,2],[-4,4],[-2,-4],[-2,-2],[-2,0],[-2,2],[-2,4],[0,-4],[0,-2],[0,2],[0,4],[2,-4],[2,-2],[2,0],[2,2],[2,4],[4,-4],[4,-2],[4,0],[4,2],[4,4]],"guests":[[-7,-7]]},"2":{"farm":[[-4,-2],[-4,0],[-4,2],[-2,-4],[-2,-2],[-2,0],[-2,2],[-2,4],[0,-4],[0,-2],[0,2],[0,4],[2,-4],[2,-2],[2,0],[2,2],[2,4],[4,-4],[4,-2],[4,0],[4,2],[4,4]],"guests":[[-7,-7],[-7,4]]}},"cool":{"0":{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,1],[-5,3],[-5,5],[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-5],[-1,-3],[-1,3],[-1,5],[1,-5],[1,-3],[1,3],[1,5],[3,-5],[3,-3],[3,-1],[3,1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3],[5,5]],"guests":[]},"1":{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,1],[-5,3],[-5,5],[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-3,5],[-1,-5],[-1,-3],[-1,3],[-1,5],[1,-5],[1,-3],[1,3],[1,5],[3,-5],[3,-3],[3,-1],[3,1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3]],"guests":[[5,5]]},"2":{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,1],[-5,3],[-3,-5],[-3,-3],[-3,-1],[-3,1],[-3,3],[-1,-5],[-1,-3],[-1,3],[-1,5],[1,-5],[1,-3],[1,3],[1,5],[3,-5],[3,-3],[3,-1],[3,1],[3,3],[3,5],[5,-5],[5,-3],[5,-1],[5,1],[5,3]],"guests":[[-6,5],[5,5]]}}},"packed":{"small":{"0":{"farm":[[-5,-2],[-5,4],[-4,-4],[-4,0],[-4,2],[-3,-2],[-2,-4],[-2,0],[-2,2],[-2,4],[-1,-2],[0,-5],[0,1],[0,3],[1,-3],[1,-1],[2,-5],[2,1],[2,3],[3,-3],[3,-1],[4,-5],[4,1],[4,4]],"guests":[]},"1":{"farm":[[-5,-2],[-5,4],[-4,0],[-4,2],[-3,-2],[-2,-4],[-2,0],[-2,2],[-2,4],[-1,-2],[0,-4],[0,1],[0,3],[1,-2],[2,-4],[2,0],[2,2],[2,4],[3,-2],[4,-5],[4,0],[4,2],[4,4]],"guests":[[-7,-7]]},"2":{"farm":[[-5,-2],[-5,2],[-5,4],[-4,0],[-3,-2],[-3,2],[-3,4],[-2,-4],[-2,0],[-1,-2],[-1,2],[-1,4],[0,-4],[1,-2],[1,0],[1,2],[1,4],[2,-4],[3,-1],[3,1],[4,-5],[4,-3]],"guests":[[-7,-7],[3,3]]}},"cool":{"0":{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,3],[-5,5],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-3,5],[-2,1],[-1,-4],[-1,-2],[-1,3],[-1,5],[1,-5],[1,-3],[1,2],[1,4],[2,-1],[3,-5],[3,-3],[3,1],[3,3],[3,5],[4,-1],[5,-5],[5,-3],[5,1],[5,3],[5,5]],"guests":[]},"1":{"farm":[[-5,-5],[-5,-3],[-5,3],[-5,5],[-4,-1],[-4,1],[-3,-5],[-3,-3],[-3,3],[-3,5],[-2,-1],[-2,1],[-1,-5],[-1,-3],[-1,3],[-1,5],[1,-5],[1,-3],[1,3],[1,5],[2,-1],[2,1],[3,-5],[3,-3],[3,3],[3,5],[4,-1],[4,1],[5,-5],[5,-3],[5,3]],"guests":[[5,5]]},"2":{"farm":[[-5,-5],[-5,-3],[-5,-1],[-5,3],[-4,1],[-3,-5],[-3,-3],[-3,-1],[-3,3],[-2,1],[-2,5],[-1,-4],[-1,-2],[-1,3],[0,5],[1,-4],[1,-2],[1,3],[2,1],[2,5],[3,-5],[3,-3],[3,-1],[3,3],[4,1],[5,-5],[5,-3],[5,-1],[5,3]],"guests":[[-7,5],[4,5]]}}}};
 const pc32 = n => { n=n-((n>>>1)&0x55555555); n=(n&0x33333333)+((n>>>2)&0x33333333); return (((n+(n>>>4))&0x0F0F0F0F)*0x01010101)>>>24; };
-// Every way to place the unit's hosted buildings, each with the most Farmland it leaves room for alongside w Woodland
+// Every way to place the unit's hosted buildings, each with its Farmland and the Woodland spots left beside them
 const NEAT_CACHE=new Map();
-function neatPlacements(geo, style, G, w){
-  const key=[geo,style,G,w].join('|'); if (NEAT_CACHE.has(key)) return NEAT_CACHE.get(key);
+function neatPlacements(geo, style, G){
+  const key=[geo,style,G].join('|'); if (NEAT_CACHE.has(key)) return NEAT_CACHE.get(key);
   const T=UNIT_TPL[style][geo], g=UNIT[geo], lo=g.lo, hi=g.hi, c=g.size/2, core={x:0,y:0,w:g.size,h:g.size}, R={x:lo,y:lo,w:hi-lo,h:hi-lo};
   const ref=(FRONTIER_CLEAN[geo][0].farm[0]||[0,0]), par=v=>((Math.round(v)%2)+2)%2, clean=style==='clean';
   const rect=([x,y],s)=>({x,y,w:s,h:s}), base=T[0].farm.map(p=>rect(p,2));
@@ -3482,21 +3489,21 @@ function neatPlacements(geo, style, G, w){
   const spots=[]; for (let x=Math.ceil(lo-5); x<hi; x++) for (let y=Math.ceil(lo-5); y<hi; y++){ const r={x,y,w:5,h:5}; if (hit(r,R) && !hit(r,core)) spots.push(r); }
   const at=new Map(spots.map(r=>[r.x+','+r.y,r]));
   const sets=[];
-  if (!G) sets.push({guests:[], farm:base});
+  if (!G) sets.push({guests:[], farm:base, base:clean});
   else { const own=T[G].guests.map(p=>rect(p,5));   // the full layout's own spots always hold the most Farmland
     sets.push({guests:own, farm:T[G].farm.map(p=>rect(p,2))});
     for (const a of spots){ if (G===1){ sets.push({guests:[a], farm:base.filter(z=>!hit(z,a))}); continue; }
       for (const [dx,dy] of [[5,0],[0,5]]){ const b2=at.get((a.x+dx)+','+(a.y+dy)); if (b2) sets.push({guests:[a,b2], farm:base.filter(z=>!hit(z,a) && !hit(z,b2))}); } } }
   for (const S of sets){
     S.W=Wall.filter(r=>!S.guests.some(q=>hit(r,q))).map(r=>{ let m=0; S.farm.forEach((z,i)=>{ if (hit(r,z)) m|=(1<<i); }); return {r, m:m>>>0, rr:ring([r.x,r.y],4,c)}; });
-    S.all=S.farm.length>=32 ? 0xFFFFFFFF : ((1<<S.farm.length)>>>0)-1;
-    const k=woodBy(S, w, 'fewest'); S.cap=k ? pc32(k.left) : -1;
+    S.all=S.farm.length>=32 ? 0xFFFFFFFF : ((1<<S.farm.length)>>>0)-1; S.capW=new Map();
     S.depth=S.guests.reduce((t,q)=>t+ovArea(q,R),0); S.minDepth=Math.min(...S.guests.map(q=>ovArea(q,R)), 99);
     const cx=S.guests.length ? S.guests.reduce((t,q)=>t+q.x+2.5,0)/S.guests.length : c, cy=S.guests.length ? S.guests.reduce((t,q)=>t+q.y+2.5,0)/S.guests.length : c;
     S.off=Math.hypot(cx-c, cy-c); S.c=c; }
-  const out=sets.filter(S=>S.cap>=0);
-  if (NEAT_CACHE.size>200) NEAT_CACHE.clear(); NEAT_CACHE.set(key,out); return out;
+  NEAT_CACHE.set(key,sets); return sets;
 }
+// the most Farmland a placement leaves free beside w Woodland (taking the spots that cost the fewest plots)
+function placeCap(S, w){ let v=S.capW.get(w); if (v===undefined){ const k=woodBy(S, w, 'fewest'); v=k ? pc32(k.left) : -1; S.capW.set(w,v); } return v; }
 // w Woodland in one order of picking (skipping any that overlap one already placed); left = the Farmland still free
 function woodBy(S, w, how){
   const L=S.W; let order;
@@ -3510,35 +3517,120 @@ function woodBy(S, w, how){
     if (best && best.e) best=best.e; if (!best) return null; chosen.push(best); left=(left&~best.m)>>>0; }
   return {wood:chosen.map(e=>e.r), left};
 }
-// orders to place Woodland in: row by row or column by column from each side, and the columns (or rows) on both sides
-// of the unit together, outer or inner first
+// How tidy a set of Woodland looks: blocks side by side, sharing rows and columns, and mirrored across the unit
+// (left to right or top to bottom, to within a tile, the hosted buildings included). Bigger is tidier.
+const MIRROR_TOL=1+1e-9;
+function neatScore(W, guests, c){
+  let adj=0; for (let i=0;i<W.length;i++) for (let j=i+1;j<W.length;j++){ const a=W[i], b=W[j];
+    if ((a.y===b.y && Math.abs(a.x-b.x)===4) || (a.x===b.x && Math.abs(a.y-b.y)===4)) adj++; }
+  const line=2*W.length-new Set(W.map(r=>r.y)).size-new Set(W.map(r=>r.x)).size;
+  const mir=(A,s,ax,o)=>A.filter(a=>A.some(b=>b[o]===a[o] && Math.abs(2*c-a[ax]-s-b[ax])<=MIRROR_TOL)).length;
+  const sV=mir(W,4,'x','y')+mir(guests,5,'x','y'), sH=mir(W,4,'y','x')+mir(guests,5,'y','x');
+  return adj+line+Math.max(sV,sH)+0.1*Math.min(sV,sH);
+}
+// Clean grid: every set of Woodland spots for one placement, keeping the tidiest (by neatScore, then furthest out)
+// for each count of Woodland and each number of plots it leaves free. Worked out once per placement.
+// A unit with no hosted building has over a million sets to look through, so its answers are kept here, worked out by
+// neatTable once: per Woodland count, the most plots it can leave free, then each run of plots counts (from) with the
+// Woodland spots it uses (characters 0-9a-zA-Z are the spots in order).
+const NEAT_G0={"small":{"n":32,"rows":[0,[23,0,"f",23,"5"],[22,0,"bj",21,"5v"],[21,0,"5fp",20,"5fv",21,"5qv"],[20,0,"13rt",17,"02qs",19,"05qv"],[18,0,"13dln",9,"024ce",14,"025cf",17,"05fqv"],[16,0,"024qsu",15,"025qsv"],[14,0,"024ceko",8,"024cqsu",13,"025fqsv"],[12,0,"024cekmo",4,"024ceqsu",9,"025cfqsv"]]},"cool":{"n":40,"rows":[0,[31,0,"3",31,"0"],[30,0,"24",29,"06"],[29,0,"135",27,"024",28,"026",29,"06x"],[28,0,"24zB",25,"0246",27,"06xD"],[26,0,"8acjk",13,"135fg",19,"024zB",24,"024xz",25,"0246x",26,"026xD"],[24,0,"135yAC",21,"024xzB",23,"0246xD"],[22,0,"8acjkrv",5,"135fgno",11,"0246xzB",22,"0246xzD"],[20,0,"8acjkrtv",1,"0246xzBD"],[18,0,"135fgnoyC",7,"135fgnyAC",9,"0246exzBD"],[16,0,"135fgnoyAC",5,"0246ehmpxD"],[14,0,"0246ehmpxzD"],[12,0,"0246ehmpxzBD"]]}};
+function neatTable(S, geo){
+  if (S.T) return S.T;
+  const E=S.base && NEAT_G0[geo];
+  if (E && E.n===S.W.length){ const CH='0123456789abcdefghijklmnopqrstuvwxyz'+'ABCDEFGHIJKLMNOPQRSTUVWXYZ', nf=S.farm.length;
+    const get=(ww,f)=>{ const row=E.rows[ww]; if (!row || f>row[0] || f>nf) return null; let k=1; while (k+2<row.length && row[k+2]<=f) k+=2;
+      const wood=[...row[k+1]].map(ch=>S.W[CH.indexOf(ch)]); if (wood.some(e=>!e)) return null;
+      let left=S.all; for (const e of wood) left=(left&~e.m)>>>0;
+      return {wood:wood.map(e=>e.r), left, sc:neatScore(wood.map(e=>e.r), S.guests, S.c)}; };
+    // still has to fit: no two overlapping and enough plots left (else it's worked out again below)
+    let ok=true; for (let ww=1; ww<E.rows.length && ok; ww++) for (let f=0; f<=E.rows[ww][0] && ok; f++){ const e=get(ww,f);
+      ok=!!e && pc32(e.left)>=f && e.wood.every((a,i)=>e.wood.every((b,j)=>i>=j || !hit(a,b))); }
+    if (ok) return (S.T={get}); }
+  const L=S.W, n=L.length, c=S.c, G=S.guests.length, nf=S.farm.length;
+  const Wm=Math.min(n, UNIT[geo].Wmax-(G?hostCost(geo,G).wmax:0)), NF=nf+1, K=(Wm+1)*NF;
+  const LO=new Int32Array(n), HI=new Int32Array(n); for (let i=0;i<n;i++){ if (i<32) LO[i]=1<<i; else HI[i]=1<<(i-32); }
+  const cfL=new Int32Array(n), cfH=new Int32Array(n), adL=new Int32Array(n), adH=new Int32Array(n), PV=[], PH=[];
+  const rows=new Map(), cols=new Map(), rowOf=new Int8Array(n), colOf=new Int8Array(n);
+  for (let i=0;i<n;i++){ const a=L[i].r; PV.push([]); PH.push([]);
+    if (!rows.has(a.y)) rows.set(a.y,rows.size); if (!cols.has(a.x)) cols.set(a.x,cols.size); rowOf[i]=rows.get(a.y); colOf[i]=cols.get(a.x);
+    for (let j=0;j<n;j++){ const b=L[j].r;
+      if (i!==j && hit(a,b)){ cfL[i]|=LO[j]; cfH[i]|=HI[j]; }
+      if ((a.y===b.y && Math.abs(a.x-b.x)===4) || (a.x===b.x && Math.abs(a.y-b.y)===4)){ adL[i]|=LO[j]; adH[i]|=HI[j]; }
+      if (a.y===b.y && Math.abs(2*c-a.x-4-b.x)<=MIRROR_TOL) PV[i].push(j);
+      if (a.x===b.x && Math.abs(2*c-a.y-4-b.y)<=MIRROR_TOL) PH[i].push(j); } }
+  const gq=S.guests, gm=(ax,o)=>gq.filter(a=>gq.some(b=>b[o]===a[o] && Math.abs(2*c-a[ax]-5-b[ax])<=MIRROR_TOL)).length;
+  const SC=new Float64Array(K).fill(-Infinity), OUT=new Float64Array(K), SL=new Int32Array(K), SHI=new Int32Array(K), LF=new Uint32Array(K);
+  const flat=P=>{ const off=new Int16Array(n+1), idx=new Int16Array(P.reduce((t,a)=>t+a.length,0)); let k=0; P.forEach((a,i)=>{ off[i]=k; for (const j of a) idx[k++]=j; }); off[n]=k; return [off,idx]; };
+  const [vO,vI]=flat(PV), [hO,hI]=flat(PH);
+  const mask=new Uint32Array(L.map(e=>e.m)), rr=new Float64Array(L.map(e=>e.rr)), cV=new Int8Array(n), cH=new Int8Array(n), rC=new Int8Array(rows.size), cC=new Int8Array(cols.size);
+  // depth-first over the spots in order, one level per Woodland, all in local variables (it visits up to ~1M sets)
+  const at=new Int16Array(Wm+1), pick=new Int16Array(Wm+1), lS=new Uint32Array(Wm+1), bLS=new Int32Array(Wm+1), bHS=new Int32Array(Wm+1), daS=new Int8Array(Wm+1);
+  let sV=gm('x','y'), sH=gm('y','x'), nR=0, nC=0, adj=0, cL=0, cHi=0, out=0, d=0;
+  lS[0]=S.all;
+  while (d>=0){
+    let i=at[d]; const bl=bLS[d], bh=bHS[d];
+    while (i<n && ((bl&LO[i])|(bh&HI[i]))) i++;
+    if (i>=n || d>=Wm){ if (--d<0) break; i=pick[d];
+      // take spot i back off
+      for (let k=vO[i];k<vO[i+1];k++){ const j=vI[k]; if (j!==i && ((j<32?cL>>>j:cHi>>>(j-32))&1) && --cV[j]===0) sV--; } if (cV[i]) sV--; cV[i]=0;
+      for (let k=hO[i];k<hO[i+1];k++){ const j=hI[k]; if (j!==i && ((j<32?cL>>>j:cHi>>>(j-32))&1) && --cH[j]===0) sH--; } if (cH[i]) sH--; cH[i]=0;
+      if (--rC[rowOf[i]]===0) nR--; if (--cC[colOf[i]]===0) nC--;
+      cL&=~LO[i]; cHi&=~HI[i]; adj-=daS[d]; out-=rr[i]; at[d]=i+1; continue; }
+    // put Woodland on spot i
+    const da=pc32(adL[i]&cL)+pc32(adH[i]&cHi); daS[d]=da; pick[d]=i;
+    cL|=LO[i]; cHi|=HI[i]; adj+=da; out+=rr[i];
+    if (rC[rowOf[i]]++===0) nR++; if (cC[colOf[i]]++===0) nC++;
+    let m=0; for (let k=vO[i];k<vO[i+1];k++){ const j=vI[k]; if ((j<32?cL>>>j:cHi>>>(j-32))&1){ m++; if (j!==i && cV[j]++===0) sV++; } } cV[i]=m; if (m) sV++;
+    m=0; for (let k=hO[i];k<hO[i+1];k++){ const j=hI[k]; if ((j<32?cL>>>j:cHi>>>(j-32))&1){ m++; if (j!==i && cH[j]++===0) sH++; } } cH[i]=m; if (m) sH++;
+    const w=d+1, nl=(lS[d]&~mask[i])>>>0, x=w*NF+pc32(nl), sc=adj+2*w-nR-nC+(sV>sH ? sV+0.1*sH : sH+0.1*sV);
+    if (sc>SC[x]+1e-9 || (sc>SC[x]-1e-9 && out>OUT[x]+1e-9)){ SC[x]=sc; OUT[x]=out; SL[x]=cL; SHI[x]=cHi; LF[x]=nl; }
+    d++; at[d]=i+1; lS[d]=nl; bLS[d]=bl|cfL[i]; bHS[d]=bh|cfH[i];
+  }
+  // the tidiest that leaves at least f plots free (more free plots when it's a tie)
+  const best=new Int32Array(K).fill(-1);
+  for (let ww=1; ww<=Wm; ww++){ let b=-1; for (let lc=nf; lc>=0; lc--){ const x=ww*NF+lc;
+    if (SC[x]>-Infinity && (b<0 || SC[x]>SC[b]+1e-9 || (SC[x]>SC[b]-1e-9 && OUT[x]>OUT[b]+1e-9))) b=x; best[x]=b; } }
+  S.T={get:(ww,f)=>{ if (ww<1 || ww>Wm || f>nf) return null; const b=best[ww*NF+Math.max(0,f)]; if (b<0) return null;
+    const wood=[]; for (let i=0;i<n;i++) if (i<32 ? (SL[b]>>>i)&1 : (SHI[b]>>>(i-32))&1) wood.push(L[i].r);
+    return {wood, left:LF[b], sc:SC[b]}; }};
+  return S.T;
+}
+// orders to place Woodland in (Packed style): row by row or column by column from each side, and the columns (or rows)
+// on both sides of the unit together, outer or inner first
 const SWEEPS=[...[['y','x'],['x','y']].flatMap(([k1,k2])=>[[1,1],[1,-1],[-1,1],[-1,-1]].map(([s1,s2])=>(a,b)=>s1*(a[k1]-b[k1]) || s2*(a[k2]-b[k2]))),
   ...[['x','y'],['y','x']].flatMap(([k1,k2])=>[[0,1],[1,1],[0,-1],[1,-1]].map(([mid,out])=>(a,b,c)=>out*(Math.abs(b[k1]+2-c)-Math.abs(a[k1]+2-c)) || a[k1]-b[k1] || (mid ? Math.abs(a[k2]+2-c)-Math.abs(b[k2]+2-c) : 0) || a[k2]-b[k2]))];
 function unitLayout(geo, style, G, w, f){
   if (G && w>UNIT[geo].Wmax-hostCost(geo,G).wmax) return null;   // no room for that much Woodland beside them
-  const sty=style==='packed'?'packed':'clean', P=neatPlacements(geo, sty, G, w), g=UNIT[geo], c=g.size/2;
+  const sty=style==='packed'?'packed':'clean', P=neatPlacements(geo, sty, G), g=UNIT[geo], c=g.size/2;
   // hosted buildings: as far inside the range as the room allows, centred on the unit when it's a tie
   let S=null;
-  for (const q of P) if (q.cap>=f && (!S || q.depth>S.depth+1e-9 || (Math.abs(q.depth-S.depth)<1e-9 && (q.minDepth>S.minDepth+1e-9 || (Math.abs(q.minDepth-S.minDepth)<1e-9 && q.off<S.off-1e-9))))) S=q;
+  for (const q of P) if (placeCap(q,w)>=f && (!S || q.depth>S.depth+1e-9 || (Math.abs(q.depth-S.depth)<1e-9 && (q.minDepth>S.minDepth+1e-9 || (Math.abs(q.minDepth-S.minDepth)<1e-9 && q.off<S.off-1e-9))))) S=q;
   if (!S) return null;
-  // Woodland: the tidiest arrangement (side by side and even round the unit, then nearest) that leaves room for f
-  let best=null;
-  if (w>0) for (const how of ['fewest','near',...SWEEPS]){ const k=woodBy(S, w, how); if (!k || pc32(k.left)<f) continue;
-    const W=k.wood; let adj=0; for (let i=0;i<W.length;i++) for (let j=i+1;j<W.length;j++){ const a=W[i], b=W[j];
-      if ((a.y===b.y && Math.abs(a.x-b.x)===4) || (a.x===b.x && Math.abs(a.y-b.y)===4)) adj++; }
-    const line=2*W.length-new Set(W.map(r=>r.y)).size-new Set(W.map(r=>r.x)).size;   // sharing rows and columns
-    const mass=[...W, ...S.guests], tot=mass.reduce((t,r)=>t+r.w*r.w,0);
-    const mx=mass.reduce((t,r)=>t+(r.x+r.w/2)*r.w*r.w,0)/tot-c, my=mass.reduce((t,r)=>t+(r.y+r.w/2)*r.w*r.w,0)/tot-c, near=W.reduce((t,r)=>t+ring([r.x,r.y],4,c),0);
-    const sc=adj+line-Math.hypot(mx,my);   // side by side and lined up counts, lopsided (with the hosted buildings) counts against
-    if (!best || sc>best.sc+1e-9 || (Math.abs(sc-best.sc)<1e-9 && near<best.near)) best={k, sc, near}; }
-  const left = w>0 ? (best ? best.k.left : null) : S.all; if (left===null) return null;
+  // Woodland: the tidiest arrangement that leaves room for f plots. Clean: out of every arrangement on the grid;
+  // Packed: out of rows and columns swept from each side
+  let wood=[], left=S.all, sc=0;
+  if (w>0 && sty==='clean'){ const e=neatTable(S, geo).get(w, f); if (!e) return null; ({wood, left, sc}=e); }
+  else if (w>0){ let best=null;
+    for (const how of ['fewest','near',...SWEEPS]){ const k=woodBy(S, w, how); if (!k || pc32(k.left)<f) continue;
+      const s=neatScore(k.wood, S.guests, c), near=k.wood.reduce((t,r)=>t+ring([r.x,r.y],4,c),0);
+      if (!best || s>best.s+1e-9 || (Math.abs(s-best.s)<1e-9 && near<best.near)) best={k, s, near}; }
+    if (!best) return null; ({wood, left}=best.k); sc=best.s; }
   // plots nearest the unit, each next to one already placed where it can be, so they stay in one tidy piece
   const free=S.farm.filter((z,i)=>(left>>>i)&1); if (free.length<f) return null;
   const farm=[], key=z=>[ring([z.x,z.y],2,c), -farm.filter(q=>(q.x===z.x && Math.abs(q.y-z.y)===2) || (q.y===z.y && Math.abs(q.x-z.x)===2)).length, Math.hypot(z.x+1-c, z.y+1-c), z.y, z.x];
   while (farm.length<f){ let bi=0, bk=key(free[0]);
     for (let i=1;i<free.length;i++){ const k=key(free[i]); for (let j=0;j<k.length;j++){ if (k[j]<bk[j]-1e-9){ bi=i; bk=k; break; } if (k[j]>bk[j]+1e-9) break; } }
     farm.push(free.splice(bi,1)[0]); }
-  return {farm:farm.map(r=>[r.x,r.y]), wood:(w>0?best.k.wood:[]).map(r=>[r.x,r.y]), guests:S.guests.map(r=>[r.x,r.y])};
+  return {farm:farm.map(r=>[r.x,r.y]), wood:wood.map(r=>[r.x,r.y]), guests:S.guests.map(r=>[r.x,r.y]), sc};
+}
+// How far a unit's Woodland falls short of its tidiest arrangement (with no plots to make room for), in neatScore
+// points: the plan spreads Woodland and plots over a climate's units to keep this low (Clean grid)
+const TIDY_CACHE=new Map();
+function untidy(geo, G, w, f){
+  if (!w) return 0;
+  const k=[geo,G,w,f].join('|'); let v=TIDY_CACHE.get(k);
+  if (v===undefined){ const a=unitLayout(geo,'clean',G,w,0), b=unitLayout(geo,'clean',G,w,f); v=a && b ? Math.max(0, a.sc-b.sc) : 0; TIDY_CACHE.set(k,v); }
+  return v;
 }
 const UP_CACHE=new Map();
 function unitPoints(geo, w, f, style, host){ const k=[geo,w,f,style,+host||0].join('|'); if (!UP_CACHE.has(k)){ if (UP_CACHE.size>500) UP_CACHE.clear(); UP_CACHE.set(k, unitPoints0(geo, w, f, style, host)); } return UP_CACHE.get(k); }
@@ -3664,8 +3756,10 @@ function layoutUnits(best, o){
       continue; }
     if (!o.neutralOk) continue;
     const capF=Math.min(UNIT[u.zone.geo].F0, u.zone.geo==='cool'?o.capCool:o.capSmall);
-    while (loose.wood.length && u.wood.length<UNIT[u.zone.geo].Wmax && u.farm.length<=Math.min(unitFarm(u.zone.geo,u.wood.length+1),capF)){ u.wood.push(loose.wood.shift()); u.w=u.wood.length; }
-    while (loose.farm.length && u.farm.length<Math.min(unitFarm(u.zone.geo,u.wood.length),capF)) u.farm.push(loose.farm.shift());
+    // only while the unit's Woodland can stay as tidy as it is
+    const h=Math.min(2,u.host||0), tidy=(w,f)=>untidy(u.zone.geo,h,w,f)<=untidy(u.zone.geo,h,u.wood.length,u.farm.length)+1e-9;
+    while (loose.wood.length && u.wood.length<UNIT[u.zone.geo].Wmax-hostCost(u.zone.geo,h).wmax && u.farm.length<=Math.min(h?hostFarm(u.zone.geo,u.wood.length+1,h):unitFarm(u.zone.geo,u.wood.length+1),capF) && tidy(u.wood.length+1,u.farm.length)){ u.wood.push(loose.wood.shift()); u.w=u.wood.length; }
+    while (loose.farm.length && u.farm.length<Math.min(h?hostFarm(u.zone.geo,u.wood.length,h):unitFarm(u.zone.geo,u.wood.length),capF) && tidy(u.wood.length,u.farm.length+1)) u.farm.push(loose.farm.shift());
   }
   const left=[...loose.wood, ...loose.farm, ...rest], agg=new Map();
   for (const p of left){ const e=agg.get(p)||{...p, plots:0}; e.plots++; agg.set(p,e); }
