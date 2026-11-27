@@ -756,7 +756,7 @@ body:not(.setup-open) .scrim{display:none}
       </details>
 
 
-  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 24 Nov, 11:48pm</span></div>
+  <div class="dfoot"><button type="button" class="linkbtn" id="aboutBtn">About the numbers and sources</button><span class="note" id="ver">Version 28 Nov, 8:32am</span></div>
   <div class="dbar"><span class="st"><span class="clean">Plan is up to date</span><span class="dirty">Changes not applied yet</span></span><button type="button" class="primary" id="runBtn3">Update plan</button></div>
 </div>
 <div class="updatebar" id="updateBar">
@@ -1856,14 +1856,14 @@ function planBest(requests, fillers, o, lp){
   const base = plan(requests, fillers, {...o, pairs:false}, lp);
   // the fallback solver can't bound its relaxed solves, and they can run for minutes: no pair search there
   if (!withPairs || !lp.exact) return base;
-  const t0 = Date.now(), BUDGET = 6000;
+  const t0 = lpNow(), BUDGET = 6000;
   const rel = plan(requests, fillers, {...o, lpOnly:true}, lp);
   const pick = r => Object.keys(r.raw||{}).filter(k=>k.startsWith('y_') && r.raw[k]>1e-6).sort((a,b)=>r.raw[b]-r.raw[a]).slice(0,6);
   // also ask without hosted buildings, so a pair isn't hidden behind them
   const cands = [...new Set([...pick(rel), ...((o.guests||[]).length ? pick(plan(requests, fillers, {...o, lpOnly:true, guests:[]}, lp)) : [])])];
   let best = base;
   const tried = new Set();
-  const tryOne = name => { if (tried.has(name) || Date.now()-t0 > BUDGET) return; tried.add(name);
+  const tryOne = name => { if (tried.has(name) || lpNow()-t0 > BUDGET) return; tried.add(name);
     const r = plan(requests, fillers, {...o, pairOnly:new Set([name])}, lp);
     if (r.feasible && r.objective > best.objective + 1e-6) best = r; };
   cands.forEach(tryOne);
@@ -1923,24 +1923,112 @@ function lpText(model){
   if (g.length) s+='General\n '+g.join(' ')+'\n';
   return {text:s+'End\n', names, id, bad};
 }
-function solveHighs(model){
-  const L=lpText(model); if (!L.names.length) return {feasible:true, result:0};
-  const tl=LP.tl||4, gap=LP.gap||1e-4, t0=Date.now();
-  let sol; try { sol=LP.highs.solve(L.text, {time_limit:tl, mip_rel_gap:gap}); } catch(e){ return null; }
-  if (sol && /^Infeasible$/.test(sol.Status)) return {feasible:false, result:-Infinity};
+// One solve of an LP-format model, on this page or in the background worker (which gets this function's source).
+// Returns {st:'ok'|'inf'|'err', obj, limited, cols:[[column, value], ...], ms}.
+function highsRun(H, text, tl, gap){
+  const t0=Date.now(), out=st=>({st, ms:Date.now()-t0});
+  let sol; try { sol=H.solve(text, {time_limit:tl, mip_rel_gap:gap}); } catch(e){ return out('err'); }
+  if (sol && /^Infeasible$/.test(sol.Status)) return out('inf');
   const ok = s => s && s.Columns && /Optimal|limit/i.test(s.Status||'') && isFinite(s.ObjectiveValue);
-  if (!ok(sol)) return null;
+  if (!ok(sol)) return out('err');
   // Now and then HiGHS settles on a whole-number plan it calls best when a better one exists (seen on 2 of 50 plans,
   // up to 7% slower to the next RV). A plan it settles quickly is solved once more at a tighter tolerance, and the
   // better of the two kept. Slow solves aren't repeated, so this costs little.
   const used=(Date.now()-t0)/1000;
-  if (/\nGeneral\n/.test(L.text) && /^Optimal$/.test(sol.Status) && used<1.5){
-    let s2=null; try { s2=LP.highs.solve(L.text, {time_limit:Math.max(1, Math.min(tl, 3*used)), mip_rel_gap:gap, mip_feasibility_tolerance:1e-9}); } catch(e){}
-    const d=(model.opType==='min'?-1:1)*((s2&&s2.ObjectiveValue)-sol.ObjectiveValue);
+  if (/\nGeneral\n/.test(text) && /^Optimal$/.test(sol.Status) && used<1.5){
+    let s2=null; try { s2=H.solve(text, {time_limit:Math.max(1, Math.min(tl, 3*used)), mip_rel_gap:gap, mip_feasibility_tolerance:1e-9}); } catch(e){}
+    const d=(/^Minimize/.test(text)?-1:1)*((s2&&s2.ObjectiveValue)-sol.ObjectiveValue);
     if (ok(s2) && d > Math.max(1e-6, gap*Math.abs(sol.ObjectiveValue))) sol=s2; }
-  const res={feasible:!L.bad, result:sol.ObjectiveValue, limited:/limit/i.test(sol.Status||'')};
-  for (const n of L.names){ const c=sol.Columns[L.id[n]]; if (c && c.Primal) res[n]=c.Primal; }
+  const cols=[]; for (const [k,c] of Object.entries(sol.Columns)) if (c && c.Primal) cols.push([+k.slice(1), c.Primal]);
+  const r=out('ok'); r.obj=sol.ObjectiveValue; r.limited=/limit/i.test(sol.Status||''); r.cols=cols; return r;
+}
+function solveHighs(model){
+  const L=lpText(model); if (!L.names.length) return {feasible:true, result:0};
+  const s=lpRun(L.text, LP.tl||4, LP.gap||1e-4);
+  if (s.st==='inf') return {feasible:false, result:-Infinity};
+  if (s.st!=='ok') return null;
+  const res={feasible:!L.bad, result:s.obj, limited:s.limited};
+  for (const [i,v] of s.cols) res[L.names[i]]=v;
   return res;
+}
+// ----- Solving in the background -----
+// A plan takes a few solves of up to a few seconds each. Run on the page, they freeze it, so Simple mode's changes plan
+// in a worker instead: the plan is worked out in passes, and each pass stops at the first solve it hasn't got yet
+// (throwing LP_PENDING), sends that to the worker and carries on when the answer comes back. Every solve is kept, so a
+// later pass, or going back to an earlier answer, doesn't solve it again. A newer change drops the pass and the solve
+// in progress. Without workers it all runs on the page as before.
+const LP_PENDING = {pending:true};
+const LPC = new Map();                               // solved models: key → answer, oldest first
+let LP_ASYNC=false, LP_CLOCK=0;                      // in a pass: solves wait for the worker; their time counts on this clock
+const lpNow = () => LP_ASYNC ? LP_CLOCK : Date.now();   // for time budgets, so a pass spends what a straight run would
+const lpKey = (text,tl,gap) => { let h1=0xdeadbeef, h2=0x41c6ce57;
+  for (let i=0;i<text.length;i++){ const c=text.charCodeAt(i); h1=Math.imul(h1^c, 2654435761); h2=Math.imul(h2^c, 1597334677); }
+  h1=Math.imul(h1^(h1>>>16), 2246822507)^Math.imul(h2^(h2>>>13), 3266489909); h2=Math.imul(h2^(h2>>>16), 2246822507)^Math.imul(h1^(h1>>>13), 3266489909);
+  return (h2>>>0).toString(36)+(h1>>>0).toString(36)+'.'+text.length+'|'+tl+'|'+gap; };
+function lpKeep(key, r){ LPC.delete(key); LPC.set(key, r); if (LPC.size>240) LPC.delete(LPC.keys().next().value); }
+function lpRun(text, tl, gap){
+  const key=lpKey(text,tl,gap), hit=LPC.get(key);
+  if (hit){ LPC.delete(key); if (hit.st!=='err') LPC.set(key, hit); if (LP_ASYNC) LP_CLOCK+=hit.ms; return hit; }   // a failed solve is passed on once
+  if (LP_ASYNC){ lpwSend({key, text, tl, gap}); throw LP_PENDING; }
+  const r=highsRun(LP.highs, text, tl, gap); if (r.st!=='err') lpKeep(key, r); return r;
+}
+const LPW = {state:'off', w:null, mod:null, job:null, task:null};
+const LPW_SRC = `${highsRun.toString()}
+let H=null, ready=null;
+self.onmessage=e=>{ const d=e.data;
+  if (d.init){ ready=(async()=>{ importScripts(d.init.js);
+      const mod=d.init.mod || (d.init.bytes ? await WebAssembly.compile(d.init.bytes) : await fetch(d.init.wasm).then(r=>{ if (!r.ok) throw 0; return r.arrayBuffer(); }).then(b=>WebAssembly.compile(b)));
+      H=await self.Module({instantiateWasm:(imp,done)=>{ WebAssembly.instantiate(mod,imp).then(i=>done(i,mod)); return {}; }});
+      const t=highsRun(H,'Maximize\\n obj: x\\nSubject To\\n c: x <= 1\\nGeneral\\n x\\nEnd\\n',1,1e-4); if (t.st!=='ok') throw 0;
+      try { postMessage({ready:true, mod}); } catch(e){ postMessage({ready:true}); } })().catch(()=>postMessage({fail:true})); return; }
+  ready.then(()=>postMessage({key:d.key, r:highsRun(H, d.text, d.tl, d.gap)}), ()=>{}); };`;
+function lpwSpawn(){
+  if (LPW.w) LPW.w.terminate();
+  LPW.w=null; LPW.job=null;
+  if (LPW.state==='failed') return;
+  try {
+    const js=[...document.scripts].map(s=>s.src).find(s=>/highs/.test(s));
+    if (!js || typeof Worker!=='function' || !LP.exact) throw 0;
+    if (!LPW.url) LPW.url=URL.createObjectURL(new Blob([LPW_SRC], {type:'text/javascript'}));
+    const w=new Worker(LPW.url); LPW.w=w; if (LPW.state!=='ready') LPW.state='starting';
+    w.onmessage=e=>{ if (LPW.w!==w) return; const d=e.data;
+      if (d.ready){ LPW.state='ready'; w.ok=true; if (d.mod) LPW.mod=d.mod; return; }
+      if (d.fail) return lpwFail();
+      if (LPW.job && LPW.job.key===d.key){ LPW.job=null;
+        lpKeep(d.key, d.r); if (d.r.st==='err') lpwSpawn();   // HiGHS gave up: the page's fallback solver takes this one, and a fresh worker the next
+        if (LPW.task) lpPass(LPW.task); } };
+    w.onerror=()=>{ if (LPW.w===w) lpwFail(); };
+    const init={js, wasm:new URL('highs.wasm', document.baseURI).href};
+    if (window.HFP_WASM) init.bytes=window.HFP_WASM.slice(0);
+    try { w.postMessage({init: LPW.mod ? {...init, mod:LPW.mod} : init}); } catch(e){ w.postMessage({init}); }   // a compiled copy saves compiling again
+    clearTimeout(LPW.timer); LPW.timer=setTimeout(()=>{ if (LPW.w===w && !w.ok) lpwFail(); }, 20000);
+  } catch(e){ lpwFail(); }
+}
+// The worker didn't start or stopped working: finish what's waiting on the page, and keep solving there
+function lpwFail(){ LPW.state='failed'; clearTimeout(LPW.timer); if (LPW.w) LPW.w.terminate(); LPW.w=null; LPW.job=null;
+  const t=LPW.task; if (t) setTimeout(()=>lpSync(t), 0); }
+function lpSync(t){ if (LPW.task!==t) return; LPW.task=null; const out=t.fn(); if (t.done) t.done(out); }
+function lpwSend(job){
+  if (LPW.job && LPW.job.key===job.key) return;      // already on it
+  if (LPW.job || !LPW.w) lpwSpawn();                 // busy with a solve nothing needs any more: drop it
+  if (!LPW.w) return;
+  LPW.job={key:job.key}; LPW.w.postMessage(job);
+}
+// Work something out in passes in the background. A new plan replaces whatever is waiting; the unit comparison waits its turn.
+function lpTask(kind, fn, done){
+  if (LPW.state==='failed' || LPW.state==='off'){ const out=fn(); if (done) done(out); return; }
+  if (kind!=='plan' && LPW.task && LPW.task.kind==='plan') return;
+  const t={kind, fn, done}; LPW.task=t; lpPass(t);
+}
+function lpPass(t){
+  if (LPW.task!==t) return;
+  LP_ASYNC=true; LP_CLOCK=0; let out;
+  try { out=t.fn(); }
+  catch(e){ if (e===LP_PENDING) return;              // carries on when the worker answers (or on the page, if it failed)
+    if (LPW.task===t) LPW.task=null; throw e; }
+  finally { LP_ASYNC=false; }
+  if (LPW.task===t) LPW.task=null;
+  if (t.done) t.done(out);
 }
 const fracOf = x => Math.abs((x||0)-Math.round(x||0));
 // Fallback: javascript-lp-solver with a time limit. A cut-short search can return part plots, so then dive:
@@ -3341,7 +3429,7 @@ function renderLayout(){
   if (spare.length) lh+=`<p class="note">Not needed: ${spare.join(', ')}.</p>`;
   $('pane-layout').innerHTML=lh;
   wireLayoutSeg();
-  if (document.querySelector('[data-worth]')) setTimeout(()=>{ const w=unitWorth(); if (w) fillWorth(w); }, 30);
+  if (document.querySelector('[data-worth]')) setTimeout(()=>lpTask('worth', unitWorth, w=>{ if (w) fillWorth(w); }), 30);
 }
 // What each kind of climate unit adds: plan again with one fewer of it (its Aniimo free for other work)
 function unitWorth(){
@@ -3359,7 +3447,7 @@ function unitWorth(){
       out[k]={coin:base.coin-b.coinRate, eta: base.eta!==null ? etaOf(b,need)-base.eta : null, n:used[k]};
       writeForm(form); state.crewLvl=keep.crewLvl; state.land=keep.land;
     }
-  } catch(e){ return null; }
+  } catch(e){ if (e===LP_PENDING) throw e; return null; }
   finally { writeForm(form); state.crewLvl=keep.crewLvl; state.land=keep.land; LP.tl=tl0; LP.gap=gap0; }
   return lastPlan.worth=out;
 }
@@ -3964,6 +4052,7 @@ function prepare(){
   return {o, warnings, reqs, fillers, reqFarm, reqWood, ctx, chain, chainMines, gs};
 }
 function run(){
+  if (!LP_ASYNC && LPW.task && LPW.task.kind==='plan') LPW.task=null;   // planning straight away replaces one waiting in the background
   save();
   if (LP.state==='loading'){ LP.pending=true; return; }
   if (!LP.exact && !window.solver){ $('summary').innerHTML='<p class="err">The planner couldn\'t load its solver. Check your connection and reload the page.</p>'; return; }
@@ -4498,7 +4587,7 @@ let RUN_T=0;
 // Simple re-plans as soon as an answer changes
 function scheduleRun(){ clearTimeout(RUN_T); const sp=$('simplePlan');
   if (sp && SIMPLE() && !sp.querySelector('.sp-working')) sp.insertAdjacentHTML('afterbegin','<p class="note sp-working" role="status">Working out your plan…</p>');
-  RUN_T=setTimeout(()=>run(), 60); }
+  RUN_T=setTimeout(()=>lpTask('plan', run), 60); }
 const EV_CROPS = () => CROPS.filter(c=>c.event===SEASON_KEY);
 const evLive = () => { const now=Date.now(); return now>=EVENT.start && now<=EVENT.end; };
 const evAllowed = () => { const rv=int('rv'); return evLive() && rv>=EVENT_RV && limitAt('lamp',rv)>0; };
@@ -4510,10 +4599,17 @@ function simpleGoalFix(){ const g=$('goalMode'), want=int('rv')>=MAX_RV ? 'coin'
 function simpleEvNormalize(){ const ids=EV_CROPS().map(c=>c.id), ep=state.evPlots||(state.evPlots={});
   for (const r of state.requests) if (ids.includes(r.id)) ep[r.id]=r.plots||0;
   if (!$('events').checked){ state.requests=state.requests.filter(r=>!ids.includes(r.id)); return; }
-  for (const id of ids) if (!state.requests.some(r=>r.id===id)){ const n=ep[id]!=null?ep[id]:4; if (n>0) state.requests.push({id, plots:n}); } }
+  for (const id of ids) if (!state.requests.some(r=>r.id===id)){ const n=ep[id]!=null?ep[id]:4; if (n>0) state.requests.push({id, plots:n}); }
+  evFit(); }
+// The most event plots there's room for: they share your Farmland, and each Sunlamp grows up to 24
+function evCap(){ const o=opts(); return Math.max(0, Math.min(o.farmPlots, (o.lamp||0)*Math.min(UNIT.small.F0, o.capSmall||UNIT.small.F0))); }
+const evRoom = id => Math.max(0, evCap()-EV_CROPS().reduce((t,c)=>t+(c.id!==id?evPlots(c.id):0),0));
+// More than fits (after lowering your RV, say): the later crop gives way
+function evFit(){ let left=evCap(); const ids=EV_CROPS().map(c=>c.id), ep=state.evPlots||(state.evPlots={});
+  state.requests=state.requests.filter(r=>{ if (!ids.includes(r.id)) return true; const n=Math.min(r.plots||0, left); left-=n; r.plots=ep[r.id]=n; return n>0; }); }
 function setEv(on){ $('events').checked=on; simpleEvNormalize(); renderRequests(); markDirty(); renderSimpleSetup(); scheduleRun(); }
 function evPlots(id){ const r=state.requests.find(x=>x.id===id); if (r) return r.plots||0; const ep=state.evPlots||{}; return ep[id]!=null?ep[id]:4; }
-function setEvPlots(id, n){ n=Math.max(0, Math.min(farmCap(int('rv')), Math.round(+n||0))); (state.evPlots||(state.evPlots={}))[id]=n;
+function setEvPlots(id, n){ n=Math.max(0, Math.min(evRoom(id), Math.round(+n||0))); if (n===evPlots(id)) return renderSimpleSetup(); (state.evPlots||(state.evPlots={}))[id]=n;
   state.requests=state.requests.filter(r=>r.id!==id); if (n>0) state.requests.push({id, plots:n});
   renderRequests(); markDirty(); renderSimpleSetup(); scheduleRun(); }
 let SS_SIG='';
@@ -4530,15 +4626,16 @@ function renderSimpleSetup(){
         <label class="ss-goal"><input type="radio" name="sGoal" value="coin"><span><b>Make the most Home Coin</b><small>Every plot and building on what sells best.</small></span></label></fieldset>`}
       ${ev?`<div class="ss-q"><div class="ss-qh"><span class="num">${++q}</span><span>Grow event crops?</span><span class="note">${SEASON_NAME[SEASON_KEY].replace(/^Magical /,'')}, until ${ends}</span></div>
         <div class="seg ss-yn" role="group" aria-label="Grow event crops"><button type="button" data-ev="0">No</button><button type="button" data-ev="1">Yes</button></div>
-        <div id="sEvBox" class="ss-q"><div class="ss-ev">${EV_CROPS().map(c=>`<div class="ss-evr"><label for="sEv-${c.id}">${evName(c)}</label><div class="ss-step"><button type="button" data-evstep="${c.id}" data-d="-1" aria-label="Fewer ${evName(c)} plots">−</button><input id="sEv-${c.id}" type="text" inputmode="numeric" data-evn="${c.id}"><button type="button" data-evstep="${c.id}" data-d="1" aria-label="More ${evName(c)} plots">+</button></div></div>`).join('')}</div>
-        <p class="note" style="margin:0">How many plots of each. Both grow around a Sunlamp, and their seeds cost Weird Jelly Beans, not coin.</p></div></div>`:''}
+        <div id="sEvBox" class="ss-q"><div class="ss-ev">${EV_CROPS().map(c=>`<div class="ss-evr"><label for="sEv-${c.id}">${evName(c)}</label><div class="ss-step"><button type="button" data-evstep="${c.id}" data-d="-1" aria-label="Fewer ${evName(c)} plots">−</button><input id="sEv-${c.id}" type="text" inputmode="numeric" maxlength="2" data-evn="${c.id}" aria-describedby="sEvCap"><button type="button" data-evstep="${c.id}" data-d="1" aria-label="More ${evName(c)} plots">+</button></div></div>`).join('')}</div>
+        <p class="note" style="margin:0" id="sEvNote">How many plots of each. Both grow around a Sunlamp, and their seeds cost Weird Jelly Beans, not coin. <span id="sEvCap"></span></p></div></div>`:''}
       <p class="ss-foot">Your plan updates as soon as you change these. Need your own crops or items, or to match what you've actually built? <button type="button" class="linkbtn" data-goadv>Switch to Advanced</button></p>`;
     const toRv=v=>{ v=Math.max(1,Math.min(MAX_RV,v)); if (v===int('rv')) return; $('rv').value=String(v); $('rv').dispatchEvent(new Event('change',{bubbles:true})); };
     $('sRv').onchange=e=>toRv(+e.target.value); $('sRvDown').onclick=()=>toRv(int('rv')-1); $('sRvUp').onclick=()=>toRv(int('rv')+1);
     box.querySelectorAll('input[name=sGoal]').forEach(r=>r.onchange=()=>{ const g=$('goalMode'); g.value=r.value; state.simpleGoal=r.value; g.dispatchEvent(new Event('change',{bubbles:true})); markDirty(); scheduleRun(); });
     box.querySelectorAll('[data-ev]').forEach(b=>b.onclick=()=>setEv(b.dataset.ev==='1'));
     box.querySelectorAll('[data-evstep]').forEach(b=>b.onclick=()=>setEvPlots(b.dataset.evstep, evPlots(b.dataset.evstep)+(+b.dataset.d)));
-    box.querySelectorAll('[data-evn]').forEach(inp=>inp.onchange=()=>setEvPlots(inp.dataset.evn, inp.value));
+    box.querySelectorAll('[data-evn]').forEach(inp=>{ inp.oninput=()=>{ const v=inp.value.replace(/\D/g,'').slice(0,2); if (v!==inp.value) inp.value=v; };
+      inp.onchange=()=>{ const id=inp.dataset.evn; if (inp.value!=='') setEvPlots(id, parseInt(inp.value,10)); inp.value=String(evPlots(id)); renderSimpleSetup(); }; });
     box.querySelector('[data-goadv]').onclick=()=>setMode('custom'); }
   // keep the answers in step with the form
   $('sRv').value=String(rv); $('sRvDown').disabled=rv<=1; $('sRvUp').disabled=rv>=MAX_RV;
@@ -4547,6 +4644,8 @@ function renderSimpleSetup(){
   box.querySelectorAll('[data-ev]').forEach(b=>b.setAttribute('aria-pressed', String((b.dataset.ev==='1')===on)));
   if ($('sEvBox')) $('sEvBox').hidden=!on;
   box.querySelectorAll('[data-evn]').forEach(inp=>{ if (document.activeElement!==inp) inp.value=String(evPlots(inp.dataset.evn)); });
+  box.querySelectorAll('[data-evstep]').forEach(b=>{ const id=b.dataset.evstep, n=evPlots(id); b.disabled = +b.dataset.d<0 ? n<=0 : n>=evRoom(id); });
+  if ($('sEvCap')){ const cap=evCap(), lamps=int('lamp'); $('sEvCap').textContent=`Up to ${cap} between them${cap<int('farmPlots')?` (${lamps} Sunlamp${lamps===1?'':'s'})`:''}.`; }
 }
 // Hours as words for the headline: "7 days, 8 hours"
 function etaWords(h){ if (!isFinite(h)) return 'never'; const m=Math.max(1,Math.round(h*60)), d=Math.floor(m/1440), hh=Math.floor(m%1440/60), mm=m%60;
@@ -4632,7 +4731,7 @@ let CLAMP_MSG='';
 for (const id of ['farmPlots','woodPlots','farmLvl','woodLvl','eco','events','kitchen','crafting','detector','persona','useLamp','useHeat','useCool','watering','hauling','hours']) $(id).addEventListener('change',()=>{ renderRequests(); renderProducts(); renderFillChips(); });
 for (const id of ['unlockCost','goalMode','haveCoin','haveTier','haveWB','haveOre','haveSand','needCoin','needWood','needSand']) $(id).addEventListener('input',renderGoalInputs);
 $('goalMode').addEventListener('change',()=>{ renderGoalInputs(); updateMbar(); });
-$('rv').addEventListener('change',()=>{ if (SIMPLE()){ simpleGoalFix(); simpleEvNormalize(); renderRequests(); scheduleRun(); } });
+$('rv').addEventListener('change',()=>{ if (SIMPLE()){ simpleGoalFix(); simpleEvNormalize(); renderRequests(); renderSimpleSetup(); scheduleRun(); } });
 // Quick: just RV level, crops and goal, as if everything the RV allows is built. Custom: every setting.
 function applyMode(){ const m=state.mode==='custom'?'custom':'quick'; document.body.classList.toggle('quick', m==='quick');
   document.querySelectorAll('[data-mode]').forEach(b=>b.setAttribute('aria-pressed', String(b.dataset.mode===m)));
@@ -4667,7 +4766,7 @@ $('addOrder').onclick=()=>{ (state.orders||(state.orders=[])).push({n:'',q:1,r:0
 $('maxAll').onclick=()=>{ maxAll(); state.land=null; refreshInputs(); markDirty(); };
 // On a phone, Update plan also folds the setup away and jumps to the results
 // Update plan also closes the drawer so the new plan is in view
-function runFromSetup(){ if (SIMPLE()){ clearTimeout(RUN_T); if (dirty) run(); } else run(); if (document.body.classList.contains('setup-open')){ setSetup(false); window.scrollTo({top:0}); } }
+function runFromSetup(){ if (SIMPLE()){ clearTimeout(RUN_T); if (dirty) lpTask('plan', run); } else run(); if (document.body.classList.contains('setup-open')){ setSetup(false); window.scrollTo({top:0}); } }
 $('runBtn').onclick=runFromSetup;
 for (const [k,[mode,label]] of Object.entries(SKINS)){ const op=document.createElement('option'); op.value=k; op.textContent=label; $('skin').appendChild(op); }
 $('skin').value=document.documentElement.getAttribute('data-skin');
@@ -4719,6 +4818,6 @@ selectTab(SIMPLE() || !TABS.includes(state.tab) ? 'plan' : state.tab);   // Simp
 if (!restored) setSetup(true, false);   // first visit: start with the setup open
 applyMode();
 if (Date.now()>EVENT.end) $('events').checked=false;
-startSolver().then(()=>run());
+startSolver().then(()=>{ run(); lpwSpawn(); });
 </script>
 </body></html>
